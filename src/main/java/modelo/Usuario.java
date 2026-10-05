@@ -4,6 +4,8 @@
  */
 package modelo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  *
  * @author fernan
@@ -11,7 +13,10 @@ package modelo;
 public class Usuario {
     private int idUsuario; 
     private String username;
+    
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String contraseña;
+    
     private int idPersona;
     private String rol; 
     private boolean estado;
