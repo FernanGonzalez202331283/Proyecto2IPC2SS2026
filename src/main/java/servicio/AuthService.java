@@ -5,6 +5,7 @@
 package servicio;
 
 import Dao.UsuarioDAO;
+import Util.ContraseñaUtil;
 import modelo.Usuario;
 
 /**
@@ -19,26 +20,27 @@ public class AuthService {
         usuarioDAO = new UsuarioDAO();
     }
 
-    public Usuario iniciarSesion(String username, String contraseña) {
-
-        Usuario usuario = usuarioDAO.buscarPorUsername(username);
-
-        // Verificamos si el usuario existe
-        if (usuario == null) {
-            return null;
-        }
-
-        // Verificamos si el usuario está activo
-        if (!usuario.isEstado()) {
-            return null;
-        }
-
-        // Verificamos la contraseña
-        if (!usuario.getContraseña().equals(contraseña)) {
-            return null;
-        }
-
-        // Todo está correcto
-        return usuario;
+   public Usuario iniciarSesion(String username,String contraseña) {
+    Usuario usuario = usuarioDAO.buscarPorUsername(username);
+   
+    if (usuario == null) {
+        return null;
     }
+    if (!usuario.isEstado()) {
+        return null;
+    }
+
+    // Convertimos la contraseña escrita a Base64
+    String contraseñaCodificada =
+            ContraseñaUtil.codificar(
+                    contraseña);
+
+    if (!usuario.getContraseña().equals(
+            contraseñaCodificada)) {
+
+        return null;
+    }
+
+    return usuario;
+}
 }

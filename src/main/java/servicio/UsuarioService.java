@@ -4,7 +4,9 @@
  */
 package servicio;
 
+import Dao.HistorialContraseñaDAO;
 import Dao.UsuarioDAO;
+import Util.ContraseñaUtil;
 import java.util.ArrayList;
 import modelo.Usuario;
 
@@ -15,9 +17,10 @@ import modelo.Usuario;
 public class UsuarioService {
     
     private UsuarioDAO usuarioDAO;
-
+    private final HistorialContraseñaDAO historialDAO;
     public UsuarioService() {
         usuarioDAO = new UsuarioDAO();
+        historialDAO = new HistorialContraseñaDAO();
     }
     
     public Usuario buscarUsuario(int idUsuario) {
@@ -63,7 +66,7 @@ public class UsuarioService {
                 return "No tiene permisos para crear un SUPER_ADMIN";
             }
         }
-        
+
         if (usuario.getRol().equals("ADMIN")) {
 
             if (!rolSesion.equals("SUPER_ADMIN")) {
@@ -71,15 +74,50 @@ public class UsuarioService {
             }
         }
 
-        Usuario existente = usuarioDAO.buscarPorUsername(usuario.getUsername());
+        Usuario existente =
+                usuarioDAO.buscarPorUsername(
+                        usuario.getUsername());
 
         if (existente != null) {
             return "El username ya está registrado";
         }
 
-        boolean registrado = usuarioDAO.insertar(usuario);
+        // Guardamos la contraseña original temporalmente
+        String contraseñaOriginal =
+                usuario.getContraseña().trim();
+
+        // Convertimos la contraseña a Base64
+        String contraseñaCodificada =
+                ContraseñaUtil.codificar(
+                        contraseñaOriginal);
+
+        // Guardamos la contraseña codificada en el usuario
+        usuario.setContraseña(
+                contraseñaCodificada);
+
+        boolean registrado =
+                usuarioDAO.insertar(usuario);
 
         if (registrado) {
+
+            Usuario usuarioGuardado =
+                    usuarioDAO.buscarPorUsername(
+                            usuario.getUsername());
+
+            if (usuarioGuardado == null) {
+                return "El usuario fue registrado, pero no se pudo obtener su ID";
+            }
+
+            // Guardamos en historial la contraseña ya codificada
+            boolean historialGuardado =
+                    historialDAO.insertar(
+                            usuarioGuardado.getIdUsuario(),
+                            usuario.getContraseña());
+
+            if (!historialGuardado) {
+                return "El usuario fue registrado, pero no se pudo guardar la contraseña en el historial";
+            }
+
             return "OK";
         }
 
@@ -92,7 +130,9 @@ public class UsuarioService {
             return "Los datos del usuario son obligatorios";
         }
 
-        Usuario actual = usuarioDAO.buscarPorId(usuario.getIdUsuario());
+        Usuario actual =
+                usuarioDAO.buscarPorId(
+                        usuario.getIdUsuario());
 
         if (actual == null) {
             return "El usuario no existe";
@@ -139,14 +179,42 @@ public class UsuarioService {
                 }
             }
         }
+
         Usuario usuarioExistente =
-                usuarioDAO.buscarPorUsername(usuario.getUsername());
+                usuarioDAO.buscarPorUsername(
+                        usuario.getUsername());
 
         if (usuarioExistente != null
                 && usuarioExistente.getIdUsuario()
                 != usuario.getIdUsuario()) {
 
             return "El username ya está registrado";
+        }
+
+        String contraseñaNueva =
+                usuario.getContraseña().trim();
+
+        String contraseñaNuevaCodificada =
+                ContraseñaUtil.codificar(
+                        contraseñaNueva);
+
+        boolean cambioContraseña =
+                !actual.getContraseña().equals(
+                        contraseñaNuevaCodificada);
+
+        usuario.setContraseña(
+                contraseñaNuevaCodificada);
+
+        if (cambioContraseña) {
+
+            boolean historialGuardado =
+                    historialDAO.insertar(
+                            usuario.getIdUsuario(),
+                            actual.getContraseña());
+
+            if (!historialGuardado) {
+                return "No se pudo guardar la contraseña anterior en el historial";
+            }
         }
 
         boolean actualizado =

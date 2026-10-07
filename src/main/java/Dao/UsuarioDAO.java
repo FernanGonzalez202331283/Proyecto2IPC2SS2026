@@ -258,4 +258,33 @@ public class UsuarioDAO {
             return false;
         }
     }
+    
+    public boolean actualizarContraseña(int idUsuario, String nuevaContraseña) {
+
+        String sql = """
+                     UPDATE usuario
+                     SET contraseña = ?
+                     WHERE id_usuario = ?
+                     """;
+
+        Conexion conexion = new Conexion();
+        conexion.connect();
+
+        try (Connection connection = conexion.getConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, nuevaContraseña);
+            ps.setInt(2, idUsuario);
+
+            int filas = ps.executeUpdate();
+
+            return filas > 0;
+
+        } catch (SQLException e) {
+            System.out.println(
+                    "Error al actualizar contraseña: "
+                    + e.getMessage());
+            return false;
+        }
+    }
 }
