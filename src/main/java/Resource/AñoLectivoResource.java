@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.List;
 import modelo.AñoLectivo;
 import modelo.Usuario;
 import servicio.AñoLectivoService;
@@ -28,114 +29,48 @@ import servicio.AñoLectivoService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AñoLectivoResource {
-    
     private final AñoLectivoService añoLectivoService;
 
     public AñoLectivoResource() {
-        añoLectivoService = new AñoLectivoService();
+        this.añoLectivoService = new AñoLectivoService();
     }
 
     @POST
-    public Response registrarAñoLectivo(
-            AñoLectivo añoLectivo,
-            @Context HttpServletRequest request) {
-
-        Object usuario = request.getSession(false) != null
-                ? request.getSession(false).getAttribute("usuario")
-                : null;
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión")
-                    .build();
-        }
-        
-        Usuario usuarioSesion = (Usuario) usuario;
-        String rol = usuarioSesion.getRol();
-
-        if (!rol.equals("SUPER_ADMIN")
-                && !rol.equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar años lectivos")
-                    .build();
+    public Response registrarAñoLectivo(AñoLectivo añoLectivo, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para gestionar años lectivos");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        String resultado =
-                añoLectivoService.registrarAñoLectivo(añoLectivo);
+        String resultado = añoLectivoService.registrarAñoLectivo(añoLectivo);
 
-        if (resultado.equals("Año lectivo registrado correctamente")) {
-
-            return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
-                    .build();
+        if ("Año lectivo registrado correctamente".equals(resultado)) {
+            return Response.status(Response.Status.CREATED).entity(resultado).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
     }
 
     @GET
-    public Response obtenerAñosLectivos(
-            @Context HttpServletRequest request) {
-
-        Object usuario = request.getSession(false) != null
-                ? request.getSession(false).getAttribute("usuario")
-                : null;
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión")
-                    .build();
+    public Response obtenerAñosLectivos(@Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar años lectivos");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        Usuario usuarioSesion = (Usuario) usuario;
-        String rol = usuarioSesion.getRol();
-
-        if (!rol.equals("SUPER_ADMIN")
-                && !rol.equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar años lectivos")
-                    .build();
-        }
-
-        ArrayList<AñoLectivo> añosLectivos =
-                añoLectivoService.obtenerAñosLectivos();
-
+        List<AñoLectivo> añosLectivos = añoLectivoService.obtenerAñosLectivos();
         return Response.ok(añosLectivos).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response buscarAñoLectivo(
-            @PathParam("id") int id,
-            @Context HttpServletRequest request) {
-
-        Object usuario = request.getSession(false) != null
-                ? request.getSession(false).getAttribute("usuario")
-                : null;
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión")
-                    .build();
+    public Response buscarAñoLectivo(@PathParam("id") int id, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar años lectivos");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        Usuario usuarioSesion = (Usuario) usuario;
-        String rol = usuarioSesion.getRol();
-
-        if (!rol.equals("SUPER_ADMIN")
-                && !rol.equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar años lectivos")
-                    .build();
-        }
-
-        AñoLectivo añoLectivo =
-                añoLectivoService.buscarAñoLectivo(id);
+        AñoLectivo añoLectivo = añoLectivoService.buscarAñoLectivo(id);
 
         if (añoLectivo == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -148,88 +83,57 @@ public class AñoLectivoResource {
 
     @PUT
     @Path("/{id}")
-    public Response actualizarAñoLectivo(
-            @PathParam("id") int id,
-            AñoLectivo añoLectivo,
-            @Context HttpServletRequest request) {
-
-        Object usuario = request.getSession(false) != null
-                ? request.getSession(false).getAttribute("usuario")
-                : null;
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión")
-                    .build();
-        }
-
-        Usuario usuarioSesion = (Usuario) usuario;
-        String rol = usuarioSesion.getRol();
-
-        if (!rol.equals("SUPER_ADMIN")
-                && !rol.equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para actualizar años lectivos")
-                    .build();
+    public Response actualizarAñoLectivo(@PathParam("id") int id, AñoLectivo añoLectivo, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para actualizar años lectivos");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
         añoLectivo.setIdAñoLectivo(id);
+        String resultado = añoLectivoService.actualizarAñoLectivo(añoLectivo);
 
-        String resultado =
-                añoLectivoService.actualizarAñoLectivo(añoLectivo);
-
-        if (resultado.equals("Año lectivo actualizado correctamente")) {
+        if ("Año lectivo actualizado correctamente".equals(resultado)) {
             return Response.ok(resultado).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
     }
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @PathParam("id") int id,
-            AñoLectivo añoLectivo,
-            @Context HttpServletRequest request) {
+    public Response cambiarEstado(@PathParam("id") int id, AñoLectivo añoLectivo, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para cambiar el estado");
+        if (errorAcceso != null) {
+            return errorAcceso;
+        }
 
-        Object usuario = request.getSession(false) != null
-                ? request.getSession(false).getAttribute("usuario")
-                : null;
+        String resultado = añoLectivoService.cambiarEstado(id, añoLectivo.isEstado());
 
-        if (usuario == null) {
+        if ("Año lectivo activado correctamente".equals(resultado)
+                || "Año lectivo desactivado correctamente".equals(resultado)) {
+            return Response.ok(resultado).build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+    }
+
+    // Método privado auxiliar para verificar la sesión activa y los permisos de rol
+    private Response validarAcceso(HttpServletRequest request, String mensajeSinPermiso) {
+        if (request.getSession(false) == null || request.getSession(false).getAttribute("usuario") == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity("Debe iniciar sesión")
                     .build();
         }
 
-        Usuario usuarioSesion = (Usuario) usuario;
+        Usuario usuarioSesion = (Usuario) request.getSession(false).getAttribute("usuario");
         String rol = usuarioSesion.getRol();
 
-        if (!rol.equals("SUPER_ADMIN")
-                && !rol.equals("ADMIN")) {
-
+        if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para cambiar el estado")
+                    .entity(mensajeSinPermiso)
                     .build();
         }
 
-        String resultado =
-                añoLectivoService.cambiarEstado(
-                        id,
-                        añoLectivo.isEstado()
-                );
-
-        if (resultado.equals("Año lectivo activado correctamente")
-                || resultado.equals("Año lectivo desactivado correctamente")) {
-
-            return Response.ok(resultado).build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return null; // null indica que la validación pasó con éxito
     }
 }

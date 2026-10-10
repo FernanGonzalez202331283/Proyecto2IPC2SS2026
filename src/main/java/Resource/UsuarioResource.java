@@ -17,6 +17,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.List;
 import modelo.Usuario;
 import servicio.UsuarioService;
 
@@ -28,431 +29,190 @@ import servicio.UsuarioService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class UsuarioResource {
-    
-    private UsuarioService usuarioService;
+    private final UsuarioService usuarioService;
 
     public UsuarioResource() {
-        usuarioService = new UsuarioService();
+        this.usuarioService = new UsuarioService();
     }
 
     @POST
-    public Response registrarUsuario(Usuario usuario, 
-               @jakarta.ws.rs.core.Context HttpServletRequest request) {
+    public Response registrarUsuario(Usuario usuario, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para crear usuarios");
+        if (errorAcceso != null) {
+            return errorAcceso;
+        }
 
-        HttpSession session = request.getSession(false);
+        Usuario usuarioSesion = obtenerUsuarioSesion(request);
+        String resultado = usuarioService.registrarUsuario(usuario, usuarioSesion.getRol());
 
-        if (session == null) {
-
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
+        if (!"OK".equals(resultado)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        Usuario usuarioSesion =
-                (Usuario) session.getAttribute("usuario");
-
-        if (usuarioSesion == null) {
-
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
-        String rolSesion = usuarioSesion.getRol();
-
-        if (!rolSesion.equals("SUPER_ADMIN")
-                && !rolSesion.equals("ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "No tiene permisos para crear usuarios"
-                            }
-                            """)
-                    .build();
-        }
-
-        String resultado =
-        usuarioService.registrarUsuario(
-                usuario,
-                usuarioSesion.getRol()
-        );
-
-        if (!resultado.equals("OK")) {
-
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity("""
-                            {
-                                "mensaje": "%s"
-                            }
-                            """.formatted(resultado))
-                    .build();
-        }
-
-        return Response
-                .status(Response.Status.CREATED)
+        return Response.status(Response.Status.CREATED)
                 .entity(usuario)
                 .build();
-
     }
-    
+
+    @GET
+    public Response obtenerUsuarios(@Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar usuarios");
+        if (errorAcceso != null) {
+            return errorAcceso;
+        }
+
+        List<Usuario> usuarios = usuarioService.obtenerUsuarios();
+        return Response.ok(usuarios).build();
+    }
+
+    @GET
+    @Path("/{id}")
+    public Response buscarUsuario(@PathParam("id") int idUsuario, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar usuarios");
+        if (errorAcceso != null) {
+            return errorAcceso;
+        }
+
+        Usuario usuario = usuarioService.buscarUsuario(idUsuario);
+        if (usuario == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje("El usuario no existe"))
+                    .build();
+        }
+
+        return Response.ok(usuario).build();
+    }
+
     @PUT
     @Path("/{id}")
-    public Response actualizarUsuario(
-            @PathParam("id") int idUsuario,
-            Usuario usuario,
-            @Context HttpServletRequest request) {
-
-        HttpSession session = request.getSession(false);
-
-        // Verificar sesión
-        if (session == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
+    public Response actualizarUsuario(@PathParam("id") int idUsuario, Usuario usuario, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para actualizar usuarios");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        Usuario usuarioSesion =
-                (Usuario) session.getAttribute("usuario");
-
-        if (usuarioSesion == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
+        Usuario usuarioSesion = obtenerUsuarioSesion(request);
         String rolSesion = usuarioSesion.getRol();
 
-        if (!rolSesion.equals("SUPER_ADMIN")
-                && !rolSesion.equals("ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "No tiene permisos para actualizar usuarios"
-                            }
-                            """)
-                    .build();
-        }
-        
-        
         usuario.setIdUsuario(idUsuario);
-        Usuario usuarioActual =
-                usuarioService.buscarUsuario(idUsuario);
+        Usuario usuarioActual = usuarioService.buscarUsuario(idUsuario);
 
         if (usuarioActual == null) {
-            return Response
-                    .status(Response.Status.NOT_FOUND)
-                    .entity("""
-                            {
-                                "mensaje": "El usuario no existe"
-                            }
-                            """)
-                    .build();
-        }
-        if (rolSesion.equals("ADMIN")
-                && usuarioActual.getRol().equals("SUPER_ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "Un ADMIN no puede modificar un SUPER_ADMIN"
-                            }
-                            """)
-                    .build();
-        }
-        if (rolSesion.equals("ADMIN")
-                && usuarioActual.getRol().equals("ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "Un ADMIN no puede modificar otro ADMIN"
-                            }
-                            """)
-                    .build();
-        }
-        if (rolSesion.equals("ADMIN")
-                && usuario.getRol().equals("SUPER_ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "Un ADMIN no puede asignar el rol SUPER_ADMIN"
-                            }
-                            """)
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje("El usuario no existe"))
                     .build();
         }
 
-        String resultado =
-                usuarioService.actualizarUsuario(usuario);
+        // Reglas de jerarquía para el rol ADMIN
+        if ("ADMIN".equals(rolSesion)) {
+            if ("SUPER_ADMIN".equals(usuarioActual.getRol())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(jsonMensaje("Un ADMIN no puede modificar un SUPER_ADMIN"))
+                        .build();
+            }
+            if ("ADMIN".equals(usuarioActual.getRol())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(jsonMensaje("Un ADMIN no puede modificar otro ADMIN"))
+                        .build();
+            }
+            if ("SUPER_ADMIN".equals(usuario.getRol())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(jsonMensaje("Un ADMIN no puede asignar el rol SUPER_ADMIN"))
+                        .build();
+            }
+        }
 
-        if (!resultado.equals("OK")) {
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity("""
-                            {
-                                "mensaje": "%s"
-                            }
-                            """.formatted(resultado))
+        String resultado = usuarioService.actualizarUsuario(usuario);
+
+        if (!"OK".equals(resultado)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        return Response
-                .ok(usuario)
-                .build();
+        return Response.ok(usuario).build();
     }
-    
-    @GET
-    public Response obtenerUsuarios(
-            @Context HttpServletRequest request) {
 
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
-        Usuario usuarioSesion =
-                (Usuario) session.getAttribute("usuario");
-
-        if (usuarioSesion == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
-        String rolSesion = usuarioSesion.getRol();
-        if (!rolSesion.equals("SUPER_ADMIN")
-                && !rolSesion.equals("ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "No tiene permisos para consultar usuarios"
-                            }
-                            """)
-                    .build();
-        }
-
-        ArrayList<Usuario> usuarios =
-                usuarioService.obtenerUsuarios();
-
-        return Response
-                .ok(usuarios)
-                .build();
-    }
-    
-    @GET
-    @Path("/{id}")
-    public Response buscarUsuario(
-            @PathParam("id") int idUsuario,
-            @Context HttpServletRequest request) {
-
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
-        Usuario usuarioSesion =
-                (Usuario) session.getAttribute("usuario");
-
-        if (usuarioSesion == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
-        String rolSesion = usuarioSesion.getRol();
-        if (!rolSesion.equals("SUPER_ADMIN")
-                && !rolSesion.equals("ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "No tiene permisos para consultar usuarios"
-                            }
-                            """)
-                    .build();
-        }
-
-        Usuario usuario =
-                usuarioService.buscarUsuario(idUsuario);
-        if (usuario == null) {
-            return Response
-                    .status(Response.Status.NOT_FOUND)
-                    .entity("""
-                            {
-                                "mensaje": "El usuario no existe"
-                            }
-                            """)
-                    .build();
-        }
-
-        return Response
-                .ok(usuario)
-                .build();
-    }
-    
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstadoUsuario(
-            @PathParam("id") int idUsuario,
-            Usuario usuario,
-            @Context HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        // Verificar sesión
-        if (session == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
+    public Response cambiarEstadoUsuario(@PathParam("id") int idUsuario, Usuario usuario, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para cambiar el estado de usuarios");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        Usuario usuarioSesion =
-                (Usuario) session.getAttribute("usuario");
-        // Verificar usuario en sesión
-        if (usuarioSesion == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
-                    .entity("""
-                            {
-                                "mensaje": "Debe iniciar sesión"
-                            }
-                            """)
-                    .build();
-        }
-
+        Usuario usuarioSesion = obtenerUsuarioSesion(request);
         String rolSesion = usuarioSesion.getRol();
-        if (!rolSesion.equals("SUPER_ADMIN")
-                && !rolSesion.equals("ADMIN")) {
 
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "No tiene permisos para cambiar el estado de usuarios"
-                            }
-                            """)
-                    .build();
-        }
-
-        Usuario usuarioActual =
-                usuarioService.buscarUsuario(idUsuario);
-
+        Usuario usuarioActual = usuarioService.buscarUsuario(idUsuario);
         if (usuarioActual == null) {
-            return Response
-                    .status(Response.Status.NOT_FOUND)
-                    .entity("""
-                            {
-                                "mensaje": "El usuario no existe"
-                            }
-                            """)
-                    .build();
-        }
-        if (rolSesion.equals("ADMIN")
-                && usuarioActual.getRol().equals("SUPER_ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "Un ADMIN no puede modificar el estado de un SUPER_ADMIN"
-                            }
-                            """)
-                    .build();
-        }
-        if (rolSesion.equals("ADMIN")
-                && usuarioActual.getRol().equals("ADMIN")) {
-
-            return Response
-                    .status(Response.Status.FORBIDDEN)
-                    .entity("""
-                            {
-                                "mensaje": "Un ADMIN no puede cambiar el estado de otro ADMIN"
-                            }
-                            """)
-                    .build();
-        }
-        String resultado =
-                usuarioService.cambiarEstadoUsuario(
-                        idUsuario,
-                        usuario.isEstado()
-                );
-
-        if (!resultado.equals("OK")) {
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity("""
-                            {
-                                "mensaje": "%s"
-                            }
-                            """.formatted(resultado))
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje("El usuario no existe"))
                     .build();
         }
 
-        return Response
-                .ok()
-                .entity("""
-                        {
-                            "mensaje": "Estado del usuario actualizado correctamente"
-                        }
-                        """)
-                .build();
+        // Reglas de jerarquía para el rol ADMIN
+        if ("ADMIN".equals(rolSesion)) {
+            if ("SUPER_ADMIN".equals(usuarioActual.getRol())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(jsonMensaje("Un ADMIN no puede modificar el estado de un SUPER_ADMIN"))
+                        .build();
+            }
+            if ("ADMIN".equals(usuarioActual.getRol())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(jsonMensaje("Un ADMIN no puede cambiar el estado de otro ADMIN"))
+                        .build();
+            }
+        }
+
+        String resultado = usuarioService.cambiarEstadoUsuario(idUsuario, usuario.isEstado());
+
+        if (!"OK".equals(resultado)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje(resultado))
+                    .build();
+        }
+
+        return Response.ok(jsonMensaje("Estado del usuario actualizado correctamente")).build();
+    }
+
+    // Centralización de la validación de sesión y rol con respuesta inmediata de error
+    private Response validarAcceso(HttpServletRequest request, String mensajePermisos) {
+        Usuario usuario = obtenerUsuarioSesion(request);
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe iniciar sesión"))
+                    .build();
+        }
+
+        String rol = usuario.getRol();
+        if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje(mensajePermisos))
+                    .build();
+        }
+
+        return null;
+    }
+
+    // Obtención segura de usuario desde la sesión
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+        return null;
+    }
+
+    // Generador de respuestas JSON homogéneas
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

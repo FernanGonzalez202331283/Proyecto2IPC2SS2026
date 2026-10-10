@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.List;
 import modelo.ConfiguracionGrado;
 import modelo.Usuario;
 import servicio.ConfiguracionGradoService;
@@ -32,88 +33,45 @@ public class ConfiguracionGradoResource {
     private final ConfiguracionGradoService servicio;
 
     public ConfiguracionGradoResource() {
-        servicio = new ConfiguracionGradoService();
+        this.servicio = new ConfiguracionGradoService();
     }
 
     @POST
-    public Response registrarConfiguracion(
-            ConfiguracionGrado configuracion,
-            @Context HttpServletRequest request) {
-
-        Usuario usuarioSesion = obtenerUsuario(request);
-
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+    public Response registrarConfiguracion(ConfiguracionGrado configuracion, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para gestionar configuraciones de grado.");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar configuraciones de grado.")
-                    .build();
-        }
-
-        String resultado =
-                servicio.registrarConfiguracion(configuracion);
+        String resultado = servicio.registrarConfiguracion(configuracion);
 
         if (resultado.contains("correctamente")) {
-            return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
-                    .build();
+            return Response.status(Response.Status.CREATED).entity(resultado).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
     }
 
     @GET
-    public Response obtenerConfiguraciones(
-            @Context HttpServletRequest request) {
-
-        Usuario usuarioSesion = obtenerUsuario(request);
-
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+    public Response obtenerConfiguraciones(@Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar configuraciones de grado.");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar configuraciones de grado.")
-                    .build();
-        }
-
-        ArrayList<ConfiguracionGrado> configuraciones =
-                servicio.obtenerConfiguraciones();
-
+        List<ConfiguracionGrado> configuraciones = servicio.obtenerConfiguraciones();
         return Response.ok(configuraciones).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response buscarConfiguracion(
-            @PathParam("id") int id,
-            @Context HttpServletRequest request) {
-
-        Usuario usuarioSesion = obtenerUsuario(request);
-
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+    public Response buscarConfiguracion(@PathParam("id") int id, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar configuraciones de grado.");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar configuraciones de grado.")
-                    .build();
-        }
-
-        ConfiguracionGrado configuracion =
-                servicio.buscarConfiguracion(id);
+        ConfiguracionGrado configuracion = servicio.buscarConfiguracion(id);
 
         if (configuracion == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -126,23 +84,10 @@ public class ConfiguracionGradoResource {
 
     @PUT
     @Path("/{id}")
-    public Response actualizarConfiguracion(
-            @PathParam("id") int id,
-            ConfiguracionGrado configuracion,
-            @Context HttpServletRequest request) {
-
-        Usuario usuarioSesion = obtenerUsuario(request);
-
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar configuraciones de grado.")
-                    .build();
+    public Response actualizarConfiguracion(@PathParam("id") int id, ConfiguracionGrado configuracion, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para gestionar configuraciones de grado.");
+        if (errorAcceso != null) {
+            return errorAcceso;
         }
 
         if (configuracion == null) {
@@ -152,33 +97,48 @@ public class ConfiguracionGradoResource {
         }
 
         configuracion.setIdConfiguracion(id);
-
-        String resultado =
-                servicio.actualizarConfiguracion(configuracion);
+        String resultado = servicio.actualizarConfiguracion(configuracion);
 
         if (resultado.contains("correctamente")) {
             return Response.ok(resultado).build();
         }
 
         if (resultado.contains("no existe")) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+            return Response.status(Response.Status.NOT_FOUND).entity(resultado).build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+    }
+
+    @PUT
+    @Path("/{id}/estado")
+    public Response cambiarEstado(@PathParam("id") int id, ConfiguracionGrado configuracion, @Context HttpServletRequest request) {
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para cambiar el estado.");
+        if (errorAcceso != null) {
+            return errorAcceso;
+        }
+
+        if (configuracion == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Debe enviar la configuración.")
                     .build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        String resultado = servicio.cambiarEstado(id, configuracion.isEstado());
+
+        if (resultado.contains("correctamente")) {
+            return Response.ok(resultado).build();
+        }
+
+        if (resultado.contains("no existe")) {
+            return Response.status(Response.Status.NOT_FOUND).entity(resultado).build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
     }
 
-    // CAMBIAR ESTADO
-    @PUT
-    @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @PathParam("id") int id,
-            ConfiguracionGrado configuracion,
-            @Context HttpServletRequest request) {
-
+    // Método auxiliar privado para centralizar la validación de autenticación y autorización
+    private Response validarAcceso(HttpServletRequest request, String mensajeSinPermiso) {
         Usuario usuarioSesion = obtenerUsuario(request);
 
         if (usuarioSesion == null) {
@@ -189,55 +149,22 @@ public class ConfiguracionGradoResource {
 
         if (!puedeGestionar(usuarioSesion)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para cambiar el estado.")
+                    .entity(mensajeSinPermiso)
                     .build();
         }
 
-        if (configuracion == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Debe enviar la configuración.")
-                    .build();
-        }
-
-        String resultado =
-                servicio.cambiarEstado(
-                        id,
-                        configuracion.isEstado());
-
-        if (resultado.contains("correctamente")) {
-            return Response.ok(resultado).build();
-        }
-
-        if (resultado.contains("no existe")) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
-                    .build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return null; // null indica que el usuario está autenticado y autorizado
     }
 
-    private Usuario obtenerUsuario(
-            HttpServletRequest request) {
+    private Usuario obtenerUsuario(HttpServletRequest request) {
+        Object usuario = (request.getSession(false) != null)
+                ? request.getSession(false).getAttribute("usuario")
+                : null;
 
-        Object usuario =
-                request.getSession(false) != null
-                        ? request.getSession(false)
-                                .getAttribute("usuario")
-                        : null;
-
-        if (usuario instanceof Usuario) {
-            return (Usuario) usuario;
-        }
-
-        return null;
+        return (usuario instanceof Usuario) ? (Usuario) usuario : null;
     }
 
     private boolean puedeGestionar(Usuario usuario) {
-
-        return "SUPER_ADMIN".equals(usuario.getRol())
-                || "ADMIN".equals(usuario.getRol());
+        return "SUPER_ADMIN".equals(usuario.getRol()) || "ADMIN".equals(usuario.getRol());
     }
 }

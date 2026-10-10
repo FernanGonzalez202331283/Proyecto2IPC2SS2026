@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
-   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-   xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
-   version="6.0">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
     <session-config>
-        <session-timeout>
-            30
-        </session-timeout>
+        <session-timeout>30</session-timeout>
     </session-config>
+
+    <!-- Pool de conexiones -->
+    <resource-ref>
+        <description>Pool de Conexiones MySQL para Sistema Escolar</description>
+        <res-ref-name>jdbc/sistemaEscolarPool</res-ref-name>
+        <res-type>javax.sql.DataSource</res-type>
+        <res-auth>Container</res-auth>
+    </resource-ref>
+
+    <!-- Registro de Jersey -->
+    <servlet>
+        <servlet-name>Jersey REST</servlet-name>
+        <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+
+        <init-param>
+            <param-name>jakarta.ws.rs.Application</param-name>
+            <param-value>com.mycompany.proyecto2ipc2ss2026_temp.JakartaRestConfiguration</param-value>
+        </init-param>
+
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <!-- Ruta base de la API -->
+    <servlet-mapping>
+        <servlet-name>Jersey REST</servlet-name>
+        <url-pattern>/api/v1/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>

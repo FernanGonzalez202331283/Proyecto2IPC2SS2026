@@ -21,38 +21,44 @@ import modelo.RecuperarContraseñaRequest;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecuperarContraseñaResource {
-
-    private final RecuperarContraseñaService servicio;
+private final RecuperarContraseñaService servicio;
 
     public RecuperarContraseñaResource() {
-        servicio = new RecuperarContraseñaService();
+        this.servicio = new RecuperarContraseñaService();
     }
 
     @POST
-    public Response recuperarContraseña(
-            RecuperarContraseñaRequest request) {
+    public Response recuperarContraseña(RecuperarContraseñaRequest request) {
 
-        String resultado =
-                servicio.recuperarContrasena(request);
-
-        if (resultado.equals(
-                "Contraseña actualizada correctamente.")) {
-
-            return Response.ok(resultado).build();
-        }
-
-        if (resultado.equals(
-                "El usuario no existe.")) {
-
-            return Response.status(
-                    Response.Status.NOT_FOUND)
-                    .entity(resultado)
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("Los datos de la solicitud son obligatorios."))
                     .build();
         }
 
-        return Response.status(
-                Response.Status.BAD_REQUEST)
-                .entity(resultado)
+        String resultado = servicio.recuperarContrasena(request);
+
+        if ("Contraseña actualizada correctamente.".equals(resultado)) {
+            return Response.ok(jsonMensaje(resultado)).build();
+        }
+
+        if ("El usuario no existe.".equals(resultado)) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje(resultado))
+                    .build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
                 .build();
+    }
+
+    // Método auxiliar para garantizar respuestas JSON homogéneas hacia el cliente
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

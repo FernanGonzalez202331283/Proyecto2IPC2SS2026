@@ -5,52 +5,55 @@
 package Conexion;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 
 /**
  *
  * @author fernan
  */
 public class Conexion {
-   private static final String IP = "localhost";
-    private static final int PUERTO = 3306;
-    private static final String SCHEMA = "sistema_escolar";
-    public static final String USER_NAME = "rootbd";
-    public static final String PASSWORD = "Fernan16@2026";
-    
-    public static final String URL = "jdbc:mysql://"
-            + IP + ":" + PUERTO + "/" + SCHEMA;
 
-    public static final String URL_FATAL = "jdbc:mysql://"
-            + IP + ":" + PUERTO + "/" + SCHEMA + "?allowMultiQueries=true";
-    
-    static {
+    private static final String JNDI_NAME =
+            "java:comp/env/jdbc/sistemaEscolarPool";
+
+    private static Conexion instance;
+
+    private final DataSource dataSource;
+
+    // Constructor privado para utilizar una única instancia
+    private Conexion() {
+
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            System.err.println("Error: No se encontró el driver com.mysql.cj.jdbc.Driver");
-            e.printStackTrace();
+            InitialContext context = new InitialContext();
+
+            dataSource = (DataSource) context.lookup(JNDI_NAME);
+
+        } catch (NamingException e) {
+
+            throw new IllegalStateException(
+                    "No se pudo encontrar el pool de conexiones: "
+                    + JNDI_NAME,
+                    e
+            );
         }
     }
 
-    private Connection connection;
+    // Obtener la instancia de Conexion
+    public static synchronized Conexion getInstance() {
 
-    public void connect() {
-        System.out.println("URL de conexion: " + URL_FATAL);
-        try {
-            connection = DriverManager.getConnection(URL_FATAL, USER_NAME, PASSWORD);
-            System.out.println("Esquema: " + connection.getSchema());
-            System.out.println("Catalogo: " + connection.getCatalog());
-
-        } catch (SQLException e) {
-            System.out.println("Error al conectarse");
-            e.printStackTrace();
+        if (instance == null) {
+            instance = new Conexion();
         }
+
+        return instance;
     }
-    
-    public Connection getConnection() {
-        return connection;
+
+    // Obtener una conexión prestada del pool
+    public Connection getConnection() throws SQLException {
+
+        return dataSource.getConnection();
     }
-    
 }

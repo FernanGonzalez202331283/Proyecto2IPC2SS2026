@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Context path="/Proyecto2IPC2SS2026_temp"/>
+<Context path="/Proyecto2IPC2SS2026_temp">
+  <Resource auth="Container" driverClassName="com.mysql.cj.jdbc.Driver" factory="org.apache.tomcat.dbcp.dbcp2.BasicDataSourceFactory" initialSize="5" maxTotal="30" maxWaitMillis="10000" minIdle="10" name="jdbc/sistemaEscolarPool" password="Fernan16@2026" testOnBorrow="true" type="javax.sql.DataSource" url="jdbc:mysql://localhost:3306/sistema_escolar?allowMultiQueries=true&amp;useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC" username="rootbd" validationQuery="SELECT 1"/>
+</Context>

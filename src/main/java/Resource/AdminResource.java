@@ -7,9 +7,7 @@ package Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import modelo.Usuario;
 import servicio.SeguridadService;
@@ -20,43 +18,55 @@ import servicio.SeguridadService;
  */
 @Path("/admin")
 public class AdminResource {
-    
-    private SeguridadService seguridadService;
+    private final SeguridadService seguridadService;
 
     public AdminResource() {
-        seguridadService = new SeguridadService();
+        this.seguridadService = new SeguridadService();
     }
 
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response accederAdmin(
-            @Context HttpServletRequest httpRequest) {
+    public Response accederAdmin(@Context HttpServletRequest httpRequest) {
 
         if (!seguridadService.tieneSesion(httpRequest)) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
 
         if (!seguridadService.tieneRol(httpRequest, "SUPER_ADMIN")) {
-            return Response
-                    .status(Response.Status.FORBIDDEN)
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para acceder al área de administración."))
                     .build();
         }
 
         Usuario usuario = seguridadService.obtenerUsuario(httpRequest);
 
-        String mensaje = """
-                         {
-                             "mensaje": "Acceso permitido",
-                             "usuario": "%s",
-                             "rol": "%s"
-                         }
-                         """.formatted(
-                                 usuario.getUsername(),
-                                 usuario.getRol()
-                         );
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("No se pudo obtener la información de la sesión."))
+                    .build();
+        }
 
-        return Response.ok(mensaje).build();
+        String respuestaJson = """
+                               {
+                                   "mensaje": "Acceso permitido",
+                                   "usuario": "%s",
+                                   "rol": "%s"
+                               }
+                               """.formatted(
+                                       usuario.getUsername(),
+                                       usuario.getRol()
+                               );
+
+        return Response.ok(respuestaJson).build();
+    }
+
+    // Método auxiliar privado para generar respuestas JSON estándar de error
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }
