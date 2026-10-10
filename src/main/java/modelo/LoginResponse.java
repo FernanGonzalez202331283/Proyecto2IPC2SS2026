@@ -14,6 +14,7 @@ public class LoginResponse {
     private int idPersona;
     private String rol;
     private boolean estado;
+    private String token; 
     
     public LoginResponse(){
         
@@ -57,6 +58,14 @@ public class LoginResponse {
 
     public void setEstado(boolean estado) {
         this.estado = estado;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
     
 }

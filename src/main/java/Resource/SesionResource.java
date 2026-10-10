@@ -4,9 +4,11 @@
  */
 package Resource;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
@@ -14,6 +16,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import modelo.LoginResponse;
 import modelo.Usuario;
+import seguridad.JwtService;
 
 /**
  *
@@ -21,35 +24,54 @@ import modelo.Usuario;
  */
 @Path("/sesion")
 public class SesionResource {
-    
+   private final JwtService jwtService;
+
+    public SesionResource() {
+        this.jwtService = new JwtService();
+    }
+
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response obtenerSesion(@Context HttpServletRequest httpRequest) {
+    public Response obtenerSesion(@HeaderParam("Authorization") String authHeader) {
 
-        HttpSession session = httpRequest.getSession(false);
-
-        if (session == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Token de autorización no proporcionado o formato inválido"))
                     .build();
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        String token = authHeader.substring(7).trim();
 
-        if (usuario == null) {
-            return Response
-                    .status(Response.Status.UNAUTHORIZED)
+        try {
+            Claims claims = jwtService.validarToken(token);
+
+            LoginResponse respuesta = new LoginResponse();
+            
+            // Extracción segura del ID de usuario desde los claims del JWT
+            Object idUsuarioObj = claims.get("idUsuario");
+            if (idUsuarioObj instanceof Number) {
+                respuesta.setIdUsuario(((Number) idUsuarioObj).intValue());
+            }
+
+            respuesta.setUsername(claims.getSubject());
+            respuesta.setRol(claims.get("rol", String.class));
+            respuesta.setEstado(true);
+            respuesta.setToken(token);
+
+            return Response.ok(respuesta).build();
+
+        } catch (Exception e) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Token inválido o expirado"))
                     .build();
         }
+    }
 
-        LoginResponse respuesta = new LoginResponse();
-
-        respuesta.setIdUsuario(usuario.getIdUsuario());
-        respuesta.setUsername(usuario.getUsername());
-        respuesta.setIdPersona(usuario.getIdPersona());
-        respuesta.setRol(usuario.getRol());
-        respuesta.setEstado(usuario.isEstado());
-
-        return Response.ok(respuesta).build();
+    // Método privado para mantener respuestas de error en formato JSON consistente
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }
