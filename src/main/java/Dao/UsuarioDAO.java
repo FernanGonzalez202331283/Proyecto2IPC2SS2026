@@ -216,7 +216,6 @@ public class UsuarioDAO {
         }
     }
 
-    // Mapeo de ResultSet a Objeto Usuario con limpieza de espacios (trim)
     private Usuario mapResultSetToUsuario(ResultSet rs) throws SQLException {
         Usuario usuario = new Usuario();
         usuario.setIdUsuario(rs.getInt("id_usuario"));

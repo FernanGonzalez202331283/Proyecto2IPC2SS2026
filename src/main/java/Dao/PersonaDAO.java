@@ -75,7 +75,7 @@ public class PersonaDAO {
             System.err.println("Error al insertar persona con ID autogenerado: " + e.getMessage());
         }
 
-        return -1; // Indica falla
+        return -1;
     }
 
     public Persona buscarPorId(int idPersona) {
@@ -196,7 +196,6 @@ public class PersonaDAO {
         return false;
     }
 
-    // mapeo del ResultSet a Objeto Persona
     private Persona mapResultSetToPersona(ResultSet rs) throws SQLException {
         Persona persona = new Persona();
         persona.setIdPersona(rs.getInt("id_persona"));

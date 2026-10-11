@@ -134,7 +134,6 @@ public class ConfiguracionGradoDAO {
         }
     }
 
-    // Método auxiliar privado para mapear el ResultSet a Objeto ConfiguracionGrado
     private ConfiguracionGrado mapResultSetToConfiguracionGrado(ResultSet rs) throws SQLException {
         ConfiguracionGrado configuracion = new ConfiguracionGrado();
         configuracion.setIdConfiguracion(rs.getInt("id_configuracion"));

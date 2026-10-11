@@ -154,7 +154,6 @@ public class AñoLectivoDAO {
         return false;
     }
 
-    // Método auxiliar privado para mapear el ResultSet a Objeto AñoLectivo
     private AñoLectivo mapResultSetToAñoLectivo(ResultSet rs) throws SQLException {
         AñoLectivo añoLectivo = new AñoLectivo();
         añoLectivo.setIdAñoLectivo(rs.getInt("id_año_lectivo"));
