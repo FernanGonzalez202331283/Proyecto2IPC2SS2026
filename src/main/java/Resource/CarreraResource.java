@@ -26,23 +26,18 @@ import servicio.CarreraService;
  * @author fernan
  */
 @Path("/carreras")
-@Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
 public class CarreraResource {
 
-    private final CarreraService servicio;
+    private CarreraService carreraService;
 
     public CarreraResource() {
-        servicio = new CarreraService();
+        carreraService = new CarreraService();
     }
 
-    @POST
-    public Response registrarCarrera(
-            Carrera carrera,
-            @Context HttpServletRequest request) {
-
-        HttpSession session = request.getSession(false);
-
+    private Response validarAcceso(HttpServletRequest httpRequest) {
+        HttpSession session = httpRequest.getSession(false);
         if (session == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity("Debe iniciar sesión.")
@@ -65,85 +60,37 @@ public class CarreraResource {
                     .build();
         }
 
-        String resultado = servicio.registrarCarrera(carrera);
-
-        if (resultado.equals("Carrera registrada correctamente.")) {
-            return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
-                    .build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return null;
     }
 
     @GET
     public Response obtenerCarreras(
-            @Context HttpServletRequest request) {
+            @Context HttpServletRequest httpRequest) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(httpRequest);
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar carreras.")
-                    .build();
-        }
-
-        ArrayList<Carrera> carreras =
-                servicio.obtenerCarreras();
+        ArrayList<Carrera> carreras = carreraService.obtenerCarreras();
 
         return Response.ok(carreras).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response obtenerCarrera(
+    public Response buscarCarrera(
             @PathParam("id") int idCarrera,
-            @Context HttpServletRequest request) {
+            @Context HttpServletRequest httpRequest) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(httpRequest);
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar carreras.")
-                    .build();
-        }
-
-        Carrera carrera =
-                servicio.buscarCarrera(idCarrera);
+        Carrera carrera = carreraService.buscarCarrera(idCarrera);
 
         if (carrera == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -154,35 +101,41 @@ public class CarreraResource {
         return Response.ok(carrera).build();
     }
 
+    @POST
+    public Response registrarCarrera(
+            Carrera carrera,
+            @Context HttpServletRequest httpRequest) {
+
+        Response acceso = validarAcceso(httpRequest);
+
+        if (acceso != null) {
+            return acceso;
+        }
+
+        String resultado = carreraService.registrarCarrera(carrera);
+
+        if (!resultado.equals("Carrera registrada correctamente.")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(resultado)
+                    .build();
+        }
+
+        return Response.status(Response.Status.CREATED)
+                .entity(carrera)
+                .build();
+    }
+
     @PUT
     @Path("/{id}")
     public Response actualizarCarrera(
             @PathParam("id") int idCarrera,
             Carrera carrera,
-            @Context HttpServletRequest request) {
+            @Context HttpServletRequest httpRequest) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(httpRequest);
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para actualizar carreras.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
         if (carrera == null) {
@@ -193,12 +146,7 @@ public class CarreraResource {
 
         carrera.setIdCarrera(idCarrera);
 
-        String resultado =
-                servicio.actualizarCarrera(carrera);
-
-        if (resultado.equals("Carrera actualizada correctamente.")) {
-            return Response.ok(resultado).build();
-        }
+        String resultado = carreraService.actualizarCarrera(carrera);
 
         if (resultado.equals("La carrera no existe.")) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -206,9 +154,13 @@ public class CarreraResource {
                     .build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        if (!resultado.equals("Carrera actualizada correctamente.")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(resultado)
+                    .build();
+        }
+
+        return Response.ok(carrera).build();
     }
 
     @PUT
@@ -216,30 +168,12 @@ public class CarreraResource {
     public Response cambiarEstado(
             @PathParam("id") int idCarrera,
             Carrera carrera,
-            @Context HttpServletRequest request) {
+            @Context HttpServletRequest httpRequest) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(httpRequest);
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para cambiar el estado de carreras.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
         if (carrera == null) {
@@ -248,16 +182,10 @@ public class CarreraResource {
                     .build();
         }
 
-        String resultado =
-                servicio.cambiarEstado(
-                        idCarrera,
-                        carrera.isEstado());
-
-        if (resultado.equals(
-                "Estado de la carrera actualizado correctamente.")) {
-
-            return Response.ok(resultado).build();
-        }
+        String resultado = carreraService.cambiarEstado(
+                idCarrera,
+                carrera.isEstado()
+        );
 
         if (resultado.equals("La carrera no existe.")) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -265,8 +193,12 @@ public class CarreraResource {
                     .build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        if (!resultado.equals("Estado de la carrera actualizado correctamente.")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(resultado)
+                    .build();
+        }
+
+        return Response.ok(resultado).build();
     }
 }

@@ -5,6 +5,7 @@
 package Resource;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -35,28 +36,63 @@ public class SeccionResource {
         servicio = new SeccionService();
     }
 
-    @POST
-    public Response registrarSeccion(
-            Seccion seccion,
-            @Context HttpServletRequest request) {
+    // Validar sesión y permisos
+    private Response validarAcceso(
+            HttpServletRequest request,
+            String mensajePermiso) {
 
-        Usuario usuarioSesion = obtenerUsuario(request);
+        HttpSession session = request.getSession(false);
 
-        if (usuarioSesion == null) {
+        if (session == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity("Debe iniciar sesión.")
                     .build();
         }
 
-        if (!puedeGestionar(usuarioSesion)) {
+        Usuario usuario = (Usuario) session.getAttribute("usuario");
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity("Debe iniciar sesión.")
+                    .build();
+        }
+
+        if (!"SUPER_ADMIN".equals(usuario.getRol())
+                && !"ADMIN".equals(usuario.getRol())) {
+
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar secciones.")
+                    .entity(mensajePermiso)
+                    .build();
+        }
+
+        return null;
+    }
+
+    // REGISTRAR SECCIÓN
+    @POST
+    public Response registrarSeccion(
+            Seccion seccion,
+            @Context HttpServletRequest request) {
+
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para gestionar secciones."
+        );
+
+        if (acceso != null) {
+            return acceso;
+        }
+
+        if (seccion == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("La sección no puede ser nula.")
                     .build();
         }
 
         String resultado = servicio.registrarSeccion(seccion);
 
         if (resultado.contains("correctamente")) {
+
             return Response.status(Response.Status.CREATED)
                     .entity(resultado)
                     .build();
@@ -67,26 +103,21 @@ public class SeccionResource {
                 .build();
     }
 
+    // OBTENER TODAS LAS SECCIONES
     @GET
     public Response obtenerSecciones(
             @Context HttpServletRequest request) {
 
-        Usuario usuarioSesion = obtenerUsuario(request);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para consultar secciones."
+        );
 
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar secciones.")
-                    .build();
-        }
-
-        ArrayList<Seccion> secciones =
-                servicio.obtenerSecciones();
+        ArrayList<Seccion> secciones = servicio.obtenerSecciones();
 
         return Response.ok(secciones).build();
     }
@@ -97,22 +128,16 @@ public class SeccionResource {
             @PathParam("id") int id,
             @Context HttpServletRequest request) {
 
-        Usuario usuarioSesion = obtenerUsuario(request);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para consultar secciones."
+        );
 
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar secciones.")
-                    .build();
-        }
-
-        Seccion seccion =
-                servicio.buscarSeccion(id);
+        Seccion seccion = servicio.buscarSeccion(id);
 
         if (seccion == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -123,6 +148,7 @@ public class SeccionResource {
         return Response.ok(seccion).build();
     }
 
+    // ACTUALIZAR SECCIÓN
     @PUT
     @Path("/{id}")
     public Response actualizarSeccion(
@@ -130,18 +156,13 @@ public class SeccionResource {
             Seccion seccion,
             @Context HttpServletRequest request) {
 
-        Usuario usuarioSesion = obtenerUsuario(request);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para gestionar secciones."
+        );
 
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar secciones.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
         if (seccion == null) {
@@ -152,14 +173,15 @@ public class SeccionResource {
 
         seccion.setIdSeccion(id);
 
-        String resultado =
-                servicio.actualizarSeccion(seccion);
+        String resultado = servicio.actualizarSeccion(seccion);
 
         if (resultado.contains("correctamente")) {
+
             return Response.ok(resultado).build();
         }
 
         if (resultado.contains("no existe")) {
+
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(resultado)
                     .build();
@@ -170,6 +192,7 @@ public class SeccionResource {
                 .build();
     }
 
+    // CAMBIAR ESTADO DE LA SECCIÓN
     @PUT
     @Path("/{id}/estado")
     public Response cambiarEstado(
@@ -177,18 +200,13 @@ public class SeccionResource {
             Seccion seccion,
             @Context HttpServletRequest request) {
 
-        Usuario usuarioSesion = obtenerUsuario(request);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para gestionar secciones."
+        );
 
-        if (usuarioSesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!puedeGestionar(usuarioSesion)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar secciones.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
         if (seccion == null) {
@@ -197,16 +215,18 @@ public class SeccionResource {
                     .build();
         }
 
-        String resultado =
-                servicio.cambiarEstado(
-                        id,
-                        seccion.isEstado());
+        String resultado = servicio.cambiarEstado(
+                id,
+                seccion.isEstado()
+        );
 
         if (resultado.contains("correctamente")) {
+
             return Response.ok(resultado).build();
         }
 
         if (resultado.contains("no existe")) {
+
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(resultado)
                     .build();
@@ -215,27 +235,5 @@ public class SeccionResource {
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(resultado)
                 .build();
-    }
-
-    private Usuario obtenerUsuario(
-            HttpServletRequest request) {
-
-        Object usuario =
-                request.getSession(false) != null
-                        ? request.getSession(false)
-                                .getAttribute("usuario")
-                        : null;
-
-        if (usuario instanceof Usuario) {
-            return (Usuario) usuario;
-        }
-
-        return null;
-    }
-
-    private boolean puedeGestionar(Usuario usuario) {
-
-        return "SUPER_ADMIN".equals(usuario.getRol())
-                || "ADMIN".equals(usuario.getRol());
     }
 }

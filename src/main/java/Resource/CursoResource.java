@@ -25,22 +25,24 @@ import servicio.CursoService;
  *
  * @author fernan
  */
-@Path("cursos")
+@Path("/cursos")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class CursoResource {
+
     private final CursoService servicio;
-    
-    public CursoResource(){
+
+    public CursoResource() {
         servicio = new CursoService();
     }
-    
-    @POST
-    public Response registrarCurso(
-    Curso curso,
-            @Context HttpServletRequest request){
+
+    private Response validarAcceso(
+            HttpServletRequest request,
+            String mensajePermiso) {
+
         HttpSession session = request.getSession(false);
-    if (session == null) {
+
+        if (session == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity("Debe iniciar sesión.")
                     .build();
@@ -54,16 +56,38 @@ public class CursoResource {
                     .build();
         }
 
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
+        if (!"SUPER_ADMIN".equals(usuario.getRol())
+                && !"ADMIN".equals(usuario.getRol())) {
 
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar cursos.")
+                    .entity(mensajePermiso)
                     .build();
         }
 
-        String resultado =
-                servicio.registrarCurso(curso);
+        return null;
+    }
+
+    @POST
+    public Response registrarCurso(
+            Curso curso,
+            @Context HttpServletRequest request) {
+
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para gestionar cursos."
+        );
+
+        if (acceso != null) {
+            return acceso;
+        }
+
+        if (curso == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("El curso no puede ser nulo.")
+                    .build();
+        }
+
+        String resultado = servicio.registrarCurso(curso);
 
         if (resultado.equals("Curso registrado correctamente.")) {
 
@@ -81,32 +105,16 @@ public class CursoResource {
     public Response obtenerCursos(
             @Context HttpServletRequest request) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para consultar cursos."
+        );
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar cursos.")
-                    .build();
-        }
-
-        ArrayList<Curso> cursos =
-                servicio.obtenerCursos();
+        ArrayList<Curso> cursos = servicio.obtenerCursos();
 
         return Response.ok(cursos).build();
     }
@@ -117,32 +125,16 @@ public class CursoResource {
             @PathParam("id") int idCurso,
             @Context HttpServletRequest request) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para consultar cursos."
+        );
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar cursos.")
-                    .build();
-        }
-
-        Curso curso =
-                servicio.buscarCurso(idCurso);
+        Curso curso = servicio.buscarCurso(idCurso);
 
         if (curso == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -160,28 +152,13 @@ public class CursoResource {
             Curso curso,
             @Context HttpServletRequest request) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para actualizar cursos."
+        );
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para actualizar cursos.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
         if (curso == null) {
@@ -218,28 +195,13 @@ public class CursoResource {
             Curso curso,
             @Context HttpServletRequest request) {
 
-        HttpSession session = request.getSession(false);
+        Response acceso = validarAcceso(
+                request,
+                "No tiene permisos para cambiar el estado de cursos."
+        );
 
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para cambiar el estado de cursos.")
-                    .build();
+        if (acceso != null) {
+            return acceso;
         }
 
         if (curso == null) {
@@ -248,10 +210,10 @@ public class CursoResource {
                     .build();
         }
 
-        String resultado =
-                servicio.cambiarEstado(
-                        idCurso,
-                        curso.isEstado());
+        String resultado = servicio.cambiarEstado(
+                idCurso,
+                curso.isEstado()
+        );
 
         if (resultado.equals(
                 "Estado del curso actualizado correctamente.")) {
