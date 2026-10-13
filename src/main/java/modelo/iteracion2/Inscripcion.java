@@ -4,27 +4,34 @@
  */
 package modelo.iteracion2;
 
+import java.util.ArrayList;
+
 /**
  *
  * @author fernan
  */
 public class Inscripcion {
+   
     private int idInscripcion;
     private int idEstudiante;
     private int idSeccion;
     private String fechaInscripcion;
     private String estado;
-    
-    public Inscripcion(){
-        
+    private ArrayList<EstudianteEncargado> encargados;
+
+    public Inscripcion() {
+        encargados = new ArrayList<>();
     }
 
-    public Inscripcion(int idInscripcion, int idEstudiante, int idSeccion, String fechaInscripcion, String estado) {
+    public Inscripcion(int idInscripcion, int idEstudiante,
+            int idSeccion, String fechaInscripcion, String estado) {
+
         this.idInscripcion = idInscripcion;
         this.idEstudiante = idEstudiante;
         this.idSeccion = idSeccion;
         this.fechaInscripcion = fechaInscripcion;
         this.estado = estado;
+        this.encargados = new ArrayList<>();
     }
 
     public int getIdInscripcion() {
@@ -65,5 +72,13 @@ public class Inscripcion {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public ArrayList<EstudianteEncargado> getEncargados() {
+        return encargados;
+    }
+
+    public void setEncargados(ArrayList<EstudianteEncargado> encargados) {
+        this.encargados = encargados;
     }
 }

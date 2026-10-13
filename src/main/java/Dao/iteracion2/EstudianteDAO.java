@@ -160,17 +160,18 @@ public class EstudianteDAO {
                                 direccion = ?
                             WHERE id_persona = ?
                             """;
-        
+
         String sqlEstudiante = """
                                UPDATE estudiante
                                SET codigo_estudiante = ?,
-                                informacion_medica = ?
+                                   informacion_medica = ?,
+                                   estado = ?
                                WHERE id_estudiante = ?
                                """;
-        
+
         try (Connection connection = Conexion.getInstance().getConnection()){
             connection.setAutoCommit(false);
-            
+
             try {
                 try (PreparedStatement psPersona = connection.prepareStatement(sqlPersona)){
                     psPersona.setString(1, estudiante.getPersona().getNombres());
@@ -180,28 +181,31 @@ public class EstudianteDAO {
                     psPersona.setString(5, estudiante.getPersona().getCorreo());
                     psPersona.setString(6, estudiante.getPersona().getDireccion());
                     psPersona.setInt(7, estudiante.getIdPersona());
-                    
+
                     psPersona.executeUpdate();
-                } 
-                
+                }
+
                 try (PreparedStatement psEstudiante = connection.prepareStatement(sqlEstudiante)){
                     psEstudiante.setString(1, estudiante.getCodigoEstudiante());
                     psEstudiante.setString(2, estudiante.getInformacionMedica());
-                    psEstudiante.setInt(3, estudiante.getIdEstudiante());
-                    
+                    psEstudiante.setString(3, estudiante.getEstado());
+                    psEstudiante.setInt(4, estudiante.getIdEstudiante());
+
                     psEstudiante.executeUpdate();
-                    
                 }
+
                 connection.commit();
                 return true;
-        } catch (SQLException e) {
+
+            } catch (SQLException e) {
                 connection.rollback();
-                System.out.println("Error al actualizar estudiante: "+e.getMessage());
+                System.out.println("Error al actualizar estudiante: " + e.getMessage());
                 return false;
-        }
-        }catch (SQLException e) {
-                System.out.println("Error de conexion al actualizar estudiante: "+e.getMessage());
-                return false;
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error de conexion al actualizar estudiante: " + e.getMessage());
+            return false;
         }
     }
     

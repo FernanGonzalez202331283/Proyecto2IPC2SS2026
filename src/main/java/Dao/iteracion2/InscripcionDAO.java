@@ -18,6 +18,8 @@ import modelo.iteracion2.Inscripcion;
  * @author fernan
  */
 public class InscripcionDAO {
+    
+    private final EstudianteEncargadoDAO estudianteEncargadoDAO = new EstudianteEncargadoDAO();
      public boolean registrarInscripcion(Inscripcion inscripcion) {
         String sql = """
                      INSERT INTO inscripcion
@@ -44,6 +46,7 @@ public class InscripcionDAO {
     }
 
     public Inscripcion buscarPorId(int idInscripcion) {
+
         String sql = """
                      SELECT
                         id_inscripcion,
@@ -54,23 +57,40 @@ public class InscripcionDAO {
                      FROM inscripcion
                      WHERE id_inscripcion = ?
                      """;
+
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
+
             ps.setInt(1, idInscripcion);
+
             try (ResultSet rs = ps.executeQuery()) {
 
                 if (rs.next()) {
-                    return mapearInscripcion(rs);
+
+                    Inscripcion inscripcion = mapearInscripcion(rs);
+
+                    // Recuperar los encargados del estudiante
+                    inscripcion.setEncargados(
+                            estudianteEncargadoDAO.obtenerPorEstudiante(
+                                    inscripcion.getIdEstudiante()
+                            )
+                    );
+
+                    return inscripcion;
                 }
             }
+
         } catch (SQLException e) {
             System.out.println("Error al buscar inscripción: " + e.getMessage());
         }
+
         return null;
     }
 
     public ArrayList<Inscripcion> obtenerTodos() {
+
         ArrayList<Inscripcion> inscripciones = new ArrayList<>();
+
         String sql = """
                      SELECT
                         id_inscripcion,
@@ -81,15 +101,29 @@ public class InscripcionDAO {
                      FROM inscripcion
                      ORDER BY id_inscripcion
                      """;
+
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
+
             while (rs.next()) {
-                inscripciones.add(mapearInscripcion(rs));
+
+                Inscripcion inscripcion = mapearInscripcion(rs);
+
+                // Recuperar los encargados del estudiante
+                inscripcion.setEncargados(
+                        estudianteEncargadoDAO.obtenerPorEstudiante(
+                                inscripcion.getIdEstudiante()
+                        )
+                );
+
+                inscripciones.add(inscripcion);
             }
+
         } catch (SQLException e) {
             System.out.println("Error al obtener inscripciones: " + e.getMessage());
         }
+
         return inscripciones;
     }
 
@@ -367,6 +401,38 @@ public class InscripcionDAO {
         }
         return 0;
     }
+    
+    public boolean registrarInscripcion(
+        Connection connection,
+        Inscripcion inscripcion) throws SQLException {
+
+        String sql = """
+                     INSERT INTO inscripcion
+                     (id_estudiante, id_seccion, fecha_inscripcion, estado)
+                     VALUES (?, ?, ?, ?)
+                     """;
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, inscripcion.getIdEstudiante());
+            ps.setInt(2, inscripcion.getIdSeccion());
+
+            ps.setDate(3, Date.valueOf(inscripcion.getFechaInscripcion()));
+
+            if (inscripcion.getEstado() == null
+                    || inscripcion.getEstado().trim().isEmpty()) {
+
+                ps.setString(4, "ACTIVA");
+
+            } else {
+
+                ps.setString(4, inscripcion.getEstado());
+            }
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+    
     private Inscripcion mapearInscripcion(ResultSet rs) throws SQLException {
         Inscripcion inscripcion = new Inscripcion();
         inscripcion.setIdInscripcion(rs.getInt("id_inscripcion"));
