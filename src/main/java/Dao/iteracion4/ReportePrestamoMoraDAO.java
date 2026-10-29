@@ -17,13 +17,12 @@ import modelo.iteracion4.ReportePrestamoMora;
  * @author fernan
  */
 public class ReportePrestamoMoraDAO {
-    
     public ArrayList<ReportePrestamoMora> obtenerReporte() {
 
         ArrayList<ReportePrestamoMora> reporte = new ArrayList<>();
 
         String sql = """
-                     SELECT 
+            SELECT 
                 p.id_prestamo, 
                 p.id_persona, 
                 per.nombres, 
@@ -34,23 +33,18 @@ public class ReportePrestamoMoraDAO {
                 p.fecha_prestamo, 
                 p.fecha_devolucion_esperada, 
                 p.fecha_devolucion_real, 
-                COALESCE(m.dias_atraso, 
-                DATEDIFF(CURDATE(), p.fecha_devolucion_esperada)) AS dias_atraso, 
+                COALESCE(m.dias_atraso, DATEDIFF(CURDATE(), p.fecha_devolucion_esperada)) AS dias_atraso, 
                 COALESCE(m.monto, 0) AS monto_multa, 
                 p.estado AS estado_prestamo, 
-                m.estado AS estado_multa 
-                FROM prestamo p 
-                INNER JOIN libro l 
-                ON p.id_libro = l.id_libro 
-                INNER JOIN persona per 
-                ON p.id_persona = per.id_persona 
-                LEFT JOIN multa m 
-                ON p.id_prestamo = m.id_prestamo 
-                WHERE p.estado = 'VENCIDO' 
-                OR (p.estado = 'PRESTADO' 
-                AND p.fecha_devolucion_esperada < CURDATE()) 
-                ORDER BY p.fecha_devolucion_esperada ASC
-                     """;
+                COALESCE(m.estado, 'PENDIENTE') AS estado_multa 
+            FROM prestamo p 
+            INNER JOIN libro l ON p.id_libro = l.id_libro 
+            INNER JOIN persona per ON p.id_persona = per.id_persona 
+            LEFT JOIN multa m ON p.id_prestamo = m.id_prestamo 
+            WHERE p.estado = 'VENCIDO' 
+               OR (p.estado = 'PRESTADO' AND p.fecha_devolucion_esperada < CURDATE()) 
+            ORDER BY p.fecha_devolucion_esperada ASC
+        """;
 
         try (Connection conexion = Conexion.getInstance().getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql);
@@ -69,33 +63,15 @@ public class ReportePrestamoMoraDAO {
                 prestamo.setTitulo(rs.getString("titulo"));
                 prestamo.setAutor(rs.getString("autor"));
 
-                prestamo.setFechaPrestamo(
-                        rs.getString("fecha_prestamo")
-                );
+                prestamo.setFechaPrestamo(rs.getString("fecha_prestamo"));
+                prestamo.setFechaDevolucionEsperada(rs.getString("fecha_devolucion_esperada"));
+                prestamo.setFechaDevolucionReal(rs.getString("fecha_devolucion_real"));
 
-                prestamo.setFechaDevolucionEsperada(
-                        rs.getString("fecha_devolucion_esperada")
-                );
+                prestamo.setDiasAtraso(rs.getInt("dias_atraso"));
+                prestamo.setMontoMulta(rs.getDouble("monto_multa"));
 
-                prestamo.setFechaDevolucionReal(
-                        rs.getString("fecha_devolucion_real")
-                );
-
-                prestamo.setDiasAtraso(
-                        rs.getInt("dias_atraso")
-                );
-
-                prestamo.setMontoMulta(
-                        rs.getDouble("monto_multa")
-                );
-
-                prestamo.setEstadoPrestamo(
-                        rs.getString("estado_prestamo")
-                );
-
-                prestamo.setEstadoMulta(
-                        rs.getString("estado_multa")
-                );
+                prestamo.setEstadoPrestamo(rs.getString("estado_prestamo"));
+                prestamo.setEstadoMulta(rs.getString("estado_multa"));
 
                 reporte.add(prestamo);
             }
@@ -103,6 +79,7 @@ public class ReportePrestamoMoraDAO {
             return reporte;
 
         } catch (SQLException e) {
+            System.err.println("Error al consultar préstamos en mora: " + e.getMessage());
             e.printStackTrace();
             return null;
         }

@@ -14,8 +14,8 @@ public class ReporteRendimiento {
     private String nombres;
     private String apellidos;
     
-    private int idAñoLectivo;
-    private int añoLectivo;
+    private int idAnioLectivo;
+    private int anioLectivo;
     
     private String grado; 
     private String seccion; 
@@ -25,97 +25,44 @@ public class ReporteRendimiento {
     
     private double promedio; 
     
-    public ReporteRendimiento(){
-        
-    }
+    public ReporteRendimiento() {}
 
-    public int getIdEstudiante() {
-        return idEstudiante;
-    }
+    public int getIdEstudiante() { return idEstudiante; }
+    public void setIdEstudiante(int idEstudiante) { this.idEstudiante = idEstudiante; }
 
-    public void setIdEstudiante(int idEstudiante) {
-        this.idEstudiante = idEstudiante;
-    }
+    public String getCodigoEstudiante() { return codigoEstudiante; }
+    public void setCodigoEstudiante(String codigoEstudiante) { this.codigoEstudiante = codigoEstudiante; }
 
-    public String getCodigoEstudiante() {
-        return codigoEstudiante;
-    }
+    public String getNombres() { return nombres; }
+    public void setNombres(String nombres) { this.nombres = nombres; }
 
-    public void setCodigoEstudiante(String codigoEstudiante) {
-        this.codigoEstudiante = codigoEstudiante;
-    }
+    public String getApellidos() { return apellidos; }
+    public void setApellidos(String apellidos) { this.apellidos = apellidos; }
 
-    public String getNombres() {
-        return nombres;
-    }
+    public int getIdAnioLectivo() { return idAnioLectivo; }
+    public void setIdAnioLectivo(int idAnioLectivo) { this.idAnioLectivo = idAnioLectivo; }
 
-    public void setNombres(String nombres) {
-        this.nombres = nombres;
-    }
+    public int getAnioLectivo() { return anioLectivo; }
+    public void setAnioLectivo(int anioLectivo) { this.anioLectivo = anioLectivo; }
 
-    public String getApellidos() {
-        return apellidos;
-    }
+    // Compatibilidad para evitar NoSuchMethodError con código legado
+    public int getIdAñoLectivo() { return idAnioLectivo; }
+    public void setIdAñoLectivo(int idAñoLectivo) { this.idAnioLectivo = idAñoLectivo; }
+    public int getAñoLectivo() { return anioLectivo; }
+    public void setAñoLectivo(int añoLectivo) { this.anioLectivo = añoLectivo; }
 
-    public void setApellidos(String apellidos) {
-        this.apellidos = apellidos;
-    }
+    public String getGrado() { return grado; }
+    public void setGrado(String grado) { this.grado = grado; }
 
-    public int getIdAñoLectivo() {
-        return idAñoLectivo;
-    }
+    public String getSeccion() { return seccion; }
+    public void setSeccion(String seccion) { this.seccion = seccion; }
 
-    public void setIdAñoLectivo(int idAñoLectivo) {
-        this.idAñoLectivo = idAñoLectivo;
-    }
+    public int getIdCurso() { return idCurso; }
+    public void setIdCurso(int idCurso) { this.idCurso = idCurso; }
 
-    public int getAñoLectivo() {
-        return añoLectivo;
-    }
+    public String getNombreCurso() { return nombreCurso; }
+    public void setNombreCurso(String nombreCurso) { this.nombreCurso = nombreCurso; }
 
-    public void setAñoLectivo(int añoLectivo) {
-        this.añoLectivo = añoLectivo;
-    }
-
-    public String getGrado() {
-        return grado;
-    }
-
-    public void setGrado(String grado) {
-        this.grado = grado;
-    }
-
-    public String getSeccion() {
-        return seccion;
-    }
-
-    public void setSeccion(String seccion) {
-        this.seccion = seccion;
-    }
-
-    public int getIdCurso() {
-        return idCurso;
-    }
-
-    public void setIdCurso(int idCurso) {
-        this.idCurso = idCurso;
-    }
-
-    public String getNombreCurso() {
-        return nombreCurso;
-    }
-
-    public void setNombreCurso(String nombreCurso) {
-        this.nombreCurso = nombreCurso;
-    }
-
-    public double getPromedio() {
-        return promedio;
-    }
-
-    public void setPromedio(double promedio) {
-        this.promedio = promedio;
-    }
-    
-    
+    public double getPromedio() { return promedio; }
+    public void setPromedio(double promedio) { this.promedio = promedio; }
 }

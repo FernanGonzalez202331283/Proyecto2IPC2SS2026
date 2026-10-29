@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import modelo.Usuario;
 import modelo.iteracion2.Empleado;
 import modelo.iteracion3.Actividad;
+import seguridad.JwtService;
 import servicio.etapa3.ActividadService;
 
 /**
@@ -34,362 +36,180 @@ import servicio.etapa3.ActividadService;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ActividadResource {
     
-    private final ActividadService actividadService;
-    private final EmpleadoDAO empleadoDAO;
-    private final AsistenciaDAO asistenciaDAO;
+    private final ActividadService actividadService = new ActividadService();
+    private final EmpleadoDAO empleadoDAO = new EmpleadoDAO();
+    private final AsistenciaDAO asistenciaDAO = new AsistenciaDAO();
+    private final JwtService jwtService = new JwtService();
 
-    public ActividadResource() {
-        this.actividadService = new ActividadService();
-        this.empleadoDAO = new EmpleadoDAO();
-        this.asistenciaDAO = new AsistenciaDAO();
-    }
-
-    private Response validarAcceso(HttpServletRequest request, String mensajePermiso) {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
+    private Response validarAcceso(String authHeader, String mensajePermiso) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
                     .build();
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        String token = authHeader.substring(7);
+        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
 
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Token inválido o expirado."))
                     .build();
         }
 
-        if (!"SUPER_ADMIN".equals(usuario.getRol())
-                && !"MAESTRO".equals(usuario.getRol())) {
-
+        String rol = usuario.getRol();
+        if (!"SUPER_ADMIN".equals(rol) && !"MAESTRO".equals(rol)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity(mensajePermiso)
+                    .entity(jsonMensaje(mensajePermiso))
                     .build();
         }
 
         return null;
     }
 
-    private Empleado obtenerMaestro(HttpServletRequest request) {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
-            return null;
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return null;
-        }
-
+    private Empleado obtenerMaestroDesdeToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
+        String token = authHeader.substring(7);
+        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
+        if (usuario == null || !"MAESTRO".equals(usuario.getRol())) return null;
         return empleadoDAO.buscarPorIdPersona(usuario.getIdPersona());
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 
     @POST
     public Response registrarActividad(
-            Actividad actividad,
-            @Context HttpServletRequest request) {
+            @HeaderParam("Authorization") String authHeader,
+            Actividad actividad) {
 
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para registrar actividades."
-        );
+        Response acceso = validarAcceso(authHeader, "No tiene permisos para registrar actividades.");
+        if (acceso != null) return acceso;
 
-        if (acceso != null) {
-            return acceso;
-        }
-
-        HttpSession session = request.getSession(false);
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if ("MAESTRO".equals(usuario.getRol())) {
-
-            Empleado maestro = obtenerMaestro(request);
-
-            if (maestro == null) {
+        Empleado maestro = obtenerMaestroDesdeToken(authHeader);
+        if (maestro != null) {
+            if (actividad == null || !asistenciaDAO.asignacionPerteneceEmpleado(actividad.getIdAsignacion(), maestro.getIdEmpleado())) {
                 return Response.status(Response.Status.FORBIDDEN)
-                        .entity("El usuario no tiene un empleado asociado.")
-                        .build();
-            }
-
-            if (actividad == null
-                    || !asistenciaDAO.asignacionPerteneceEmpleado(
-                            actividad.getIdAsignacion(),
-                            maestro.getIdEmpleado())) {
-
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity("No puede registrar actividades en una asignación que no le pertenece.")
+                        .entity(jsonMensaje("No puede registrar actividades en una asignación que no le pertenece."))
                         .build();
             }
         }
 
         String resultado = actividadService.registrar(actividad);
-
-        if (resultado.equals("Actividad registrada correctamente.")) {
-            return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
-                    .build();
+        if ("Actividad registrada correctamente.".equals(resultado)) {
+            return Response.status(Response.Status.CREATED).entity(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
-    }
-
-    @GET
-    public Response obtenerTodos(
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para consultar actividades."
-        );
-
-        if (acceso != null) {
-            return acceso;
-        }
-
-        HttpSession session = request.getSession(false);
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if ("SUPER_ADMIN".equals(usuario.getRol())) {
-            return Response.ok(actividadService.obtenerTodos()).build();
-        }
-
-        Empleado maestro = obtenerMaestro(request);
-
-        if (maestro == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("El usuario no tiene un empleado asociado.")
-                    .build();
-        }
-
-        ArrayList<Actividad> actividades = actividadService.obtenerTodos();
-        ArrayList<Actividad> actividadesMaestro = new ArrayList<>();
-
-        for (Actividad actividad : actividades) {
-
-            if (asistenciaDAO.asignacionPerteneceEmpleado(
-                    actividad.getIdAsignacion(),
-                    maestro.getIdEmpleado())) {
-
-                actividadesMaestro.add(actividad);
-            }
-        }
-
-        return Response.ok(actividadesMaestro).build();
-    }
-
-    @GET
-    @Path("/{id}")
-    public Response buscarPorId(
-            @PathParam("id") int idActividad,
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para consultar actividades."
-        );
-
-        if (acceso != null) {
-            return acceso;
-        }
-
-        Actividad actividad = actividadService.buscarPorId(idActividad);
-
-        if (actividad == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontró la actividad.")
-                    .build();
-        }
-
-        HttpSession session = request.getSession(false);
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if ("MAESTRO".equals(usuario.getRol())) {
-
-            Empleado maestro = obtenerMaestro(request);
-
-            if (maestro == null
-                    || !asistenciaDAO.asignacionPerteneceEmpleado(
-                            actividad.getIdAsignacion(),
-                            maestro.getIdEmpleado())) {
-
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity("No tiene permisos para consultar esta actividad.")
-                        .build();
-            }
-        }
-
-        return Response.ok(actividad).build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 
     @GET
     @Path("/asignacion/{idAsignacion}")
     public Response obtenerPorAsignacion(
-            @PathParam("idAsignacion") int idAsignacion,
-            @Context HttpServletRequest request) {
+            @HeaderParam("Authorization") String authHeader,
+            @PathParam("idAsignacion") int idAsignacion) {
 
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para consultar actividades."
-        );
+        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar actividades.");
+        if (acceso != null) return acceso;
 
-        if (acceso != null) {
-            return acceso;
-        }
-
-        HttpSession session = request.getSession(false);
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if ("MAESTRO".equals(usuario.getRol())) {
-
-            Empleado maestro = obtenerMaestro(request);
-
-            if (maestro == null
-                    || !asistenciaDAO.asignacionPerteneceEmpleado(
-                            idAsignacion,
-                            maestro.getIdEmpleado())) {
-
+        Empleado maestro = obtenerMaestroDesdeToken(authHeader);
+        if (maestro != null) {
+            if (!asistenciaDAO.asignacionPerteneceEmpleado(idAsignacion, maestro.getIdEmpleado())) {
                 return Response.status(Response.Status.FORBIDDEN)
-                        .entity("No tiene permisos para consultar esta asignación docente.")
+                        .entity(jsonMensaje("No tiene permisos para consultar esta asignación docente."))
                         .build();
             }
         }
 
-        return Response.ok(
-                actividadService.obtenerPorAsignacion(idAsignacion)
-        ).build();
+        return Response.ok(actividadService.obtenerPorAsignacion(idAsignacion)).build();
     }
 
     @PUT
     @Path("/{id}")
     public Response actualizarActividad(
+            @HeaderParam("Authorization") String authHeader,
             @PathParam("id") int idActividad,
-            Actividad actividad,
-            @Context HttpServletRequest request) {
+            Actividad actividad) {
 
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para actualizar actividades."
-        );
-
-        if (acceso != null) {
-            return acceso;
-        }
+        Response acceso = validarAcceso(authHeader, "No tiene permisos para actualizar actividades.");
+        if (acceso != null) return acceso;
 
         if (actividad == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Los datos de la actividad son obligatorios.")
+                    .entity(jsonMensaje("Los datos de la actividad son obligatorios."))
                     .build();
         }
 
         Actividad existente = actividadService.buscarPorId(idActividad);
-
         if (existente == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("La actividad que intenta actualizar no existe.")
+                    .entity(jsonMensaje("La actividad que intenta actualizar no existe."))
                     .build();
         }
 
-        HttpSession session = request.getSession(false);
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if ("MAESTRO".equals(usuario.getRol())) {
-
-            Empleado maestro = obtenerMaestro(request);
-
-            if (maestro == null
-                    || !asistenciaDAO.asignacionPerteneceEmpleado(
-                            existente.getIdAsignacion(),
-                            maestro.getIdEmpleado())
-                    || !asistenciaDAO.asignacionPerteneceEmpleado(
-                            actividad.getIdAsignacion(),
-                            maestro.getIdEmpleado())) {
-
+        Empleado maestro = obtenerMaestroDesdeToken(authHeader);
+        if (maestro != null) {
+            if (!asistenciaDAO.asignacionPerteneceEmpleado(existente.getIdAsignacion(), maestro.getIdEmpleado()) ||
+                !asistenciaDAO.asignacionPerteneceEmpleado(actividad.getIdAsignacion(), maestro.getIdEmpleado())) {
                 return Response.status(Response.Status.FORBIDDEN)
-                        .entity("No puede actualizar actividades de una asignación que no le pertenece.")
+                        .entity(jsonMensaje("No puede actualizar actividades de una asignación que no le pertenece."))
                         .build();
             }
         }
 
         actividad.setIdActividad(idActividad);
-
         String resultado = actividadService.actualizar(actividad);
 
-        if (resultado.equals("Actividad actualizada correctamente.")) {
-            return Response.ok(resultado).build();
+        if ("Actividad actualizada correctamente.".equals(resultado)) {
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 
     @PUT
     @Path("/{id}/estado")
     public Response cambiarEstado(
+            @HeaderParam("Authorization") String authHeader,
             @PathParam("id") int idActividad,
-            @QueryParam("estado") Boolean estado,
-            @Context HttpServletRequest request) {
+            @QueryParam("estado") Boolean estado) {
 
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para cambiar el estado de actividades."
-        );
-
-        if (acceso != null) {
-            return acceso;
-        }
+        Response acceso = validarAcceso(authHeader, "No tiene permisos para cambiar el estado de actividades.");
+        if (acceso != null) return acceso;
 
         if (estado == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Debe proporcionar el estado de la actividad.")
+                    .entity(jsonMensaje("Debe proporcionar el estado de la actividad."))
                     .build();
         }
 
         Actividad actividad = actividadService.buscarPorId(idActividad);
-
         if (actividad == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("La actividad no existe.")
+                    .entity(jsonMensaje("La actividad no existe."))
                     .build();
         }
 
-        HttpSession session = request.getSession(false);
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if ("MAESTRO".equals(usuario.getRol())) {
-
-            Empleado maestro = obtenerMaestro(request);
-
-            if (maestro == null
-                    || !asistenciaDAO.asignacionPerteneceEmpleado(
-                            actividad.getIdAsignacion(),
-                            maestro.getIdEmpleado())) {
-
+        Empleado maestro = obtenerMaestroDesdeToken(authHeader);
+        if (maestro != null) {
+            if (!asistenciaDAO.asignacionPerteneceEmpleado(actividad.getIdAsignacion(), maestro.getIdEmpleado())) {
                 return Response.status(Response.Status.FORBIDDEN)
-                        .entity("No tiene permisos para modificar esta actividad.")
+                        .entity(jsonMensaje("No tiene permisos para modificar esta actividad."))
                         .build();
             }
         }
 
-        String resultado = actividadService.cambiarEstado(
-                idActividad,
-                estado
-        );
+        String resultado = actividadService.cambiarEstado(idActividad, estado);
 
-        if (resultado.equals("Estado de la actividad actualizado correctamente.")) {
-            return Response.ok(resultado).build();
+        if ("Estado de la actividad actualizado correctamente.".equals(resultado)) {
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 }

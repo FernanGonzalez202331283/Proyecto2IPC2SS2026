@@ -15,68 +15,85 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import modelo.Usuario;
 import modelo.iteracion2.Expediente;
+import seguridad.JwtService;
 import seguridad.iteracion2.ExpedienteService;
 /**
  *
  * @author fernan
  */
-@Path("/expedientes")
+@Path("expedientes")
 @Produces(MediaType.APPLICATION_JSON)
 public class ExpedienteResource {
 
-    private ExpedienteService expedienteService;
-
-    @Context
-    private HttpServletRequest request;
+    private final ExpedienteService expedienteService;
+    private final JwtService jwtService = new JwtService();
 
     public ExpedienteResource() {
-        expedienteService = new ExpedienteService();
+        this.expedienteService = new ExpedienteService();
+    }
+
+    private Response validarAcceso(HttpServletRequest httpRequest, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioSesion(httpRequest);
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe iniciar sesión."))
+                    .build();
+        }
+
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) 
+                && !"SECRETARIA".equals(usuario.getRol()) 
+                && !"ADMIN".equals(usuario.getRol())) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje(mensajePermiso))
+                    .build();
+        }
+
+        return null;
+    }
+
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 
     // Consultar expediente por ID del estudiante
     @GET
     @Path("/{idEstudiante}")
-    public Response consultarExpediente(
-            @PathParam("idEstudiante") int idEstudiante) {
-
-        // Verificar si existe una sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión\"}")
-                    .build();
-        }
-
-        // Obtener usuario de la sesión
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        // Verificar permisos
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("{\"mensaje\":\"No tiene permisos para consultar expedientes\"}")
-                    .build();
-        }
+    public Response consultarExpediente(@PathParam("idEstudiante") int idEstudiante, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar expedientes.");
+        if (acceso != null) return acceso;
 
         try {
-
-            Expediente expediente =
-                    expedienteService.consultarExpediente(idEstudiante);
-
+            Expediente expediente = expedienteService.consultarExpediente(idEstudiante);
             return Response.ok(expediente).build();
 
         } catch (IllegalArgumentException e) {
-
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"" + e.getMessage() + "\"}")
+                    .entity(jsonMensaje(e.getMessage()))
                     .build();
 
         } catch (Exception e) {
-
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("{\"mensaje\":\"Error interno al consultar el expediente\"}")
+                    .entity(jsonMensaje("Error interno al consultar el expediente."))
                     .build();
         }
     }

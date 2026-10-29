@@ -19,120 +19,66 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import modelo.Seccion;
 import modelo.Usuario;
+import seguridad.JwtService;
 import servicio.SeccionService;
 
 /**
  *
  * @author fernan
  */
-@Path("/secciones")
+@Path("secciones")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class SeccionResource {
 
     private final SeccionService servicio;
+    private final JwtService jwtService = new JwtService();
 
     public SeccionResource() {
-        servicio = new SeccionService();
+        this.servicio = new SeccionService();
     }
 
-    // Validar sesión y permisos
-    private Response validarAcceso(
-            HttpServletRequest request,
-            String mensajePermiso) {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!"SUPER_ADMIN".equals(usuario.getRol())
-                && !"ADMIN".equals(usuario.getRol())) {
-
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(mensajePermiso)
-                    .build();
-        }
-
-        return null;
-    }
-
-    // REGISTRAR SECCIÓN
     @POST
-    public Response registrarSeccion(
-            Seccion seccion,
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para gestionar secciones."
-        );
-
+    public Response registrarSeccion(Seccion seccion, @Context HttpServletRequest request) {
+        Response acceso = validarAcceso(request, "No tiene permisos para gestionar secciones.");
         if (acceso != null) {
             return acceso;
         }
 
         if (seccion == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("La sección no puede ser nula.")
+                    .entity(jsonMensaje("La sección no puede ser nula."))
                     .build();
         }
 
         String resultado = servicio.registrarSeccion(seccion);
 
         if (resultado.contains("correctamente")) {
-
             return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
-    // OBTENER TODAS LAS SECCIONES
     @GET
-    public Response obtenerSecciones(
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para consultar secciones."
-        );
-
+    public Response obtenerSecciones(@Context HttpServletRequest request) {
+        Response acceso = validarAcceso(request, "No tiene permisos para consultar secciones.");
         if (acceso != null) {
             return acceso;
         }
 
         ArrayList<Seccion> secciones = servicio.obtenerSecciones();
-
         return Response.ok(secciones).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response buscarSeccion(
-            @PathParam("id") int id,
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para consultar secciones."
-        );
-
+    public Response buscarSeccion(@PathParam("id") int id, @Context HttpServletRequest request) {
+        Response acceso = validarAcceso(request, "No tiene permisos para consultar secciones.");
         if (acceso != null) {
             return acceso;
         }
@@ -141,99 +87,114 @@ public class SeccionResource {
 
         if (seccion == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("La sección no existe.")
+                    .entity(jsonMensaje("La sección no existe."))
                     .build();
         }
 
         return Response.ok(seccion).build();
     }
 
-    // ACTUALIZAR SECCIÓN
     @PUT
     @Path("/{id}")
-    public Response actualizarSeccion(
-            @PathParam("id") int id,
-            Seccion seccion,
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para gestionar secciones."
-        );
-
+    public Response actualizarSeccion(@PathParam("id") int id, Seccion seccion, @Context HttpServletRequest request) {
+        Response acceso = validarAcceso(request, "No tiene permisos para gestionar secciones.");
         if (acceso != null) {
             return acceso;
         }
 
         if (seccion == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("La sección no puede ser nula.")
+                    .entity(jsonMensaje("La sección no puede ser nula."))
                     .build();
         }
 
         seccion.setIdSeccion(id);
-
         String resultado = servicio.actualizarSeccion(seccion);
 
         if (resultado.contains("correctamente")) {
-
-            return Response.ok(resultado).build();
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
         if (resultado.contains("no existe")) {
-
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
-    // CAMBIAR ESTADO DE LA SECCIÓN
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @PathParam("id") int id,
-            Seccion seccion,
-            @Context HttpServletRequest request) {
-
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para gestionar secciones."
-        );
-
+    public Response cambiarEstado(@PathParam("id") int id, Seccion seccion, @Context HttpServletRequest request) {
+        Response acceso = validarAcceso(request, "No tiene permisos para gestionar secciones.");
         if (acceso != null) {
             return acceso;
         }
 
         if (seccion == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("La sección no puede ser nula.")
+                    .entity(jsonMensaje("La sección no puede ser nula."))
                     .build();
         }
 
-        String resultado = servicio.cambiarEstado(
-                id,
-                seccion.isEstado()
-        );
+        String resultado = servicio.cambiarEstado(id, seccion.isEstado());
 
         if (resultado.contains("correctamente")) {
-
-            return Response.ok(resultado).build();
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
         if (resultado.contains("no existe")) {
-
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
+    }
+
+    private Response validarAcceso(HttpServletRequest request, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioSesion(request);
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe iniciar sesión."))
+                    .build();
+        }
+
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"MAESTRO".equals(usuario.getRol())&& !"SECRETARIA".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje(mensajePermiso))
+                    .build();
+        }
+
+        return null;
+    }
+
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

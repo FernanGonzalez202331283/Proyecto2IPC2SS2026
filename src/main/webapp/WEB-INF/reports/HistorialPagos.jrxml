@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="HistorialPagos"
+              pageWidth="595" pageHeight="842" columnWidth="535"
+              leftMargin="30" rightMargin="30" topMargin="40" bottomMargin="40"
+              uuid="c3456789-d012-3456-7890-123456789012">
+
+    <parameter name="FECHA_EMISION" class="java.lang.String"/>
+    <parameter name="ESTUDIANTE_NOMBRE" class="java.lang.String"/>
+    <parameter name="CODIGO_ESTUDIANTE" class="java.lang.String"/>
+
+    <field name="idPago" class="java.lang.Integer"/>
+    <field name="numeroComprobante" class="java.lang.String"/>
+    <field name="concepto" class="java.lang.String"/>
+    <field name="monto" class="java.lang.Double"/>
+    <field name="fechaPago" class="java.util.Date"/>
+    <field name="estado" class="java.lang.String"/>
+
+    <title>
+        <band height="110" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="535" height="25" uuid="11111111-1111-1111-1111-111111111111"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="16" isBold="true"/>
+                </textElement>
+                <text><![CDATA[CENTRO EDUCATIVO SISTEMA ESCOLAR]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="25" width="535" height="20" uuid="22222222-2222-2222-2222-222222222222"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="12" isBold="true" isUnderline="true"/>
+                </textElement>
+                <text><![CDATA[CU0037: HISTORIAL DE PAGOS DEL ESTUDIANTE]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="0" y="55" width="350" height="15" uuid="33333333-3333-3333-3333-333333333333"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Estudiante: " + $P{ESTUDIANTE_NOMBRE} + " (" + $P{CODIGO_ESTUDIANTE} + ")"]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="350" y="55" width="185" height="15" uuid="44444444-4444-4444-4444-444444444444"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Fecha: " + $P{FECHA_EMISION}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="75" width="535" height="1" uuid="55555555-5555-5555-5555-555555555555"/>
+            </line>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="25" splitType="Stretch">
+            <rectangle>
+                <reportElement x="0" y="0" width="535" height="25" backcolor="#212529" uuid="66666666-6666-6666-6666-666666666666"/>
+            </rectangle>
+            <staticText>
+                <reportElement x="5" y="0" width="60" height="25" forecolor="#FFFFFF" uuid="77777777-7777-7777-7777-777777777777"/>
+                <textElement verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+                <text><![CDATA[ID Pago]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="65" y="0" width="110" height="25" forecolor="#FFFFFF" uuid="88888888-8888-8888-8888-888888888888"/>
+                <textElement verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+                <text><![CDATA[No. Comprobante]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="175" y="0" width="160" height="25" forecolor="#FFFFFF" uuid="99999999-9999-9999-9999-999999999999"/>
+                <textElement verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+                <text><![CDATA[Concepto]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="335" y="0" width="100" height="25" forecolor="#FFFFFF" uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+                <text><![CDATA[Fecha Pago]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="435" y="0" width="95" height="25" forecolor="#FFFFFF" uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+                <text><![CDATA[Monto Pagado]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="20" splitType="Stretch">
+            <textField>
+                <reportElement x="5" y="0" width="60" height="20" uuid="cccccccc-cccc-cccc-cccc-cccccccccccc"/>
+                <textElement verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA["#" + $F{idPago}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="65" y="0" width="110" height="20" uuid="dddddddd-dddd-dddd-dddd-dddddddddddd"/>
+                <textElement verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{numeroComprobante} != null ? $F{numeroComprobante} : "-"]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="175" y="0" width="160" height="20" uuid="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"/>
+                <textElement verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{concepto}]]></textFieldExpression>
+            </textField>
+            <textField pattern="dd/MM/yyyy HH:mm">
+                <reportElement x="335" y="0" width="100" height="20" uuid="ffffffff-ffff-ffff-ffff-ffffffffffff"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{fechaPago}]]></textFieldExpression>
+            </textField>
+            <textField pattern="Q #,##0.00">
+                <reportElement x="435" y="0" width="95" height="20" uuid="00000000-0000-0000-0000-000000000000"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{monto}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="19" width="535" height="1" forecolor="#E0E0E0" uuid="10101010-1010-1010-1010-101010101010"/>
+            </line>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="20" splitType="Stretch">
+            <textField>
+                <reportElement x="385" y="0" width="150" height="20" uuid="20202020-2020-2020-2020-202020202020"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA["Página " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+</jasperReport>

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package seguridad;
 
 import io.jsonwebtoken.Claims;
@@ -9,42 +5,36 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.util.Date;
 import javax.crypto.SecretKey;
+import modelo.Usuario;
 
 /**
  *
  * @author fernan
  */
 public class JwtService {
-    private static final String CLAVE_SECRETA =
-            "AvU/7HXYU1Fr5+EpcEwxPv2IeNHtERVstcNIuLJ0eo4=";
 
-    private static final long TIEMPO_EXPIRACION =
-            1000 * 60 * 60; // 1 hor
+    private static final String CLAVE_SECRETA
+            = "AvU/7HXYU1Fr5+EpcEwxPv2IeNHtERVstcNIuLJ0eo4=";
+
+    private static final long TIEMPO_EXPIRACION
+            = 1000 * 60 * 60; // 1 hora
     private final SecretKey key;
 
     public JwtService() {
-
         key = Keys.hmacShaKeyFor(
-                java.util.Base64.getDecoder().decode(
-                        CLAVE_SECRETA));
+                java.util.Base64.getDecoder().decode(CLAVE_SECRETA));
     }
 
-    public String generarToken(
-            int idUsuario,
-            String username,
-            String rol) {
-
+    // 1. AGREGAMOS 'int idPersona' A LOS PARÁMETROS Y COMO CLAIM
+    public String generarToken(int idUsuario, String username, String rol, int idPersona) {
         Date ahora = new Date();
-
-        Date expiracion =
-                new Date(
-                        ahora.getTime()
-                        + TIEMPO_EXPIRACION);
+        Date expiracion = new Date(ahora.getTime() + TIEMPO_EXPIRACION);
 
         return Jwts.builder()
                 .subject(username)
                 .claim("idUsuario", idUsuario)
                 .claim("rol", rol)
+                .claim("idPersona", idPersona)
                 .issuedAt(ahora)
                 .expiration(expiracion)
                 .signWith(key)
@@ -52,7 +42,6 @@ public class JwtService {
     }
 
     public Claims validarToken(String token) {
-
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
@@ -61,23 +50,42 @@ public class JwtService {
     }
 
     public String obtenerUsername(String token) {
-
         Claims claims = validarToken(token);
-
         return claims.getSubject();
     }
 
     public String obtenerRol(String token) {
-
         Claims claims = validarToken(token);
-
         return claims.get("rol", String.class);
     }
 
     public int obtenerIdUsuario(String token) {
-
         Claims claims = validarToken(token);
-
         return claims.get("idUsuario", Integer.class);
+    }
+
+    // 2. EXTRAEMOS EL 'idPersona' DEL TOKEN Y LO ASIGNAMOS AL USUARIO
+    public Usuario obtenerUsuarioDesdeToken(String token) {
+        try {
+            Claims claims = validarToken(token);
+
+            Usuario usuario = new Usuario();
+            usuario.setIdUsuario(claims.get("idUsuario", Integer.class));
+            usuario.setUsername(claims.getSubject());
+            usuario.setRol(claims.get("rol", String.class));
+            
+            // <-- SE EXTRAE Y SE ASIGNA
+            Integer idPersona = claims.get("idPersona", Integer.class);
+            if (idPersona != null) {
+                usuario.setIdPersona(idPersona);
+            }
+            
+            usuario.setEstado(true);
+
+            return usuario;
+        } catch (Exception e) {
+            System.err.println("Error al validar token JWT: " + e.getMessage());
+            return null;
+        }
     }
 }

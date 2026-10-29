@@ -1,0 +1,111 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-warning"></i>Mis Cursos Asignados</h3>
+      <small class="text-white-50">CU0018: Visualiza los grados y secciones que impartes en el ciclo escolar</small>
+    </div>
+    <button type="button" (click)="volverDashboard()" class="btn btn-outline-light btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver al Portal
+    </button>
+  </div>
+
+  <!-- Alerta de Error -->
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Panel de Filtros -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3">
+      <div class="row g-3 align-items-end">
+        
+        <!-- Búsqueda rápida -->
+        <div class="col-md-9">
+          <label class="form-label small fw-bold text-secondary">Búsqueda rápida</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" [(ngModel)]="filtroTexto" (input)="aplicarFiltro()" class="form-control" placeholder="Buscar por nombre de curso, grado o sección...">
+          </div>
+        </div>
+
+        <!-- Botón Limpiar -->
+        <div class="col-md-3 d-grid">
+          <button (click)="limpiarFiltros()" class="btn btn-outline-secondary btn-sm fw-semibold">
+            <i class="bi bi-eraser me-1"></i> Limpiar búsqueda
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de Cursos Asignados -->
+  <div class="card shadow-sm border-0 border-start border-primary border-4">
+    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold text-secondary">Listado de mis clases</h6>
+      <span class="badge bg-primary">Total: {{ cursosFiltrados.length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-light text-secondary">
+            <tr>
+              <th>Curso</th>
+              <th>Grado</th>
+              <th>Sección</th>
+              <th>Año Lectivo</th>
+              <th class="text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cargando) {
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                  Cargando cursos asignados...
+                </td>
+              </tr>
+            } @else if (cursosFiltrados.length === 0) {
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                  No tienes cursos asignados registrados en este momento.
+                </td>
+              </tr>
+            } @else {
+              @for (item of cursosFiltrados; track item.idAsignacion || $index) {
+                <tr>
+                  <td>
+                    <span class="fw-bold text-dark">{{ item.nombreCurso }}</span>
+                  </td>
+                  <td>
+                    {{ item.nombreGrado || 'N/A' }} <small class="text-muted">({{ item.nivelGrado || 'General' }})</small>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">Sección {{ item.nombreSeccion }}</span>
+                  </td>
+                  <td>
+                    <span class="text-secondary">
+                      <i class="bi bi-calendar3 me-1"></i>{{ item.anioLectivo || 'N/A' }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge rounded-pill px-2 py-1" [class.bg-success-subtle]="item.estado" [class.text-success]="item.estado" [class.bg-secondary]="!item.estado">
+                      {{ item.estado ? 'ACTIVO' : 'INACTIVO' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

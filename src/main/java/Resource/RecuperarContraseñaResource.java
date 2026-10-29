@@ -17,7 +17,7 @@ import modelo.RecuperarContraseñaRequest;
  *
  * @author fernan
  */
-@Path("/recuperar-contraseña")
+@Path("/recuperar-password")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecuperarContraseñaResource {

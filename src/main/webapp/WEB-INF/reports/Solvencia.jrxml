@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="SolvenciaEstudios"
+              pageWidth="595" pageHeight="842" columnWidth="535"
+              leftMargin="30" rightMargin="30" topMargin="40" bottomMargin="40"
+              uuid="c2847a11-e129-4b11-9a72-74892c99a80b">
+
+    <parameter name="NO_SOLVENCIA" class="java.lang.String"/>
+    <parameter name="FECHA_EMISION" class="java.lang.String"/>
+    <parameter name="ESTUDIANTE_NOMBRE" class="java.lang.String"/>
+    <parameter name="CODIGO_ESTUDIANTE" class="java.lang.String"/>
+    <parameter name="GRADO_SECCION" class="java.lang.String"/>
+    <parameter name="ANIO_LECTIVO" class="java.lang.String"/>
+    <parameter name="SECRETARIA_NOMBRE" class="java.lang.String"/>
+
+    <queryString><![CDATA[]]></queryString>
+
+    <title>
+        <band height="140" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="535" height="30" uuid="0a11e1f1-332a-4318-8f55-1b2938ab0221"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="16" isBold="true"/>
+                </textElement>
+                <text><![CDATA[CENTRO EDUCATIVO SISTEMA ESCOLAR]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="30" width="535" height="20" uuid="7a66f0d1-0f70-4f51-b8ef-e12c1b48b5cc"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="12" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[Dirección de Administración y Secretaría General]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="60" width="535" height="1" uuid="8a1132b8-f1c2-421f-a228-a2890b02bb11"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="80" width="535" height="30" uuid="93f210d3-35a1-43ef-bd10-8bbf557732d8"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="14" isBold="true" isUnderline="true"/>
+                </textElement>
+                <text><![CDATA[CONSTANCIA DE SOLVENCIA FINANCIERA]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="350" y="115" width="185" height="15" forecolor="#006600" uuid="69a03b6e-1172-4d2b-b892-0bda0e3d2112"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["No. " + $P{NO_SOLVENCIA}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <detail>
+        <band height="380" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="20" width="535" height="30" uuid="b288a91c-1456-4c28-98e2-48df87a5522f"/>
+                <textElement textAlignment="Justified" verticalAlignment="Middle">
+                    <font size="11"/>
+                </textElement>
+                <text><![CDATA[La suscrita Dirección y Secretaría General del Centro Educativo HACE CONSTAR que el/la estudiante:]]></text>
+            </staticText>
+
+            <rectangle>
+                <reportElement x="0" y="60" width="535" height="90" backcolor="#F8F9FA" uuid="55122bfa-33a1-477d-8153-61fa66f4551c"/>
+            </rectangle>
+
+            <staticText>
+                <reportElement x="15" y="70" width="130" height="20" uuid="2911ba71-615f-4a3e-b81b-ee9a7f3f11a2"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Nombre Completo:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="145" y="70" width="375" height="20" uuid="7a66f0d1-0f70-4f51-b8ef-e12c1b48b5dd"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{ESTUDIANTE_NOMBRE}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="15" y="95" width="130" height="20" uuid="56122bfa-33a1-477d-8153-61fa66f4551e"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Código Estudiante:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="145" y="95" width="180" height="20" uuid="2311ba71-615f-4a3e-b81b-ee9a7f3f11a3"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{CODIGO_ESTUDIANTE}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="15" y="120" width="130" height="20" uuid="88122bfa-33a1-477d-8153-61fa66f4551f"/>
+                <textElement verticalAlignment="Middle">
+                    <font isBold="true"/>
+                </textElement>
+                <text><![CDATA[Grado y Sección:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="145" y="120" width="375" height="20" uuid="9911ba71-615f-4a3e-b81b-ee9a7f3f11a4"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{GRADO_SECCION} + " (" + $P{ANIO_LECTIVO} + ")"]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="170" width="535" height="50" uuid="a388a91c-1456-4c28-98e2-48df87a55230"/>
+                <textElement textAlignment="Justified" verticalAlignment="Middle">
+                    <font size="11"/>
+                </textElement>
+                <text><![CDATA[Se encuentra completamente SOLVENTE de todas sus obligaciones financieras, colegiaturas, inscripciones y cuotas correspondientes a este centro educativo hasta la presente fecha.]]></text>
+            </staticText>
+
+            <textField>
+                <reportElement x="0" y="230" width="535" height="20" uuid="b488a91c-1456-4c28-98e2-48df87a55231"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="10" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Fecha de emisión: " + $P{FECHA_EMISION}]]></textFieldExpression>
+            </textField>
+
+            <line>
+                <reportElement x="167" y="320" width="200" height="1" uuid="c588a91c-1456-4c28-98e2-48df87a55232"/>
+            </line>
+            <textField>
+                <reportElement x="167" y="325" width="200" height="15" uuid="d688a91c-1456-4c28-98e2-48df87a55233"/>
+                <textElement textAlignment="Center">
+                    <font size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{SECRETARIA_NOMBRE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="167" y="340" width="200" height="15" uuid="e788a91c-1456-4c28-98e2-48df87a55234"/>
+                <textElement textAlignment="Center">
+                    <font size="9" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[Secretaría General]]></text>
+            </staticText>
+        </band>
+    </detail>
+</jasperReport>

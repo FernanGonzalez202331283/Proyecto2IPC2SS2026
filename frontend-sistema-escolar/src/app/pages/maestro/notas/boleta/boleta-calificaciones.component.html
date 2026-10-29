@@ -1,0 +1,97 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-warning"></i>Boleta Final de Calificaciones</h3>
+      <small class="text-white-50">Registro de promedio/calificación final por curso para el estudiante #{{ idInscripcion }}</small>
+    </div>
+    <button type="button" (click)="volver()" class="btn btn-outline-light btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Regresar
+    </button>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  @if (cargando) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <div class="mt-2 text-muted fw-semibold">Cargando cursos asignados al estudiante...</div>
+    </div>
+  } @else if (boletaCursos.length === 0) {
+    <div class="card shadow-sm border-0 p-4 text-center text-muted">
+      <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+      No hay cursos registrados o asignados para esta sección.
+    </div>
+  } @else {
+    
+    <!-- Tabla Directa de Cursos y Nota Final -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-secondary text-white py-2 fw-bold">
+        <i class="bi bi-book me-2"></i>Asignaturas del Currículo
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th style="width: 60px;" class="text-center">No.</th>
+                <th>Curso / Asignatura</th>
+                <th class="text-center" style="width: 220px;">Nota Final Obtenida</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (curso of boletaCursos; track curso.idAsignacion; let i = $index) {
+                <tr>
+                  <td class="text-center fw-bold text-secondary">{{ i + 1 }}</td>
+                  <td>
+                    <div class="fw-bold text-dark fs-6">{{ curso.nombreCurso }}</div>
+                    <small class="text-muted">Asignación #{{ curso.idAsignacion }}</small>
+                  </td>
+                  <td class="text-center">
+                    <div class="input-group input-group-sm mx-auto" style="max-width: 160px;">
+                      <input type="number" 
+                             [(ngModel)]="curso.calificacion" 
+                             class="form-control text-center fw-bold fs-6" 
+                             placeholder="0 - 100" 
+                             min="0" 
+                             max="100"
+                             step="0.5">
+                      <span class="input-group-text fw-bold">pts</span>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón Principal para Guardar Calificaciones de Cursos -->
+    <div class="d-flex justify-content-end mb-5">
+      <button type="button" (click)="guardarNotasBoleta()" class="btn btn-success btn-lg fw-bold shadow" [disabled]="guardando">
+        @if (guardando) {
+          <span class="spinner-border spinner-border-sm me-2"></span> Guardando Notas...
+        } @else {
+          <i class="bi bi-cloud-upload-fill me-2"></i> Guardar Boleta de Cursos
+        }
+      </button>
+    </div>
+
+  }
+
+</div>

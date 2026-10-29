@@ -1,0 +1,120 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-receipt me-2"></i>CU0032: Estado de Cuenta</h3>
+      <small class="text-white-50">Consulta detallada de obligaciones, pagos realizados y saldo pendiente</small>
+    </div>
+    <button (click)="volver()" class="btn btn-light btn-sm text-primary fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  @if (errorMessage) {
+    <div class="alert alert-danger fw-semibold shadow-sm mb-3">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+    </div>
+  }
+
+  <!-- Formulario de Búsqueda -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3">
+      <form [formGroup]="consultaForm" (ngSubmit)="consultar()" class="row g-3 align-items-center">
+        
+        <!-- SOLO MOSTRAR EL CAMPO ID ESTUDIANTE SI NO ES ESTUDIANTE -->
+        @if (!esEstudiante) {
+          <div class="col-md-5">
+            <label class="form-label small fw-bold">ID Estudiante</label>
+            <input type="number" formControlName="idEstudiante" class="form-control form-control-sm" placeholder="Ingrese ID de estudiante">
+          </div>
+        }
+
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">ID Año Lectivo</label>
+          <input type="number" formControlName="idAnioLectivo" class="form-control form-control-sm">
+        </div>
+        
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary btn-sm fw-bold w-100 mt-4" [disabled]="cargando || consultaForm.invalid">
+            @if (cargando) {
+              <span class="spinner-border spinner-border-sm me-1"></span> Consultando...
+            } @else {
+              <i class="bi bi-search me-1"></i> Consultar
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Resumen de Estado de Cuenta -->
+  @if (estadoCuenta) {
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card border-0 bg-light shadow-sm text-center p-3">
+          <small class="text-muted fw-bold text-uppercase">Total Obligaciones</small>
+          <h3 class="fw-bold text-dark mt-1 mb-0">Q {{ estadoCuenta.totalObligaciones | number:'1.2-2' }}</h3>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 bg-success bg-opacity-10 shadow-sm text-center p-3">
+          <small class="text-success fw-bold text-uppercase">Total Pagado</small>
+          <h3 class="fw-bold text-success mt-1 mb-0">Q {{ estadoCuenta.totalPagado | number:'1.2-2' }}</h3>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 bg-danger bg-opacity-10 shadow-sm text-center p-3">
+          <small class="text-danger fw-bold text-uppercase">Saldo Pendiente</small>
+          <h3 class="fw-bold text-danger mt-1 mb-0">Q {{ estadoCuenta.saldoPendiente | number:'1.2-2' }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Detalle -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-dark text-white py-2">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-list-check me-2"></i>Detalle de Obligaciones de Pago</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 text-center">
+          <thead class="table-light small text-uppercase">
+            <tr>
+              <th>ID Ob.</th>
+              <th>Concepto</th>
+              <th>Descripción</th>
+              <th>Vencimiento</th>
+              <th>Monto</th>
+              <th>Estado</th>
+              <th>Fecha Pago</th>
+              <th>Monto Pagado</th>
+            </tr>
+          </thead>
+          <tbody class="small">
+            @for (ob of estadoCuenta.obligaciones; track ob.idObligacion) {
+              <tr>
+                <td class="fw-bold">#{{ ob.idObligacion }}</td>
+                <td class="text-start">{{ ob.concepto }}</td>
+                <td class="text-start text-muted">{{ ob.descripcion }}</td>
+                <td>{{ ob.fechaVencimiento }}</td>
+                <td class="fw-semibold">Q {{ ob.monto | number:'1.2-2' }}</td>
+                <td>
+                  <span class="badge" [ngClass]="{
+                    'bg-success': ob.estado === 'PAGADA',
+                    'bg-warning text-dark': ob.estado === 'PENDIENTE',
+                    'bg-danger': ob.estado === 'VENCIDA',
+                    'bg-secondary': ob.estado === 'ANULADA'
+                  }">{{ ob.estado }}</span>
+                </td>
+                <td>{{ ob.fechaPago ? (ob.fechaPago | date:'short') : '-' }}</td>
+                <td class="fw-bold text-success">
+                  {{ ob.montoPagado > 0 ? ('Q ' + (ob.montoPagado | number:'1.2-2')) : '-' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>

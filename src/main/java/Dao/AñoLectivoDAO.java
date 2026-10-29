@@ -25,7 +25,7 @@ public class AñoLectivoDAO {
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setInt(1, añoLectivo.getAño());
+            ps.setInt(1, añoLectivo.getAnio());
             ps.setDate(2, Date.valueOf(añoLectivo.getFechaInicio()));
             ps.setDate(3, Date.valueOf(añoLectivo.getFechaFin()));
             ps.setBoolean(4, añoLectivo.isEstado());
@@ -96,10 +96,10 @@ public class AñoLectivoDAO {
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setInt(1, añoLectivo.getAño());
+            ps.setInt(1, añoLectivo.getAnio());
             ps.setDate(2, Date.valueOf(añoLectivo.getFechaInicio()));
             ps.setDate(3, Date.valueOf(añoLectivo.getFechaFin()));
-            ps.setInt(4, añoLectivo.getIdAñoLectivo());
+            ps.setInt(4, añoLectivo.getIdAnoLectivo());
 
             return ps.executeUpdate() > 0;
 
@@ -156,8 +156,8 @@ public class AñoLectivoDAO {
 
     private AñoLectivo mapResultSetToAñoLectivo(ResultSet rs) throws SQLException {
         AñoLectivo añoLectivo = new AñoLectivo();
-        añoLectivo.setIdAñoLectivo(rs.getInt("id_año_lectivo"));
-        añoLectivo.setAño(rs.getInt("año"));
+        añoLectivo.setIdAnoLectivo(rs.getInt("id_año_lectivo"));
+        añoLectivo.setAnio(rs.getInt("año"));
         añoLectivo.setFechaInicio(rs.getString("fecha_inicio"));
         añoLectivo.setFechaFin(rs.getString("fecha_fin"));
         añoLectivo.setEstado(rs.getBoolean("estado"));

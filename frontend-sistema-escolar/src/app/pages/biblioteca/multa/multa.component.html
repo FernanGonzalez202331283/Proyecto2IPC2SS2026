@@ -1,0 +1,96 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-cash-stack me-2 text-warning"></i>Gestión de Multas</h3>
+      <small class="text-white-50">Control de sanciones por entregas extemporáneas de libros de biblioteca</small>
+    </div>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Tabla de Multas -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold text-secondary">Historial de Multas Generadas</h6>
+      <span class="badge bg-dark">Total: {{ multas.length }}</span>
+    </div>
+
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-dark">
+            <tr>
+              <th style="width: 60px;" class="text-center">ID</th>
+              <th style="width: 120px;">No. Préstamo</th>
+              <th class="text-center">Días de Atraso</th>
+              <th class="text-center">Monto Generado</th>
+              <th class="text-center">F. Generación</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center" style="width: 140px;">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cargando) {
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">Cargando multas de la biblioteca...</td>
+              </tr>
+            } @else if (multas.length === 0) {
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                  No hay multas registradas en el sistema.
+                </td>
+              </tr>
+            } @else {
+              @for (m of multas; track m.idMulta) {
+                <tr>
+                  <td class="text-center fw-bold text-secondary">#{{ m.idMulta }}</td>
+                  <td class="fw-bold text-dark">Préstamo #{{ m.idPrestamo }}</td>
+                  <td class="text-center fw-bold text-danger">{{ m.diasAtraso }} días</td>
+                  <td class="text-center fw-bold text-success fs-6">Q {{ m.monto | number:'1.2-2' }}</td>
+                  <td class="text-center">{{ m.fechaGeneracion }}</td>
+                  <td class="text-center">
+                    <span class="badge" 
+                          [class.bg-danger]="m.estado === 'PENDIENTE'" 
+                          [class.bg-success]="m.estado === 'PAGADA'" 
+                          [class.bg-secondary]="m.estado === 'ANULADA'">
+                      {{ m.estado }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    @if (m.estado === 'PENDIENTE' && m.idMulta) {
+                      <button type="button" 
+                              (click)="pagarMulta(m.idMulta)" 
+                              class="btn btn-success btn-sm fw-bold shadow-sm"
+                              title="Marcar multa como cobrada/pagada">
+                        <i class="bi bi-currency-dollar me-1"></i> Cobrar
+                      </button>
+                    } @else {
+                      <span class="text-muted small fw-semibold">Procesado</span>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -16,11 +16,12 @@ public class Usuario {
     
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String contraseña;
-    
+    private boolean debeCambiarClave;
     private int idPersona;
     private String rol; 
     private boolean estado;
     private String fechaCreacion;
+    private Persona persona;
     
     public Usuario(){
         
@@ -34,6 +35,22 @@ public class Usuario {
         this.rol = rol;
         this.estado = estado;
         this.fechaCreacion = fechaCreacion;
+    }
+
+    public Persona getPersona() {
+        return persona;
+    }
+
+    public boolean isDebeCambiarClave() {
+        return debeCambiarClave;
+    }
+
+    public void setDebeCambiarClave(boolean debeCambiarClave) {
+        this.debeCambiarClave = debeCambiarClave;
+    }
+    
+    public void setPersona(Persona persona) {
+        this.persona = persona;
     }
 
     public int getIdUsuario() {

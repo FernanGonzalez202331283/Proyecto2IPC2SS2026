@@ -9,8 +9,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.List;
 import modelo.Usuario;
 
 /**
@@ -19,38 +19,68 @@ import modelo.Usuario;
  */
 public class UsuarioDAO {
 
+    public boolean insertar(Connection connection, Usuario usuario) throws SQLException {
+        String sqlUsuario = """
+                            INSERT INTO usuario (username, contraseña, id_persona, rol, estado, debe_cambiar_clave)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            """;
+
+        String sqlHistorial = """
+                             INSERT INTO historial_contraseña (id_usuario, contraseña)
+                             VALUES (?, ?)
+                             """;
+
+        try (PreparedStatement psUsuario = connection.prepareStatement(sqlUsuario, Statement.RETURN_GENERATED_KEYS)) {
+            psUsuario.setString(1, usuario.getUsername());
+            psUsuario.setString(2, usuario.getContraseña());
+            psUsuario.setInt(3, usuario.getIdPersona());
+            psUsuario.setString(4, usuario.getRol());
+            psUsuario.setBoolean(5, usuario.isEstado());
+            psUsuario.setBoolean(6, usuario.isDebeCambiarClave()); 
+            int filas = psUsuario.executeUpdate();
+
+            if (filas > 0) {
+                try (ResultSet rs = psUsuario.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        int idUsuarioGenerado = rs.getInt(1);
+
+                        try (PreparedStatement psHistorial = connection.prepareStatement(sqlHistorial)) {
+                            psHistorial.setInt(1, idUsuarioGenerado);
+                            psHistorial.setString(2, usuario.getContraseña());
+                            psHistorial.executeUpdate();
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean insertar(Usuario usuario) {
-        String sql = """
-                     INSERT INTO usuario (username, contraseña, id_persona, rol, estado)
-                     VALUES (?, ?, ?, ?, ?)
-                     """;
-
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setString(1, usuario.getUsername());
-            ps.setString(2, usuario.getContraseña());
-            ps.setInt(3, usuario.getIdPersona());
-            ps.setString(4, usuario.getRol());
-            ps.setBoolean(5, usuario.isEstado());
-
-            return ps.executeUpdate() > 0;
-
+        try (Connection connection = Conexion.getInstance().getConnection()) {
+            connection.setAutoCommit(false);
+            boolean ok = insertar(connection, usuario);
+            if (ok) {
+                connection.commit();
+            } else {
+                connection.rollback();
+            }
+            return ok;
         } catch (SQLException e) {
-            System.err.println("Error al insertar usuario: " + e.getMessage());
+            System.out.println("Error al insertar usuario: " + e.getMessage());
             return false;
         }
     }
 
     public Usuario buscarPorUsername(String username) {
         String sql = """
-                     SELECT id_usuario, username, contraseña, id_persona, rol, estado, fecha_creacion
+                     SELECT id_usuario, username, contraseña, id_persona, rol, estado, fecha_creacion, debe_cambiar_clave
                      FROM usuario
                      WHERE username = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, username);
 
@@ -68,13 +98,12 @@ public class UsuarioDAO {
 
     public Usuario buscarPorId(int idUsuario) {
         String sql = """
-                     SELECT id_usuario, username, contraseña, id_persona, rol, estado, fecha_creacion
+                     SELECT id_usuario, username, contraseña, id_persona, rol, estado, fecha_creacion, debe_cambiar_clave
                      FROM usuario
                      WHERE id_usuario = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idUsuario);
 
@@ -91,7 +120,7 @@ public class UsuarioDAO {
         return null;
     }
 
-   public ArrayList<Usuario> obtenerTodos() {
+    public ArrayList<Usuario> obtenerTodos() {
 
         String sql = """
                      SELECT id_usuario,
@@ -100,17 +129,16 @@ public class UsuarioDAO {
                             id_persona,
                             rol,
                             estado,
-                            fecha_creacion
+                            fecha_creacion,
+                            debe_cambiar_clave
                      FROM usuario
                      """;
 
         ArrayList<Usuario> usuarios = new ArrayList<>();
 
-        try (Connection connection =
-                Conexion.getInstance().getConnection();
-             PreparedStatement ps =
-                connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection
+                = Conexion.getInstance().getConnection(); PreparedStatement ps
+                = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
 
@@ -134,9 +162,7 @@ public class UsuarioDAO {
                      WHERE rol = 'SUPER_ADMIN' AND estado = 1
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
                 return rs.getInt(1);
@@ -156,8 +182,7 @@ public class UsuarioDAO {
                      WHERE id_usuario = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, usuario.getUsername());
             ps.setString(2, usuario.getContraseña());
@@ -181,8 +206,7 @@ public class UsuarioDAO {
                      WHERE id_usuario = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
             ps.setInt(2, idUsuario);
@@ -202,8 +226,7 @@ public class UsuarioDAO {
                      WHERE id_usuario = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, nuevaContraseña);
             ps.setInt(2, idUsuario);
@@ -212,6 +235,24 @@ public class UsuarioDAO {
 
         } catch (SQLException e) {
             System.err.println("Error al actualizar contraseña: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean confirmarPrimerCambioClave(int idUsuario, String nuevaContraseña) {
+        String sql = """
+                     UPDATE usuario
+                     SET contraseña = ?, debe_cambiar_clave = false
+                     WHERE id_usuario = ?
+                     """;
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, nuevaContraseña);
+            ps.setInt(2, idUsuario);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Error al confirmar primer cambio de clave: " + e.getMessage());
             return false;
         }
     }
@@ -230,6 +271,7 @@ public class UsuarioDAO {
         usuario.setRol(rs.getString("rol"));
         usuario.setEstado(rs.getBoolean("estado"));
         usuario.setFechaCreacion(rs.getString("fecha_creacion"));
+        usuario.setDebeCambiarClave(rs.getBoolean("debe_cambiar_clave"));
         return usuario;
     }
 }

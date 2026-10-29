@@ -1,0 +1,126 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>CU0035: Reporte de Alumnos Solventes y Morosos</h3>
+      <small class="text-white-50">Consulta general de estado financiero por ciclo escolar y emisión de reporte PDF</small>
+    </div>
+    <a routerLink="/secretaria/dashboard" class="btn btn-light btn-sm text-primary fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Filtros de Consulta -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-dark text-white py-2">
+      <h6 class="mb-0 fw-bold"><i class="bi bi-funnel me-2"></i>Filtros de Búsqueda</h6>
+    </div>
+    <div class="card-body p-3">
+      <form [formGroup]="filtroForm" (ngSubmit)="consultar()" class="row g-3 align-items-end">
+        
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Año Lectivo</label>
+          <input type="number" formControlName="idAnioLectivo" class="form-control form-control-sm" placeholder="Ej. 1">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Estado de Solvencia</label>
+          <select formControlName="estado" class="form-select form-select-sm">
+            <option value="TODOS">-- Todos los estados --</option>
+            <option value="SOLVENTE">SOLVENTE</option>
+            <option value="MOROSO">MOROSO</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm fw-bold flex-fill" [disabled]="cargando || filtroForm.invalid">
+            @if (cargando) {
+              <span class="spinner-border spinner-border-sm me-1"></span> Consultando...
+            } @else {
+              <i class="bi bi-search me-1"></i> Consultar
+            }
+          </button>
+
+          <button type="button" class="btn btn-danger btn-sm fw-bold flex-fill" 
+                  [disabled]="descargandoPdf || listaReporte.length === 0" 
+                  (click)="verReportePDF()">
+            @if (descargandoPdf) {
+              <span class="spinner-border spinner-border-sm me-1"></span> PDF...
+            } @else {
+              <i class="bi bi-file-earmark-pdf-fill me-1"></i> Exportar PDF
+            }
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Tabla de Resultados -->
+  @if (listaReporte.length > 0) {
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-people me-2 text-primary"></i>Listado de Estudiantes</h6>
+        <span class="badge bg-primary-subtle text-primary border border-primary fw-bold px-3 py-1 rounded-pill">
+          Total: {{ listaReporte.length }}
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light border-bottom">
+              <tr>
+                <th class="ps-3">Código</th>
+                <th>Estudiante</th>
+                <th>Grado y Sección</th>
+                <th class="text-center">Obligaciones</th>
+                <th class="text-end">Total Pagado</th>
+                <th class="text-end">Saldo Pendiente</th>
+                <th class="text-center pe-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of listaReporte; track item.idEstudiante) {
+                <tr>
+                  <td class="ps-3 fw-bold text-secondary">{{ item.codigoEstudiante }}</td>
+                  <td class="fw-semibold">{{ item.apellidos }}, {{ item.nombres }}</td>
+                  <td>{{ item.grado }} - Sec. {{ item.seccion }}</td>
+                  <td class="text-center">{{ item.totalObligaciones }}</td>
+                  <td class="text-end text-success fw-semibold">Q {{ item.totalPagado | number:'1.2-2' }}</td>
+                  <td class="text-end fw-bold" [class.text-danger]="item.saldoPendiente > 0">
+                    Q {{ item.saldoPendiente | number:'1.2-2' }}
+                  </td>
+                  <td class="text-center pe-3">
+                    <span class="badge px-3 py-1 rounded-pill fw-bold" [ngClass]="{
+                      'bg-success-subtle text-success border border-success': item.estadoSolvencia === 'SOLVENTE',
+                      'bg-danger-subtle text-danger border border-danger': item.estadoSolvencia === 'MOROSO'
+                    }">
+                      {{ item.estadoSolvencia }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

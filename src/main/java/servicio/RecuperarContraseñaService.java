@@ -37,14 +37,14 @@ public class RecuperarContraseñaService {
             return "El username es obligatorio.";
         }
 
-        if (request.getContraseñaAnterior() == null
-                || request.getContraseñaAnterior().trim().isEmpty()) {
+        if (request.getPasswordAnterior()== null
+                || request.getPasswordAnterior().trim().isEmpty()) {
 
             return "La contraseña anterior es obligatoria.";
         }
 
-        if (request.getNuevaContraseña() == null
-                || request.getNuevaContraseña().trim().isEmpty()) {
+        if (request.getNuevoPassword()== null
+                || request.getNuevoPassword().trim().isEmpty()) {
 
             return "La nueva contraseña es obligatoria.";
         }
@@ -53,10 +53,10 @@ public class RecuperarContraseñaService {
                 request.getUsername().trim();
 
         String contraseñaAnterior =
-                request.getContraseñaAnterior().trim();
+                request.getPasswordAnterior().trim();
 
         String nuevaContraseña =
-                request.getNuevaContraseña().trim();
+                request.getNuevoPassword().trim();
 
         String contraseñaAnteriorCodificada =
                 ContraseñaUtil.codificar(

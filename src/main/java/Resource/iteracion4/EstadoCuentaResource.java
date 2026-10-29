@@ -28,27 +28,25 @@ public class EstadoCuentaResource {
     }
 
     @GET
-    @Path("/estudiante/{idEstudiante}/año-lectivo/{idAñoLectivo}")
+    @Path("/estudiante/{idEstudiante}/anio-lectivo/{idAnioLectivo}")
     public Response consultarEstadoCuenta(
             @PathParam("idEstudiante") int idEstudiante,
-            @PathParam("idAñoLectivo") int idAñoLectivo) {
+            @PathParam("idAnioLectivo") int idAnioLectivo) {
 
-        // Validar identificadores.
-        if (idEstudiante <= 0 || idAñoLectivo <= 0) {
+        if (idEstudiante <= 0 || idAnioLectivo <= 0) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Los identificadores deben ser mayores que cero.")
+                    .entity("{\"mensaje\": \"Los identificadores deben ser mayores que cero.\"}")
                     .build();
         }
 
-        // Consultar estado de cuenta.
         EstadoCuenta estadoCuenta = estadoCuentaService.consultarEstadoCuenta(
                 idEstudiante,
-                idAñoLectivo
+                idAnioLectivo
         );
 
         if (estadoCuenta == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontró el estudiante o ocurrió un error al consultar el estado de cuenta.")
+                    .entity("{\"mensaje\": \"No se encontró el estudiante u ocurrió un error al consultar el estado de cuenta.\"}")
                     .build();
         }
 

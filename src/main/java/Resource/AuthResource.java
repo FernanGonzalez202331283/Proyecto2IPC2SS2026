@@ -31,7 +31,6 @@ public class AuthResource {
     public AuthResource() {
         this.authService = new AuthService();
     }
-
     @POST
     public Response iniciarSesion(LoginRequest request, @Context HttpServletRequest httpRequest) {
 
@@ -58,11 +57,11 @@ public class AuthResource {
                     .build();
         }
 
-        // 1. Crear / obtener sesión HTTP y registrar al usuario para respaldar a los controladores REST
+        // 1. Crear / obtener sesión HTTP y registrar al usuario
         HttpSession session = httpRequest.getSession(true);
         session.setAttribute("usuario", usuario);
 
-        //Generar el token JWT para clientes rest
+        // 2. Generar el token JWT para clientes REST
         String token = authService.generarToken(usuario);
 
         LoginResponse respuesta = new LoginResponse();

@@ -1,0 +1,100 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-people-fill me-2 text-warning"></i>Nómina de Estudiantes</h3>
+      <small class="text-white-50">Seleccione la sección para gestionar las calificaciones por boleta</small>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Filtro de Asignación / Sección -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-secondary text-white py-2">
+      <h6 class="mb-0 fw-bold"><i class="bi bi-funnel me-1"></i> Seleccionar Grado y Sección</h6>
+    </div>
+    <div class="card-body p-3">
+      <form [formGroup]="filtroForm" (ngSubmit)="cargarEstudiantes()" class="row g-3 align-items-end">
+        <div class="col-md-9">
+          <label class="form-label small fw-bold">Grado / Sección *</label>
+          <select formControlName="idAsignacion" class="form-select form-select-sm fw-semibold">
+            <option [ngValue]="null">-- Seleccione Sección --</option>
+            @for (asig of misAsignaciones; track asig.idAsignacion || $index) {
+              <option [value]="asig.idAsignacion">
+                Sección {{ asig.seccion?.nombre }} - Asignatura Referencia: {{ asig.curso?.nombre }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-dark btn-sm w-100 fw-semibold" [disabled]="cargandoAlumnos">
+            @if (cargandoAlumnos) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            } @else {
+              <i class="bi bi-search me-1"></i> Cargar Alumnos
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tabla de Nómina -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold text-secondary">Estudiantes Inscritos</h6>
+      <span class="badge bg-dark">Total: {{ alumnos.length }}</span>
+    </div>
+
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-dark">
+            <tr>
+              <th class="text-center" style="width: 60px;">No.</th>
+              <th style="width: 140px;">Código</th>
+              <th>Estudiante (Apellidos, Nombres)</th>
+              <th class="text-center" style="width: 200px;">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cargandoAlumnos) {
+              <tr>
+                <td colspan="4" class="text-center py-5 text-muted">Cargando nómina...</td>
+              </tr>
+            } @else if (alumnos.length === 0) {
+              <tr>
+                <td colspan="4" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                  Seleccione una sección y presione "Cargar Alumnos".
+                </td>
+              </tr>
+            } @else {
+              @for (alumno of alumnos; track alumno.idInscripcion || $index) {
+                <tr>
+                  <td class="text-center fw-bold text-secondary">{{ $index + 1 }}</td>
+                  <td class="fw-bold">{{ alumno.codigoEstudiante }}</td>
+                  <td class="fw-semibold text-dark">{{ alumno.apellidos }}, {{ alumno.nombres }}</td>
+                  <td class="text-center">
+                    <button type="button" (click)="irABoleta(alumno)" class="btn btn-primary btn-sm fw-semibold shadow-sm">
+                      <i class="bi bi-journal-check me-1"></i> Gestionar Notas
+                    </button>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package servicio.etapa3;
 
 import Dao.iteracion2.AsignacionDocenteDAO;
@@ -15,7 +11,7 @@ import modelo.iteracion3.Actividad;
  * @author fernan
  */
 public class ActividadService {
-    
+
     private final ActividadDAO actividadDAO;
     private final AsignacionDocenteDAO asignacionDAO;
 
@@ -62,12 +58,13 @@ public class ActividadService {
             return "La fecha debe tener el formato YYYY-MM-DD y ser válida.";
         }
 
-        double sumaActual = actividadDAO.obtenerSumaPorcentajes(
-                actividad.getIdAsignacion()
-        );
+        if (actividad.isEstado()) {
+            double sumaActual = actividadDAO.obtenerSumaPorcentajes(actividad.getIdAsignacion());
 
-        if (sumaActual + actividad.getPorcentaje() > 100) {
-            return "La suma de los porcentajes de las actividades no puede superar el 100%.";
+            if ((sumaActual + actividad.getPorcentaje()) > 100.0001) {
+                return String.format("La suma de porcentajes no puede superar el 100%%. Acumulado actual: %.2f%%, Intentando agregar: %.2f%%", 
+                        sumaActual, actividad.getPorcentaje());
+            }
         }
 
         boolean resultado = actividadDAO.registrar(actividad);
@@ -108,9 +105,7 @@ public class ActividadService {
         if (actividad.getIdActividad() <= 0) {
             return "Debe proporcionar un identificador válido.";
         }
-        Actividad existente = actividadDAO.buscarPorId(
-                actividad.getIdActividad()
-        );
+        Actividad existente = actividadDAO.buscarPorId(actividad.getIdActividad());
         if (existente == null) {
             return "La actividad que intenta actualizar no existe.";
         }
@@ -136,18 +131,19 @@ public class ActividadService {
                 || !validarFecha(actividad.getFecha())) {
             return "Debe proporcionar una fecha válida con formato YYYY-MM-DD.";
         }
-        double sumaActual = actividadDAO.obtenerSumaPorcentajes(
-                actividad.getIdAsignacion()
-        );
 
-        if (existente.isEstado()
-                && existente.getIdAsignacion() == actividad.getIdAsignacion()) {
+        // --- VALIDACIÓN DE RECALCULO DE PORCENTAJE AL ACTUALIZAR ---
+        double sumaActual = actividadDAO.obtenerSumaPorcentajes(actividad.getIdAsignacion());
 
+        // Restamos el porcentaje previo si la actividad ya estaba activa en la misma asignación
+        if (existente.isEstado() && existente.getIdAsignacion() == actividad.getIdAsignacion()) {
             sumaActual -= existente.getPorcentaje();
         }
 
-        if (actividad.isEstado() && sumaActual + actividad.getPorcentaje() > 100) {
-            return "La suma de los porcentajes de las actividades no puede superar el 100%.";
+        // Si la actividad resultará activa, validamos que no supere el 100%
+        if (actividad.isEstado() && (sumaActual + actividad.getPorcentaje()) > 100.0001) {
+            return String.format("La suma de los porcentajes de las actividades no puede superar el 100%%. Espacio disponible: %.2f%%", 
+                    (100.0 - sumaActual));
         }
 
         boolean resultado = actividadDAO.actualizar(actividad);
@@ -165,6 +161,16 @@ public class ActividadService {
         if (actividad == null) {
             return "La actividad no existe.";
         }
+
+        // --- VALIDACIÓN AL REACTIVAR (PASAR DE ESTADO 0 A 1) ---
+        if (estado && !actividad.isEstado()) {
+            double sumaActual = actividadDAO.obtenerSumaPorcentajes(actividad.getIdAsignacion());
+            if ((sumaActual + actividad.getPorcentaje()) > 100.0001) {
+                return String.format("No se puede activar la actividad. Superaría el 100%%. Suma actual: %.2f%%, Intentando activar: %.2f%%", 
+                        sumaActual, actividad.getPorcentaje());
+            }
+        }
+
         boolean resultado = actividadDAO.cambiarEstado(idActividad, estado);
         if (resultado) {
             return "Estado de la actividad actualizado correctamente.";

@@ -11,17 +11,19 @@ package modelo;
 public class Curriculo {
     private int idCurriculo;
     private int idGrado;
-    private int idAñoLectivo;
+    private int idCurso;
+    private int idAnioLectivo;
     private String descripcion; 
     private boolean estado; 
     
     public Curriculo(){
     }
 
-    public Curriculo(int idCurriculo, int idGrado, int idAñoLectivo, String descripcion, boolean estado) {
+    public Curriculo(int idCurriculo, int idGrado, int idCurso, int idAnioLectivo, String descripcion, boolean estado) {
         this.idCurriculo = idCurriculo;
         this.idGrado = idGrado;
-        this.idAñoLectivo = idAñoLectivo;
+        this.idCurso = idCurso;
+        this.idAnioLectivo = idAnioLectivo;
         this.descripcion = descripcion;
         this.estado = estado;
     }
@@ -42,12 +44,20 @@ public class Curriculo {
         this.idGrado = idGrado;
     }
 
-    public int getIdAñoLectivo() {
-        return idAñoLectivo;
+    public int getIdCurso() {
+        return idCurso;
     }
 
-    public void setIdAñoLectivo(int idAñoLectivo) {
-        this.idAñoLectivo = idAñoLectivo;
+    public void setIdCurso(int idCurso) {
+        this.idCurso = idCurso;
+    }
+
+    public int getIdAnioLectivo() {
+        return idAnioLectivo;
+    }
+
+    public void setIdAnioLectivo(int idAnioLectivo) {
+        this.idAnioLectivo = idAnioLectivo;
     }
 
     public String getDescripcion() {
@@ -65,5 +75,7 @@ public class Curriculo {
     public void setEstado(boolean estado) {
         this.estado = estado;
     }
+    
+    
     
 }

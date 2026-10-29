@@ -20,7 +20,6 @@ import modelo.iteracion4.Pago;
  * @author fernan
  */
 public class PagoDAO {
-    
     public static final int OBLIGACION_NO_ENCONTRADA = -1;
     public static final int OBLIGACION_NO_PAGABLE = -2;
     public static final int ERROR = -3;
@@ -35,8 +34,14 @@ public class PagoDAO {
 
         String sqlPago = """
                 INSERT INTO pago
-                (id_obligacion, id_usuario, concepto, monto, fecha_pago)
-                VALUES (?, ?, ?, ?, ?)
+                (id_obligacion, id_usuario, concepto, monto, fecha_pago, estado)
+                VALUES (?, ?, ?, ?, ?, 'REGISTRADO')
+                """;
+
+        String sqlComprobante = """
+                INSERT INTO comprobante_pago
+                (id_pago, numero_comprobante, fecha_emision, tipo)
+                VALUES (?, ?, ?, 'RECIBO')
                 """;
 
         String sqlActualizar = """
@@ -55,41 +60,34 @@ public class PagoDAO {
                 String estado;
                 BigDecimal monto;
 
-                // Buscar la obligación
+                // 1. Buscar la obligación y bloquear fila
                 try (PreparedStatement ps = connection.prepareStatement(sqlObligacion)) {
-
                     ps.setInt(1, pago.getIdObligacion());
-
                     try (ResultSet rs = ps.executeQuery()) {
-
                         if (!rs.next()) {
                             connection.rollback();
                             return OBLIGACION_NO_ENCONTRADA;
                         }
-
                         concepto = rs.getString("concepto");
                         monto = rs.getBigDecimal("monto");
                         estado = rs.getString("estado");
                     }
                 }
 
-                // Verificar si la obligación se puede pagar
+                // 2. Validar que la obligación sea pagable
                 if (!"PENDIENTE".equals(estado) && !"VENCIDA".equals(estado)) {
-
                     connection.rollback();
                     return OBLIGACION_NO_PAGABLE;
                 }
 
-                // Obtener la fecha del pago
                 Timestamp fechaPago = pago.getFechaPago();
-
                 if (fechaPago == null) {
                     fechaPago = new Timestamp(System.currentTimeMillis());
                 }
 
                 int idPago;
 
-                // Registrar el pago
+                // 3. Registrar el Pago
                 try (PreparedStatement ps = connection.prepareStatement(
                         sqlPago, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
@@ -102,7 +100,6 @@ public class PagoDAO {
                     ps.executeUpdate();
 
                     try (ResultSet rs = ps.getGeneratedKeys()) {
-
                         if (rs.next()) {
                             idPago = rs.getInt(1);
                         } else {
@@ -112,23 +109,30 @@ public class PagoDAO {
                     }
                 }
 
-                // Actualizar el estado de la obligación
+                // 4. Insertar automáticante el Comprobante de Pago
+                int año = fechaPago.toLocalDateTime().getYear();
+                String numeroComprobante = "REC-" + año + "-" + String.format("%04d", idPago);
+
+                try (PreparedStatement psComp = connection.prepareStatement(sqlComprobante)) {
+                    psComp.setInt(1, idPago);
+                    psComp.setString(2, numeroComprobante);
+                    psComp.setTimestamp(3, fechaPago);
+                    psComp.executeUpdate();
+                }
+
+                // 5. Actualizar el estado de la obligación
                 try (PreparedStatement ps = connection.prepareStatement(sqlActualizar)) {
-
                     ps.setInt(1, pago.getIdObligacion());
-
                     int filas = ps.executeUpdate();
-
                     if (filas != 1) {
                         connection.rollback();
                         return ERROR;
                     }
                 }
 
-                // Confirmar la transacción
+                // Confirmar transacción atómica completa
                 connection.commit();
 
-                // Actualizar el objeto recibido
                 pago.setIdPago(idPago);
                 pago.setConcepto(concepto);
                 pago.setMonto(monto.doubleValue());
@@ -138,18 +142,13 @@ public class PagoDAO {
                 return idPago;
 
             } catch (SQLException e) {
-
                 connection.rollback();
-
-                System.out.println("Error al registrar pago: " + e.getMessage());
-
+                System.out.println("Error al registrar pago y comprobante: " + e.getMessage());
                 return ERROR;
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error de conexión al registrar pago: " + e.getMessage());
-
+            System.out.println("Error de conexión: " + e.getMessage());
             return ERROR;
         }
     }

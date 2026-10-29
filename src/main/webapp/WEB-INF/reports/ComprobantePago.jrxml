@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="ComprobantePago"
+              pageWidth="595" pageHeight="421" orientation="Landscape" columnWidth="555"
+              leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
+              uuid="9aaaac3e-e226-426b-a55e-b51d7559ceb9">
+
+    <!-- Parámetros enviados desde el HashMap de Java -->
+    <parameter name="NUMERO_COMPROBANTE" class="java.lang.String"/>
+    <parameter name="FECHA_EMISION" class="java.lang.String"/>
+    <parameter name="ESTUDIANTE_NOMBRE" class="java.lang.String"/>
+    <parameter name="CODIGO_ESTUDIANTE" class="java.lang.String"/>
+    <parameter name="CONCEPTO" class="java.lang.String"/>
+    <parameter name="DESCRIPCION" class="java.lang.String"/>
+    <parameter name="MONTO" class="java.lang.Double"/>
+    <parameter name="SECRETARIA_NOMBRE" class="java.lang.String"/>
+
+    <queryString><![CDATA[]]></queryString>
+
+    <title>
+        <band height="80" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="350" height="25" uuid="5d41fb76-c7f3-448f-93e4-9c5f469722d2"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="14" isBold="true"/>
+                </textElement>
+                <text><![CDATA[CENTRO EDUCATIVO SISTEMA ESCOLAR]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="25" width="350" height="15" uuid="b135db53-0c1f-4041-8bdb-cc3cdab944ee"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Comprobante Oficial de Pago - Recibo]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="370" y="0" width="185" height="15" uuid="76e4d47a-d6e2-43eb-a4a1-4ddf27bf3a62"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[NO. COMPROBANTE:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="370" y="15" width="185" height="20" forecolor="#006600" uuid="27672526-d529-4b25-8ff5-e800f97abbcf"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="12" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{NUMERO_COMPROBANTE}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="70" width="555" height="1" uuid="419dbfbe-b2cf-4324-ac18-8a888f7936cf"/>
+            </line>
+        </band>
+    </title>
+
+    <detail>
+        <band height="189" splitType="Stretch">
+            <!-- Datos del Alumno y Fecha -->
+            <staticText>
+                <reportElement x="0" y="10" width="120" height="15" uuid="e4306309-fe30-460f-8036-2f41b45931a9"/>
+                <textElement verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Código Estudiante:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="120" y="10" width="150" height="15" uuid="36b25569-4ad2-45b3-8b9f-6bd7ffb2f530"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{CODIGO_ESTUDIANTE}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="280" y="10" width="100" height="15" uuid="de516833-819e-405a-8784-90dc35f24dad"/>
+                <textElement verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Fecha de Emisión:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="380" y="10" width="175" height="15" uuid="5d47ef0f-88a5-4fde-a313-a87af6465214"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{FECHA_EMISION}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="30" width="120" height="15" uuid="79e1a94e-39c4-4827-b4b2-ee00c4b178c4"/>
+                <textElement verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Nombre Estudiante:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="120" y="30" width="435" height="15" uuid="ddeddba3-eb58-457a-bc77-cdbd09de6523"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{ESTUDIANTE_NOMBRE}]]></textFieldExpression>
+            </textField>
+
+            <!-- Encabezado de Tabla -->
+            <rectangle>
+                <reportElement x="0" y="60" width="555" height="20" backcolor="#EFEFEF" uuid="5f45eff1-74aa-485d-95bd-3611eaf6ea88"/>
+            </rectangle>
+            <staticText>
+                <reportElement x="10" y="62" width="150" height="15" uuid="4dc6c708-113d-4793-8039-49fc6f272b02"/>
+                <textElement verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Concepto]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="170" y="62" width="250" height="15" uuid="c37090e7-3d9d-4d00-9221-bef69969936f"/>
+                <textElement verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Descripción]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="430" y="62" width="115" height="15" uuid="ad77ed87-3644-4667-b272-4c8ea8803439"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Monto]]></text>
+            </staticText>
+
+            <!-- Detalle -->
+            <textField>
+                <reportElement x="10" y="85" width="150" height="15" uuid="b8e45e33-e046-4abf-b56a-c569867aea1a"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{CONCEPTO}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="170" y="85" width="250" height="15" uuid="ccd863e0-a638-46af-9f11-3c7ce305edc4"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{DESCRIPCION}]]></textFieldExpression>
+            </textField>
+            <textField pattern="Q #,##0.00">
+                <reportElement x="430" y="85" width="115" height="15" uuid="174555c6-9d26-4a09-b677-312a6742fbcd"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <textFieldExpression><![CDATA[$P{MONTO}]]></textFieldExpression>
+            </textField>
+
+            <line>
+                <reportElement x="0" y="110" width="555" height="1" uuid="bbb276f5-0ea9-4bee-84ec-d1499234b2a4"/>
+            </line>
+
+            <!-- Totales -->
+            <staticText>
+                <reportElement x="330" y="115" width="100" height="20" uuid="1cff3afc-14f0-4a5a-bad9-111b61788ba4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="11" isBold="true"/></textElement>
+                <text><![CDATA[TOTAL:]]></text>
+            </staticText>
+            <textField pattern="Q #,##0.00">
+                <reportElement x="430" y="115" width="115" height="20" forecolor="#006600" uuid="325a51c3-d16c-4d1a-bbdc-b9b320acb423"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="11" isBold="true"/></textElement>
+                <textFieldExpression><![CDATA[$P{MONTO}]]></textFieldExpression>
+            </textField>
+
+            <!-- Firma -->
+            <line>
+                <reportElement x="180" y="160" width="200" height="1" uuid="e3587294-99eb-4152-80d8-f8ab3bd4d759"/>
+            </line>
+            <staticText>
+                <reportElement x="180" y="162" width="200" height="15" uuid="c71f52a6-0537-460e-b390-af5097945475"/>
+                <textElement textAlignment="Center"><font size="8" isItalic="true"/></textElement>
+                <text><![CDATA[Firma y Sello Secretaría]]></text>
+            </staticText>
+        </band>
+    </detail>
+</jasperReport>

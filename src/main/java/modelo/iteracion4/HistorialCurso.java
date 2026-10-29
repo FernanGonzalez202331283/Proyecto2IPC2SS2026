@@ -15,7 +15,7 @@ public class HistorialCurso {
     private String nombreCurso;
     private int idAsignacion;
     private int idInscripcion; 
-    private int añoLectivo;
+    private int anioLectivo;
     private String grado;
     private String seccion;
     private double promedio;
@@ -57,12 +57,12 @@ public class HistorialCurso {
         this.idInscripcion = idInscripcion;
     }
 
-    public int getAñoLectivo() {
-        return añoLectivo;
+    public int getAnioLectivo() {
+        return anioLectivo;
     }
 
-    public void setAñoLectivo(int añoLectivo) {
-        this.añoLectivo = añoLectivo;
+    public void setAnioLectivo(int añoLectivo) {
+        this.anioLectivo = añoLectivo;
     }
 
     public String getGrado() {

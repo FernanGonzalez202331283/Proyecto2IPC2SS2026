@@ -8,6 +8,7 @@ import Dao.iteracion4.PagoDAO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -16,6 +17,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import modelo.Usuario;
 import modelo.iteracion4.Pago;
+import seguridad.JwtService;
 import servicio.iteracion4.PagoService;
 
 /**
@@ -28,69 +30,78 @@ import servicio.iteracion4.PagoService;
 public class PagoResource {
     
     private final PagoService pagoService = new PagoService();
-
-    @Context
-    private HttpServletRequest request;
+    private final JwtService jwtService = new JwtService(); // 1. Instanciamos el servicio JWT
 
     @POST
-    public Response registrar(Pago pago) {
+    public Response registrar(
+            @HeaderParam("Authorization") String authHeader, // 2. Recibimos el token en el Header
+            Pago pago) {
 
-        // 1. Verificar sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
+        // 3. Validar el token JWT en lugar de usar HttpSession
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
                     .build();
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        String token = authHeader.substring(7);
+        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
 
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Token inválido o expirado."))
                     .build();
         }
 
-        // 2. Registrar mediante el Service
+        // 4. Registrar mediante el Service con los datos del usuario extraídos del token
         int resultado = pagoService.registrar(
                 pago,
                 usuario.getIdUsuario(),
                 usuario.getRol()
         );
 
-        // 3. Interpretar el resultado
+        // 5. Interpretar el resultado
         if (resultado == PagoService.DATOS_INVALIDOS) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Los datos proporcionados no son válidos.")
+                    .entity(jsonMensaje("Los datos proporcionados no son válidos."))
                     .build();
         }
 
         if (resultado == PagoService.SIN_PERMISO) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Solo una SECRETARIA puede registrar pagos.")
+                    .entity(jsonMensaje("Solo una SECRETARIA puede registrar pagos."))
                     .build();
         }
 
         if (resultado == PagoDAO.OBLIGACION_NO_ENCONTRADA) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontró la obligación de pago.")
+                    .entity(jsonMensaje("No se encontró la obligación de pago."))
                     .build();
         }
 
         if (resultado == PagoDAO.OBLIGACION_NO_PAGABLE) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity("La obligación ya fue pagada o no puede pagarse.")
+                    .entity(jsonMensaje("La obligación ya fue pagada o no puede pagarse."))
                     .build();
         }
 
         if (resultado == PagoDAO.ERROR) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Ocurrió un error al registrar el pago.")
+                    .entity(jsonMensaje("Ocurrió un error al registrar el pago."))
                     .build();
         }
+        
         return Response.status(Response.Status.CREATED)
                 .entity(pago)
                 .build();
+    }
+    
+    // Método auxiliar para mantener el estándar de respuestas JSON de tus otros resources
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

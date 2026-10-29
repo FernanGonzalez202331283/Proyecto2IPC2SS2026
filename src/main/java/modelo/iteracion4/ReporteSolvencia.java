@@ -4,18 +4,14 @@
  */
 package modelo.iteracion4;
 
-/**
- *
- * @author fernan
- */
 public class ReporteSolvencia {
     private int idEstudiante;
     private String codigoEstudiante;
     private String nombres;
     private String apellidos;
     
-    private int idAñoLectivo;
-    private int añoLectivo;
+    private int idAnioLectivo;
+    private int anioLectivo;
     
     private String grado; 
     private String seccion; 
@@ -25,106 +21,48 @@ public class ReporteSolvencia {
     private double saldoPendiente;
     
     private String estadoSolvencia;
-    
-    public ReporteSolvencia(){
-        
-    }
 
-    public int getIdEstudiante() {
-        return idEstudiante;
-    }
+    public ReporteSolvencia() {}
 
-    public void setIdEstudiante(int idEstudiante) {
-        this.idEstudiante = idEstudiante;
-    }
+    public int getIdEstudiante() { return idEstudiante; }
+    public void setIdEstudiante(int idEstudiante) { this.idEstudiante = idEstudiante; }
 
-    public String getCodigoEstudiante() {
-        return codigoEstudiante;
-    }
+    public String getCodigoEstudiante() { return codigoEstudiante; }
+    public void setCodigoEstudiante(String codigoEstudiante) { this.codigoEstudiante = codigoEstudiante; }
 
-    public void setCodigoEstudiante(String codigoEstudiante) {
-        this.codigoEstudiante = codigoEstudiante;
-    }
+    public String getNombres() { return nombres; }
+    public void setNombres(String nombres) { this.nombres = nombres; }
 
-    public String getNombres() {
-        return nombres;
-    }
+    public String getApellidos() { return apellidos; }
+    public void setApellidos(String apellidos) { this.apellidos = apellidos; }
 
-    public void setNombres(String nombres) {
-        this.nombres = nombres;
-    }
+    public int getIdAnioLectivo() { return idAnioLectivo; }
+    public void setIdAnioLectivo(int idAnioLectivo) { this.idAnioLectivo = idAnioLectivo; }
 
-    public String getApellidos() {
-        return apellidos;
-    }
+    public int getAnioLectivo() { return anioLectivo; }
+    public void setAnioLectivo(int anioLectivo) { this.anioLectivo = anioLectivo; }
 
-    public void setApellidos(String apellidos) {
-        this.apellidos = apellidos;
-    }
+    // Compatibilidad para evitar NoSuchMethodError con código legado
+    public int getIdAñoLectivo() { return idAnioLectivo; }
+    public void setIdAñoLectivo(int idAñoLectivo) { this.idAnioLectivo = idAñoLectivo; }
+    public int getAñoLectivo() { return anioLectivo; }
+    public void setAñoLectivo(int añoLectivo) { this.anioLectivo = añoLectivo; }
 
-    public int getIdAñoLectivo() {
-        return idAñoLectivo;
-    }
+    public String getGrado() { return grado; }
+    public void setGrado(String grado) { this.grado = grado; }
 
-    public void setIdAñoLectivo(int idAñoLectivo) {
-        this.idAñoLectivo = idAñoLectivo;
-    }
+    public String getSeccion() { return seccion; }
+    public void setSeccion(String seccion) { this.seccion = seccion; }
 
-    public int getAñoLectivo() {
-        return añoLectivo;
-    }
+    public int getTotalObligaciones() { return totalObligaciones; }
+    public void setTotalObligaciones(int totalObligaciones) { this.totalObligaciones = totalObligaciones; }
 
-    public void setAñoLectivo(int añoLectivo) {
-        this.añoLectivo = añoLectivo;
-    }
+    public double getTotalPagado() { return totalPagado; }
+    public void setTotalPagado(double totalPagado) { this.totalPagado = totalPagado; }
 
-    public String getGrado() {
-        return grado;
-    }
+    public double getSaldoPendiente() { return saldoPendiente; }
+    public void setSaldoPendiente(double saldoPendiente) { this.saldoPendiente = saldoPendiente; }
 
-    public void setGrado(String grado) {
-        this.grado = grado;
-    }
-
-    public String getSeccion() {
-        return seccion;
-    }
-
-    public void setSeccion(String seccion) {
-        this.seccion = seccion;
-    }
-
-    public int getTotalObligaciones() {
-        return totalObligaciones;
-    }
-
-    public void setTotalObligaciones(int totalObligaciones) {
-        this.totalObligaciones = totalObligaciones;
-    }
-
-    public double getTotalPagado() {
-        return totalPagado;
-    }
-
-    public void setTotalPagado(double totalPagado) {
-        this.totalPagado = totalPagado;
-    }
-
-    public double getSaldoPendiente() {
-        return saldoPendiente;
-    }
-
-    public void setSaldoPendiente(double saldoPendiente) {
-        this.saldoPendiente = saldoPendiente;
-    }
-
-    public String getEstadoSolvencia() {
-        return estadoSolvencia;
-    }
-
-    public void setEstadoSolvencia(String estadoSolvencia) {
-        this.estadoSolvencia = estadoSolvencia;
-    }
-    
-    
+    public String getEstadoSolvencia() { return estadoSolvencia; }
+    public void setEstadoSolvencia(String estadoSolvencia) { this.estadoSolvencia = estadoSolvencia; }
 }

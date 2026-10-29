@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
@@ -20,7 +21,7 @@ import servicio.iteracion4.PerfilService;
  *
  * @author fernan
  */
-@Path("/perfil")
+@Path("perfil")
 @Produces(MediaType.APPLICATION_JSON)
 public class PerfilResource {
     
@@ -30,36 +31,51 @@ public class PerfilResource {
         this.perfilService = new PerfilService();
     }
 
+    // Consulta perfil por ID explícito (ideal para Angular cuando lee el ID desde el Token JWT)
     @GET
-    public Response consultarPerfil(@Context HttpServletRequest request) {
-
-        // Obtener la sesión existente
-        HttpSession sesion = request.getSession(false);
-
-        // Verificar que exista una sesión
-        if (sesion == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión para consultar su perfil.")
+    @Path("/usuario/{idUsuario}")
+    public Response obtenerPerfilPorId(@PathParam("idUsuario") int idUsuario) {
+        if (idUsuario <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("{\"mensaje\": \"El ID de usuario debe ser mayor que cero.\"}")
                     .build();
         }
 
-        // Obtener el usuario guardado en la sesión
-        Usuario usuario = (Usuario) sesion.getAttribute("usuario");
+        Perfil perfil = perfilService.obtenerPerfil(idUsuario);
 
-        // Verificar que exista un usuario autenticado
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("No hay un usuario autenticado.")
-                    .build();
-        }
-
-        // Obtener el perfil del usuario
-        Perfil perfil = perfilService.obtenerPerfil(usuario.getIdUsuario());
-
-        // Verificar si se encontró el perfil
         if (perfil == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontró el perfil del usuario.")
+                    .entity("{\"mensaje\": \"No se encontró el perfil del usuario especificado.\"}")
+                    .build();
+        }
+
+        return Response.ok(perfil).build();
+    }
+
+    // Consulta perfil basado en la Sesión HttpSession (mantiene tu compatibilidad previa)
+    @GET
+    public Response consultarPerfilSesion(@Context HttpServletRequest request) {
+        HttpSession sesion = request.getSession(false);
+
+        if (sesion == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity("{\"mensaje\": \"Debe iniciar sesión para consultar su perfil.\"}")
+                    .build();
+        }
+
+        Usuario usuario = (Usuario) sesion.getAttribute("usuario");
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity("{\"mensaje\": \"No hay un usuario autenticado en sesión.\"}")
+                    .build();
+        }
+
+        Perfil perfil = perfilService.obtenerPerfil(usuario.getIdUsuario());
+
+        if (perfil == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("{\"mensaje\": \"No se encontró el perfil del usuario.\"}")
                     .build();
         }
 

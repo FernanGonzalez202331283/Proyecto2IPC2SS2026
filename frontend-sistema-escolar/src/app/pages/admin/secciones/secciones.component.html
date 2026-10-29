@@ -1,0 +1,173 @@
+<div class="container my-4">
+  
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill me-2"></i>CU009: Gestión de Secciones</h3>
+    </div>
+    <a routerLink="/admin/dashboard" class="btn btn-light btn-sm text-primary fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alertas de Éxito / Error -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <div class="row g-4">
+
+    <!-- Formulario Integrado (5 columnas) -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white py-2">
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Sección' : 'Nueva Sección' }}</h6>
+        </div>
+        <div class="card-body p-3">
+          <form [formGroup]="seccionForm" (ngSubmit)="guardarSeccion()">
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Año Lectivo / Ciclo Escolar *</label>
+              <select formControlName="idAnioLectivo" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idAnioLectivo')">
+                <option [ngValue]="null" disabled>Seleccione ciclo escolar</option>
+                @for (a of anosLectivos; track a.idAnoLectivo) {
+                  <option [value]="a.idAnoLectivo">Ciclo {{ a.anio }}</option>
+                }
+              </select>
+              <div class="invalid-feedback small">Seleccione un año lectivo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Grado Perteneciente *</label>
+              <select formControlName="idGrado" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idGrado')">
+                <option [ngValue]="null" disabled>Seleccione un grado</option>
+                @for (g of grados; track g.idGrado) {
+                  <option [value]="g.idGrado">{{ g.nombre }} ({{ g.nivel }})</option>
+                }
+              </select>
+              <div class="invalid-feedback small">Seleccione un grado.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Nombre de la Sección *</label>
+              <input 
+                type="text" 
+                formControlName="nombre" 
+                class="form-control form-control-sm"
+                [class.is-invalid]="esCampoInvalido('nombre')"
+                placeholder="Ej. Sección A, Sección B, Única">
+              <div class="invalid-feedback small">El nombre es obligatorio.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Capacidad Máxima de Estudiantes *</label>
+              <input 
+                type="number" 
+                formControlName="capacidad" 
+                class="form-control form-control-sm"
+                [class.is-invalid]="esCampoInvalido('capacidad')"
+                placeholder="Ej. 30">
+              <div class="invalid-feedback small">Ingrese una capacidad mayor que 0.</div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-primary btn-sm fw-semibold" [disabled]="procesando">
+                {{ modoEdicion ? 'Actualizar Sección' : 'Registrar Sección' }}
+              </button>
+              @if (modoEdicion) {
+                <button type="button" (click)="cancelarEdicion()" class="btn btn-outline-secondary btn-sm" [disabled]="procesando">
+                  Cancelar
+                </button>
+              }
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Secciones (7 columnas) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-secondary">Secciones Registradas</h6>
+          <span class="badge bg-primary">Total: {{ secciones.length }}</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Grado</th>
+                  <th>Sección</th>
+                  <th>Ciclo</th>
+                  <th>Capacidad</th>
+                  <th>Estado</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cargando) {
+                  <tr>
+                    <td colspan="7" class="text-center py-3 text-muted">Cargando...</td>
+                  </tr>
+                } @else if (secciones.length === 0) {
+                  <tr>
+                    <td colspan="7" class="text-center py-3 text-muted">Sin secciones registradas.</td>
+                  </tr>
+                } @else {
+                  @for (s of secciones; track s.idSeccion || $index) {
+                    <tr>
+                      <td class="fw-bold">#{{ s.idSeccion }}</td>
+                      <td class="fw-semibold text-primary">{{ obtenerNombreGrado(s.idGrado) }}</td>
+                      <td class="fw-bold fs-6">{{ s.nombre }}</td>
+                      <td>
+                        <span class="badge bg-outline-dark border text-dark">
+                          {{ obtenerAnioLectivo(s.idAnioLectivo) }}
+                        </span>
+                      </td>
+                      <td><i class="bi bi-people me-1"></i>{{ s.capacidad }} est.</td>
+                      <td>
+                        <span class="badge" [class.bg-success]="s.estado" [class.bg-secondary]="!s.estado">
+                          {{ s.estado ? 'Activa' : 'Inactiva' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                          <button (click)="editarSeccion(s)" class="btn btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                          </button>
+                          <button 
+                            (click)="toggleEstado(s)" 
+                            class="btn" 
+                            [class.btn-outline-danger]="s.estado" 
+                            [class.btn-outline-success]="!s.estado"
+                            title="{{ s.estado ? 'Desactivar' : 'Activar' }}">
+                            <i class="bi" [class.bi-power]="s.estado" [class.bi-check-circle]="!s.estado"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

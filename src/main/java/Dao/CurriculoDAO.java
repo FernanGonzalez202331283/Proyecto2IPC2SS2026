@@ -12,141 +12,136 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import modelo.Curriculo;
 
-/**
- *
- * @author fernan
- */
 public class CurriculoDAO {
-    public boolean insertar(Curriculo curriculo){
-        String Sql = """
-                     INSERT INTO curriculo
-                     (id_grado, id_año_lectivo, descripcion, estado)
-                     VALUES(?,?,?,?)
+
+    public boolean insertar(Curriculo curriculo) {
+        String sql = """
+                     INSERT INTO curriculo 
+                     (id_grado, id_curso, id_anio_lectivo, descripcion, estado)
+                     VALUES (?, ?, ?, ?, ?)
                      """;
-        
-        try (Connection connection = Conexion.getInstance().getConnection(); 
-                PreparedStatement ps = connection.prepareStatement(Sql)){
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
             ps.setInt(1, curriculo.getIdGrado());
-            ps.setInt(2, curriculo.getIdAñoLectivo());
-            ps.setString(3, curriculo.getDescripcion());
-            ps.setBoolean(4, curriculo.isEstado());
-            
-            int filas = ps.executeUpdate();
-            
-            return filas > 0;
-            
+            ps.setInt(2, curriculo.getIdCurso());
+            ps.setInt(3, curriculo.getIdAnioLectivo());
+            ps.setString(4, curriculo.getDescripcion());
+            ps.setBoolean(5, curriculo.isEstado());
+
+            return ps.executeUpdate() > 0;
+
         } catch (SQLException e) {
-            System.out.println("Erro al insertar un curriculo: "+e.getMessage());
+            System.out.println("Error al insertar currículo: " + e.getMessage());
             return false;
         }
     }
-    
-    public Curriculo buscarPorId(int idCurriculo){
+
+    public Curriculo buscarPorId(int idCurriculo) {
         String sql = """
-                     SELECT id_curriculo,
-                            id_grado,
-                            id_año_lectivo,
-                            descripcion,
-                            estado
-                     FROM curriculo
+                     SELECT id_curriculo, id_grado, id_curso, id_anio_lectivo, descripcion, estado
+                     FROM curriculo 
                      WHERE id_curriculo = ?
                      """;
-       
+
         try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
             ps.setInt(1, idCurriculo);
-            
-            try(ResultSet rs = ps.executeQuery()) {
-                if(rs.next()){
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
                     Curriculo curriculo = new Curriculo();
                     curriculo.setIdCurriculo(rs.getInt("id_curriculo"));
                     curriculo.setIdGrado(rs.getInt("id_grado"));
-                    curriculo.setIdAñoLectivo(rs.getInt("id_año_lectivo"));
+                    curriculo.setIdCurso(rs.getInt("id_curso"));
+                    curriculo.setIdAnioLectivo(rs.getInt("id_anio_lectivo"));
                     curriculo.setDescripcion(rs.getString("descripcion"));
                     curriculo.setEstado(rs.getBoolean("estado"));
-                    
                     return curriculo;
                 }
-            } 
+            }
+
         } catch (SQLException e) {
-            System.out.println("Error al buscar curriculo: "+e.getMessage());
+            System.out.println("Error al buscar currículo por ID: " + e.getMessage());
         }
+
         return null;
     }
-    
-    public ArrayList<Curriculo> obtenerTodos(){
+
+    public ArrayList<Curriculo> obtenerTodos() {
         String sql = """
-                     SELECT id_curriculo,
-                            id_grado,
-                            id_año_lectivo,
-                            descripcion,
-                            estado
+                     SELECT id_curriculo, id_grado, id_curso, id_anio_lectivo, descripcion, estado
                      FROM curriculo
-                     ORDER BY id_curriculo
+                     ORDER BY id_anio_lectivo DESC, id_grado ASC
                      """;
-       
-        ArrayList<Curriculo> curriculos = new ArrayList<>();
+        ArrayList<Curriculo> lista = new ArrayList<>();
+
         try (Connection connection = Conexion.getInstance().getConnection();
-        PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()){
-            while(rs.next()){
-                Curriculo curriculo  = new Curriculo();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                Curriculo curriculo = new Curriculo();
                 curriculo.setIdCurriculo(rs.getInt("id_curriculo"));
                 curriculo.setIdGrado(rs.getInt("id_grado"));
-                curriculo.setIdAñoLectivo(rs.getInt("id_año_lectivo"));
+                curriculo.setIdCurso(rs.getInt("id_curso"));
+                curriculo.setIdAnioLectivo(rs.getInt("id_anio_lectivo"));
                 curriculo.setDescripcion(rs.getString("descripcion"));
                 curriculo.setEstado(rs.getBoolean("estado"));
-                
-                curriculos.add(curriculo);
+                lista.add(curriculo);
             }
-            
+
         } catch (SQLException e) {
-            System.out.println("Erro al obtener curriculos: "+e.getMessage());
+            System.out.println("Error al obtener currículos: " + e.getMessage());
         }
-        return curriculos;
+
+        return lista;
     }
-    
-    public boolean actualizar(Curriculo curriculo){
+
+    public boolean actualizar(Curriculo curriculo) {
         String sql = """
-                     UPDATE curriculo
-                     SET id_grado = ?,
-                         id_año_lectivo = ?,
-                         descripcion = ?
+                     UPDATE curriculo 
+                     SET id_grado = ?, id_curso = ?, id_anio_lectivo = ?, descripcion = ?
                      WHERE id_curriculo = ?
                      """;
-       
+
         try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
             ps.setInt(1, curriculo.getIdGrado());
-            ps.setInt(2, curriculo.getIdAñoLectivo());
-            ps.setString(3, curriculo.getDescripcion());
-            ps.setInt(4, curriculo.getIdCurriculo());
-            
-            int filas = ps.executeUpdate();
-            return filas > 0;
+            ps.setInt(2, curriculo.getIdCurso());
+            ps.setInt(3, curriculo.getIdAnioLectivo());
+            ps.setString(4, curriculo.getDescripcion());
+            ps.setInt(5, curriculo.getIdCurriculo());
+
+            return ps.executeUpdate() > 0;
+
         } catch (SQLException e) {
-            System.out.println("Erorr al actualizar el curriculo: "+e.getMessage());
+            System.out.println("Error al actualizar currículo: " + e.getMessage());
+            return false;
         }
-        return false;
     }
-    
-    public boolean actualizarEstado(int idCurriculo, boolean estado){
+
+    public boolean actualizarEstado(int idCurriculo, boolean estado) {
         String sql = """
-                     UPDATE curriculo
+                     UPDATE curriculo 
                      SET estado = ?
                      WHERE id_curriculo = ?
                      """;
+
         try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
-            
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
             ps.setBoolean(1, estado);
             ps.setInt(2, idCurriculo);
-            int filas = ps.executeUpdate(); 
-            return filas > 0;
+
+            return ps.executeUpdate() > 0;
+
         } catch (SQLException e) {
-            System.out.println("Error al actualizar el estado: "+e.getMessage());
+            System.out.println("Error al actualizar estado del currículo: " + e.getMessage());
+            return false;
         }
-        return false;
     }
-    
 }

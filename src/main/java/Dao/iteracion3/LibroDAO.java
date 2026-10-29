@@ -151,6 +151,42 @@ public class LibroDAO {
         return libros;
     }
     
+    
+    public boolean existeLibroPorTituloYAutor(String titulo, String autor, Integer idLibroExcluir) {
+        String sql = """
+                     SELECT COUNT(*) 
+                     FROM libro 
+                     WHERE LOWER(TRIM(titulo)) = LOWER(TRIM(?)) 
+                       AND LOWER(TRIM(autor)) = LOWER(TRIM(?))
+                     """;
+
+        if (idLibroExcluir != null) {
+            sql += " AND id_libro <> ?";
+        }
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, titulo);
+            ps.setString(2, autor);
+
+            if (idLibroExcluir != null) {
+                ps.setInt(3, idLibroExcluir);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al validar duplicado de libro: " + e.getMessage());
+        }
+
+        return false;
+    }
+    
     private Libro mapearLibro(ResultSet rs)throws SQLException{
         Libro libro = new Libro();
         

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Dao.iteracion3;
 
 import Conexion.Conexion;
@@ -18,7 +14,7 @@ import modelo.iteracion3.Prestamo;
  * @author fernan
  */
 public class PrestamoDAO {
-    
+
     // Registrar un préstamo
     public boolean registrar(Prestamo prestamo) {
 
@@ -44,9 +40,7 @@ public class PrestamoDAO {
             connection.setAutoCommit(false);
 
             try (PreparedStatement psLibro = connection.prepareStatement(sqlLibro)) {
-
                 psLibro.setInt(1, prestamo.getIdLibro());
-
                 int filasLibro = psLibro.executeUpdate();
 
                 if (filasLibro == 0) {
@@ -56,7 +50,6 @@ public class PrestamoDAO {
             }
 
             try (PreparedStatement psPrestamo = connection.prepareStatement(sqlPrestamo)) {
-
                 psPrestamo.setInt(1, prestamo.getIdLibro());
                 psPrestamo.setInt(2, prestamo.getIdPersona());
                 psPrestamo.setDate(3, Date.valueOf(prestamo.getFechaPrestamo()));
@@ -74,7 +67,6 @@ public class PrestamoDAO {
             return true;
 
         } catch (SQLException | IllegalArgumentException e) {
-
             if (connection != null) {
                 try {
                     connection.rollback();
@@ -82,12 +74,10 @@ public class PrestamoDAO {
                     System.out.println("Error al cancelar préstamo: " + ex.getMessage());
                 }
             }
-
             System.out.println("Error al registrar préstamo: " + e.getMessage());
             return false;
 
         } finally {
-
             if (connection != null) {
                 try {
                     connection.setAutoCommit(true);
@@ -101,13 +91,8 @@ public class PrestamoDAO {
 
     // Obtener todos los préstamos
     public ArrayList<Prestamo> obtenerTodos() {
-
         ArrayList<Prestamo> prestamos = new ArrayList<>();
-
-        String sql = """
-            SELECT * FROM prestamo
-            ORDER BY id_prestamo
-            """;
+        String sql = "SELECT * FROM prestamo ORDER BY id_prestamo";
 
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql);
@@ -125,11 +110,7 @@ public class PrestamoDAO {
     }
 
     public Prestamo buscarPorId(int idPrestamo) {
-
-        String sql = """
-            SELECT * FROM prestamo
-            WHERE id_prestamo = ?
-            """;
+        String sql = "SELECT * FROM prestamo WHERE id_prestamo = ?";
 
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -137,7 +118,6 @@ public class PrestamoDAO {
             ps.setInt(1, idPrestamo);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 if (rs.next()) {
                     return mapearPrestamo(rs);
                 }
@@ -151,14 +131,8 @@ public class PrestamoDAO {
     }
 
     public ArrayList<Prestamo> obtenerPorPersona(int idPersona) {
-
         ArrayList<Prestamo> prestamos = new ArrayList<>();
-
-        String sql = """
-            SELECT * FROM prestamo
-            WHERE id_persona = ?
-            ORDER BY id_prestamo
-            """;
+        String sql = "SELECT * FROM prestamo WHERE id_persona = ? ORDER BY id_prestamo";
 
         try (Connection connection = Conexion.getInstance().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -166,7 +140,6 @@ public class PrestamoDAO {
             ps.setInt(1, idPersona);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 while (rs.next()) {
                     prestamos.add(mapearPrestamo(rs));
                 }
@@ -178,24 +151,20 @@ public class PrestamoDAO {
 
         return prestamos;
     }
+
     // Verificar si la persona es un estudiante o empleado activo
     public boolean personaActiva(int idPersona) {
-
         String sql = """
             SELECT
                 (
                     EXISTS (
-                        SELECT 1
-                        FROM estudiante
-                        WHERE id_persona = ?
-                        AND estado = 'ACTIVO'
+                        SELECT 1 FROM estudiante
+                        WHERE id_persona = ? AND estado = 'ACTIVO'
                     )
                     OR
                     EXISTS (
-                        SELECT 1
-                        FROM empleado
-                        WHERE id_persona = ?
-                        AND estado = 1
+                        SELECT 1 FROM empleado
+                        WHERE id_persona = ? AND estado = 1
                     )
                 ) AS activa
             """;
@@ -218,8 +187,8 @@ public class PrestamoDAO {
 
         return false;
     }
-    
-      // Registrar devolución de un libro y generar multa si existe atraso
+
+    // Registrar devolución de un libro y generar multa si existe atraso
     public boolean registrarDevolucion(int idPrestamo) {
 
         String sqlBuscar = """
@@ -234,38 +203,35 @@ public class PrestamoDAO {
             SET estado = 'DEVUELTO',
                 fecha_devolucion_real = CURDATE()
             WHERE id_prestamo = ?
-            AND estado = 'PRESTADO'
+            AND estado IN ('PRESTADO', 'VENCIDO')
             """;
 
         String sqlLibro = """
             UPDATE libro
             SET cantidad_disponible = cantidad_disponible + 1
             WHERE id_libro = ?
-            AND cantidad_disponible < cantidad_total
             """;
 
         Connection connection = null;
 
         try {
-
             connection = Conexion.getInstance().getConnection();
             connection.setAutoCommit(false);
 
             int idLibro;
 
-            // Buscar préstamo y bloquear el registro
+            // 1. Buscar el préstamo
             try (PreparedStatement ps = connection.prepareStatement(sqlBuscar)) {
-
                 ps.setInt(1, idPrestamo);
 
                 try (ResultSet rs = ps.executeQuery()) {
-
                     if (!rs.next()) {
                         connection.rollback();
                         return false;
                     }
 
-                    if (!rs.getString("estado").equals("PRESTADO")) {
+                    String estado = rs.getString("estado");
+                    if (!"PRESTADO".equals(estado) && !"VENCIDO".equals(estado)) {
                         connection.rollback();
                         return false;
                     }
@@ -274,40 +240,29 @@ public class PrestamoDAO {
                 }
             }
 
-            // Actualizar estado del préstamo
+            // 2. Actualizar estado del préstamo a DEVUELTO
             try (PreparedStatement ps = connection.prepareStatement(sqlPrestamo)) {
-
                 ps.setInt(1, idPrestamo);
-
                 if (ps.executeUpdate() == 0) {
                     connection.rollback();
                     return false;
                 }
             }
 
-            // Aumentar cantidad disponible del libro
+            // 3. Aumentar stock del libro (+1)
             try (PreparedStatement ps = connection.prepareStatement(sqlLibro)) {
-
                 ps.setInt(1, idLibro);
-
-                if (ps.executeUpdate() == 0) {
-                    connection.rollback();
-                    return false;
-                }
+                ps.executeUpdate();
             }
 
-            // Registrar multa si existe atraso
+            // 4. Registrar multa automáticamente si aplica mora
             MultaDAO multaDAO = new MultaDAO();
-
             multaDAO.registrar(connection, idPrestamo);
 
-            // Confirmar todas las operaciones
             connection.commit();
-
             return true;
 
         } catch (SQLException e) {
-
             if (connection != null) {
                 try {
                     connection.rollback();
@@ -315,13 +270,10 @@ public class PrestamoDAO {
                     System.out.println("Error al cancelar devolución: " + ex.getMessage());
                 }
             }
-
             System.out.println("Error al registrar devolución: " + e.getMessage());
-
             return false;
 
         } finally {
-
             if (connection != null) {
                 try {
                     connection.setAutoCommit(true);
@@ -334,23 +286,16 @@ public class PrestamoDAO {
     }
 
     private Prestamo mapearPrestamo(ResultSet rs) throws SQLException {
-
         Prestamo prestamo = new Prestamo();
 
         prestamo.setIdPrestamo(rs.getInt("id_prestamo"));
         prestamo.setIdLibro(rs.getInt("id_libro"));
         prestamo.setIdPersona(rs.getInt("id_persona"));
 
-        prestamo.setFechaPrestamo(
-                rs.getDate("fecha_prestamo").toString()
-        );
-
-        prestamo.setFechaDevolucionEsperada(
-                rs.getDate("fecha_devolucion_esperada").toString()
-        );
+        prestamo.setFechaPrestamo(rs.getDate("fecha_prestamo").toString());
+        prestamo.setFechaDevolucionEsperada(rs.getDate("fecha_devolucion_esperada").toString());
 
         Date fechaReal = rs.getDate("fecha_devolucion_real");
-
         if (fechaReal != null) {
             prestamo.setFechaDevolucionReal(fechaReal.toString());
         } else {
@@ -358,8 +303,6 @@ public class PrestamoDAO {
         }
 
         prestamo.setEstado(rs.getString("estado"));
-
         return prestamo;
     }
-    
 }

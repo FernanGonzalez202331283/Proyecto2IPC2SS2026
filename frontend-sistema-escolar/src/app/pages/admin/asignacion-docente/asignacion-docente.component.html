@@ -1,0 +1,174 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-journal-plus me-2 text-warning"></i>CU0017: Asignación de Maestro a Curso</h3>
+      <small class="text-white-50">Vinculación de docentes con asignaturas y secciones académicas</small>
+    </div>
+    <button type="button" (click)="volverDashboard()" class="btn btn-outline-light btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <div class="row g-4">
+
+    <!-- Formulario de Asignación (5 Columnas) -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-secondary text-white py-2">
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Asignación Docente' : 'Nueva Asignación Docente' }}</h6>
+        </div>
+        <div class="card-body p-3">
+          <form [formGroup]="asignacionForm" (ngSubmit)="guardarAsignacion()">
+
+            <!-- Seleccionar Maestro -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Seleccionar Maestro / Docente *</label>
+              <select formControlName="idEmpleado" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idEmpleado')">
+                <option [ngValue]="null" disabled>--- Seleccione un docente ---</option>
+                @for (m of maestrosLista; track m.idEmpleado) {
+                  <option [ngValue]="m.idEmpleado">
+                    {{ m.persona?.nombres }} {{ m.persona?.apellidos }} ({{ m.puesto || 'Docente' }})
+                  </option>
+                }
+              </select>
+              <div class="invalid-feedback small">Debe seleccionar un docente.</div>
+            </div>
+
+            <!-- Seleccionar Curso -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Seleccionar Curso *</label>
+              <select formControlName="idCurso" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idCurso')">
+                <option [ngValue]="null" disabled>--- Seleccione un curso ---</option>
+                @for (c of cursosLista; track c.idCurso) {
+                  <option [ngValue]="c.idCurso">
+                    {{ c.nombre }}
+                  </option>
+                }
+              </select>
+              <div class="invalid-feedback small">Debe seleccionar un curso.</div>
+            </div>
+
+            <!-- Seleccionar Sección y Grado -->
+            <div class="mb-4">
+              <label class="form-label small fw-bold">Seleccionar Grado y Sección *</label>
+              <select formControlName="idSeccion" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idSeccion')">
+                <option [ngValue]="null" disabled>--- Seleccione la sección ---</option>
+                @for (s of seccionesLista; track s.idSeccion) {
+                  <option [ngValue]="s.idSeccion">
+                    {{ obtenerDetalleSeccion(s) }}
+                  </option>
+                }
+              </select>
+              <div class="invalid-feedback small">Debe seleccionar una sección.</div>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-dark btn-sm fw-semibold" [disabled]="procesando">
+                <i class="bi bi-save me-1"></i> {{ modoEdicion ? 'Actualizar Asignación' : 'Registrar Asignación' }}
+              </button>
+              @if (modoEdicion) {
+                <button type="button" (click)="cancelarEdicion()" class="btn btn-outline-secondary btn-sm" [disabled]="procesando">
+                  Cancelar
+                </button>
+              }
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Asignaciones (7 Columnas) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-secondary">Asignaciones Docentes Registradas</h6>
+          <span class="badge bg-dark">Total: {{ asignaciones.length }}</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-dark">
+                <tr>
+                  <th>No.</th>
+                  <th>Maestro</th>
+                  <th>Curso</th>
+                  <th>Grado y Sección</th>
+                  <th class="text-center">Estado</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cargando) {
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">Cargando asignaciones...</td>
+                  </tr>
+                } @else if (asignaciones.length === 0) {
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No existen asignaciones docentes registradas.</td>
+                  </tr>
+                } @else {
+                  @for (asig of asignaciones; track asig.idAsignacion || $index) {
+                    <tr>
+                      <td class="fw-bold text-secondary">#{{ asig.idAsignacion }}</td>
+                      <td class="fw-bold text-dark">
+                        {{ asig.empleado?.persona?.nombres }} {{ asig.empleado?.persona?.apellidos }}
+                      </td>
+                      <td>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                          {{ asig.curso?.nombre }}
+                        </span>
+                      </td>
+                      <td>
+                        {{ obtenerDetalleSeccion(asig.seccion) }}
+                      </td>
+                      <td class="text-center">
+                        <span class="badge rounded-pill px-2 py-1" [class.bg-success]="asig.estado" [class.bg-secondary]="!asig.estado">
+                          {{ asig.estado ? 'ACTIVO' : 'INACTIVO' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                          <button (click)="editarAsignacion(asig)" class="btn btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                          </button>
+                          
+                          <button (click)="cambiarEstadoAsignacion(asig, !asig.estado)" 
+                            class="btn btn-sm" 
+                            [class.btn-outline-danger]="asig.estado" 
+                            [class.btn-outline-success]="!asig.estado"
+                            [title]="asig.estado ? 'Desactivar' : 'Activar'">
+                            <i class="bi" [class.bi-check-circle-fill]="!asig.estado" [class.bi-dash-circle-fill]="asig.estado"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

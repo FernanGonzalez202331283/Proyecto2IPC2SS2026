@@ -16,8 +16,10 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
 import modelo.Usuario;
 import modelo.iteracion2.Empleado;
+import seguridad.JwtService;
 import seguridad.iteracion2.EmpleadoService;
 
 /**
@@ -29,178 +31,164 @@ import seguridad.iteracion2.EmpleadoService;
 @Consumes(MediaType.APPLICATION_JSON)
 public class EmpleadoResource {
 
-    private EmpleadoService empleadoService = new EmpleadoService();
+    private final EmpleadoService empleadoService;
+    private final JwtService jwtService = new JwtService();
 
-    @Context
-    private HttpServletRequest request;
-
-    // Registrar empleado
-    @POST
-    public Response registrar(Empleado empleado) {
-
-       Response permiso = verificarAdmin();
-
-        if (permiso != null) {
-            return permiso;
-        }
-
-        String resultado = empleadoService.registrar(empleado);
-
-        if (resultado.equals("Empleado registrado correctamente.")) {
-            return Response.status(Response.Status.CREATED)
-                    .entity("{\"mensaje\":\"" + resultado + "\"}")
-                    .build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"mensaje\":\"" + resultado + "\"}")
-                .build();
+    public EmpleadoResource() {
+        this.empleadoService = new EmpleadoService();
     }
 
-    @GET
-    public Response obtenerTodos() {
+    private Response validarAcceso(HttpServletRequest httpRequest, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioSesion(httpRequest);
 
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
+        if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
 
-        return Response.ok(empleadoService.obtenerTodos()).build();
-    }
-
-    @GET
-    @Path("/{id}")
-    public Response buscarPorId(@PathParam("id") int id) {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
-
-        Empleado empleado = empleadoService.buscarPorId(id);
-
-        if (empleado == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"El empleado no existe.\"}")
-                    .build();
-        }
-
-        return Response.ok(empleado).build();
-    }
-
-    // Actualizar empleado
-    @PUT
-    @Path("/{id}")
-    public Response actualizar(@PathParam("id") int id, Empleado empleado) {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
-
-        if (empleado != null) {
-            empleado.setIdEmpleado(id);
-        }
-
-        String resultado = empleadoService.actualizar(empleado);
-
-        if (resultado.equals("Empleado actualizado correctamente.")) {
-            return Response.ok("{\"mensaje\":\"" + resultado + "\"}").build();
-        }
-
-        if (resultado.equals("El empleado que desea actualizar no existe.")) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"" + resultado + "\"}")
-                    .build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"mensaje\":\"" + resultado + "\"}")
-                .build();
-    }
-
-    // Cambiar estado del empleado
-    @PUT
-    @Path("/{id}/estado")
-    public Response cambiarEstado(@PathParam("id") int id, EstadoRequest datos) {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
-
-        if (datos == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"mensaje\":\"Debe proporcionar el estado.\"}")
-                    .build();
-        }
-
-        String resultado = empleadoService.cambiarEstado(id, datos.isEstado());
-
-        if (resultado.equals("Empleado activado correctamente.")
-                || resultado.equals("Empleado desactivado correctamente.")) {
-
-            return Response.ok("{\"mensaje\":\"" + resultado + "\"}").build();
-        }
-
-        if (resultado.equals("El empleado no existe.")) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"" + resultado + "\"}")
-                    .build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"mensaje\":\"" + resultado + "\"}")
-                .build();
-    }
-    // Verificar que el usuario sea ADMIN
-    private Response verificarAdmin() {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-
-        if (!"ADMIN".equals(usuario.getRol())) {
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("{\"mensaje\":\"No tiene permisos para gestionar empleados.\"}")
+                    .entity(jsonMensaje(mensajePermiso))
                     .build();
         }
 
         return null;
     }
 
-    // Clase para recibir el estado
-    public static class EstadoRequest {
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
 
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
+    @POST
+    public Response registrar(Empleado empleado, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para registrar empleados.");
+        if (acceso != null) return acceso;
+
+        String resultado = empleadoService.registrar(empleado);
+
+        if (resultado.contains("correctamente")) {
+            return Response.status(Response.Status.CREATED)
+                    .entity(jsonMensaje(resultado))
+                    .build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
+    }
+
+    @GET
+    public Response obtenerTodos(@Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar empleados.");
+        if (acceso != null) return acceso;
+
+        ArrayList<Empleado> empleados = empleadoService.obtenerTodos();
+        return Response.ok(empleados).build();
+    }
+
+    @GET
+    @Path("/{id}")
+    public Response buscarPorId(@PathParam("id") int id, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar empleados.");
+        if (acceso != null) return acceso;
+
+        Empleado empleado = empleadoService.buscarPorId(id);
+
+        if (empleado == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje("El empleado no existe."))
+                    .build();
+        }
+
+        return Response.ok(empleado).build();
+    }
+
+    @PUT
+    @Path("/{id}")
+    public Response actualizar(@PathParam("id") int id, Empleado empleado, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para actualizar empleados.");
+        if (acceso != null) return acceso;
+
+        if (empleado == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("Los datos del empleado no pueden ser nulos."))
+                    .build();
+        }
+
+        empleado.setIdEmpleado(id);
+        String resultado = empleadoService.actualizar(empleado);
+
+        if (resultado.contains("correctamente")) {
+            return Response.ok(jsonMensaje(resultado)).build();
+        }
+
+        if (resultado.contains("no existe")) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje(resultado))
+                    .build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
+    }
+
+    @PUT
+    @Path("/{id}/estado")
+    public Response cambiarEstado(@PathParam("id") int id, EstadoRequest datos, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para modificar el estado de empleados.");
+        if (acceso != null) return acceso;
+
+        if (datos == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("Debe proporcionar el estado."))
+                    .build();
+        }
+
+        String resultado = empleadoService.cambiarEstado(id, datos.isEstado());
+
+        if (resultado.contains("correctamente")) {
+            return Response.ok(jsonMensaje(resultado)).build();
+        }
+
+        if (resultado.contains("no existe")) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonMensaje(resultado))
+                    .build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
+    }
+
+    public static class EstadoRequest {
         private boolean estado;
 
-        public EstadoRequest() {
-        }
+        public EstadoRequest() {}
 
-        public boolean isEstado() {
-            return estado;
-        }
-
-        public void setEstado(boolean estado) {
-            this.estado = estado;
-        }
-    } 
+        public boolean isEstado() { return estado; }
+        public void setEstado(boolean estado) { this.estado = estado; }
+    }
+    
 }

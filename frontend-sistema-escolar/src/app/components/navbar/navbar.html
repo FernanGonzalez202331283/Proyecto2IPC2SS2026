@@ -1,0 +1,31 @@
+@if (authService.isAuthenticated()) {
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" routerLink="/">Sistema Escolar</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/academico/grados" routerLinkActive="active">Grados</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/academico/carreras" routerLinkActive="active">Carreras</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/usuarios" routerLinkActive="active">Usuarios</a>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center text-white">
+          <span class="badge bg-secondary me-3">{{ authService.getUserRole() }}</span>
+          <button class="btn btn-outline-danger btn-sm" (click)="onLogout()">
+            <i class="bi bi-box-arrow-right"></i> Salir
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+}

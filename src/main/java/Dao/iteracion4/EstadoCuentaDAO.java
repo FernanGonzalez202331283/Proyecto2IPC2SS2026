@@ -19,20 +19,18 @@ import modelo.iteracion4.EstadoCuenta;
  * @author fernan
  */
 public class EstadoCuentaDAO {
-    
     public static final int ESTUDIANTE_NO_ENCONTRADO = -1;
     public static final int ERROR = -2;
 
-    public EstadoCuenta consultarEstadoCuenta(int idEstudiante, int idAñoLectivo) {
+    public EstadoCuenta consultarEstadoCuenta(int idIngresado, int idAñoLectivo) {
 
         EstadoCuenta estadoCuenta = new EstadoCuenta();
-
         ArrayList<DetalleEstadoCuenta> obligaciones = new ArrayList<>();
 
         String sqlEstudiante = """
-            SELECT COUNT(*)
-            FROM estudiante
-            WHERE id_estudiante = ?
+            SELECT id_estudiante 
+            FROM estudiante 
+            WHERE id_estudiante = ? OR id_persona = ?
         """;
 
         String sql = """
@@ -57,15 +55,16 @@ public class EstadoCuentaDAO {
 
         try (Connection conexion = Conexion.getInstance().getConnection()) {
 
-            // 1. Verificar que el estudiante exista.
+            int idEstudianteReal = -1;
+
             try (PreparedStatement ps = conexion.prepareStatement(sqlEstudiante)) {
-
-                ps.setInt(1, idEstudiante);
-
+                ps.setInt(1, idIngresado);
+                ps.setInt(2, idIngresado);
                 try (ResultSet rs = ps.executeQuery()) {
-
-                    if (rs.next() && rs.getInt(1) == 0) {
-                        return null;
+                    if (rs.next()) {
+                        idEstudianteReal = rs.getInt("id_estudiante");
+                    } else {
+                        return null; 
                     }
                 }
             }
@@ -74,42 +73,31 @@ public class EstadoCuentaDAO {
             double totalPagado = 0;
             double saldoPendiente = 0;
 
-            // 2. Consultar obligaciones y pagos.
+            // 2. Consultar obligaciones usando el id_estudiante real (7)
             try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-
-                ps.setInt(1, idEstudiante);
+                ps.setInt(1, idEstudianteReal);
                 ps.setInt(2, idAñoLectivo);
 
                 try (ResultSet rs = ps.executeQuery()) {
-
                     while (rs.next()) {
-
                         DetalleEstadoCuenta detalle = new DetalleEstadoCuenta();
 
                         detalle.setIdObligacion(rs.getInt("id_obligacion"));
                         detalle.setConcepto(rs.getString("concepto"));
                         detalle.setDescripcion(rs.getString("descripcion"));
                         detalle.setMonto(rs.getBigDecimal("monto").doubleValue());
-                        detalle.setFechaVencimiento(
-                                rs.getString("fecha_vencimiento")
-                        );
+                        detalle.setFechaVencimiento(rs.getString("fecha_vencimiento"));
                         detalle.setEstado(rs.getString("estado"));
 
-                        // 3. Obtener información del pago.
                         int idPago = rs.getInt("id_pago");
 
                         if (rs.wasNull()) {
-
                             detalle.setIdPago(0);
                             detalle.setMontoPagado(0);
                             detalle.setFechaPago(null);
-
                         } else {
-
                             detalle.setIdPago(idPago);
-
                             BigDecimal montoPagado = rs.getBigDecimal("monto_pagado");
-
                             detalle.setMontoPagado(montoPagado.doubleValue());
                             detalle.setFechaPago(rs.getTimestamp("fecha_pago"));
 
@@ -118,11 +106,8 @@ public class EstadoCuentaDAO {
 
                         double montoObligacion = detalle.getMonto();
 
-                        // 4. Calcular totales.
                         if (!"ANULADA".equals(detalle.getEstado())) {
-
                             totalObligaciones += montoObligacion;
-
                             if (!"PAGADA".equals(detalle.getEstado())) {
                                 saldoPendiente += montoObligacion;
                             }
@@ -133,8 +118,7 @@ public class EstadoCuentaDAO {
                 }
             }
 
-            // 5. Construir el estado de cuenta.
-            estadoCuenta.setIdEstudiante(idEstudiante);
+            estadoCuenta.setIdEstudiante(idEstudianteReal);
             estadoCuenta.setIdAñoLectivo(idAñoLectivo);
             estadoCuenta.setTotalObligaciones(totalObligaciones);
             estadoCuenta.setTotalPagado(totalPagado);
@@ -144,9 +128,7 @@ public class EstadoCuentaDAO {
             return estadoCuenta;
 
         } catch (SQLException e) {
-
             System.out.println("Error al consultar estado de cuenta: " + e.getMessage());
-
             return null;
         }
     }

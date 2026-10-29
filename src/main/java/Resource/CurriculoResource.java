@@ -19,110 +19,117 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import modelo.Curriculo;
 import modelo.Usuario;
+import seguridad.JwtService;
 import servicio.CurriculoService;
 
 /**
  *
  * @author fernan
  */
+
 @Path("/curriculos")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class CurriculoResource {
 
-    private CurriculoService curriculoService;
+    private final CurriculoService curriculoService;
+    private final JwtService jwtService = new JwtService();
 
     public CurriculoResource() {
-        curriculoService = new CurriculoService();
+        this.curriculoService = new CurriculoService();
     }
 
-    private Response validarAcceso(HttpServletRequest httpRequest) {
-
-        HttpSession session = httpRequest.getSession(false);
-
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
+    private Response validarAcceso(HttpServletRequest httpRequest, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioSesion(httpRequest);
 
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
 
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar currículos.")
+                    .entity(jsonMensaje(mensajePermiso))
                     .build();
         }
 
         return null;
     }
 
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
     @POST
-    public Response registrarCurriculo(
-            Curriculo curriculo,
-            @Context HttpServletRequest httpRequest) {
-
-        Response acceso = validarAcceso(httpRequest);
-
+    public Response registrarCurriculo(Curriculo curriculo, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para gestionar currículos.");
         if (acceso != null) {
             return acceso;
+        }
+
+        if (curriculo == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("El currículo no puede ser nulo."))
+                    .build();
         }
 
         String resultado = curriculoService.registrarCurriculo(curriculo);
 
-        if (!resultado.equals("Currículo registrado correctamente.")) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(resultado)
+        if (resultado.toLowerCase().contains("correctamente")) {
+            return Response.status(Response.Status.CREATED)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        return Response.status(Response.Status.CREATED)
-                .entity(curriculo)
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
     @GET
-    public Response obtenerCurriculos(
-            @Context HttpServletRequest httpRequest) {
-
-        Response acceso = validarAcceso(httpRequest);
-
+    public Response obtenerCurriculos(@Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar currículos.");
         if (acceso != null) {
             return acceso;
         }
 
-        ArrayList<Curriculo> curriculos =
-                curriculoService.obtenerCurriculos();
-
+        ArrayList<Curriculo> curriculos = curriculoService.obtenerCurriculos();
         return Response.ok(curriculos).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response buscarCurriculo(
-            @PathParam("id") int idCurriculo,
-            @Context HttpServletRequest httpRequest) {
-
-        Response acceso = validarAcceso(httpRequest);
-
+    public Response buscarCurriculo(@PathParam("id") int idCurriculo, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar currículos.");
         if (acceso != null) {
             return acceso;
         }
 
-        Curriculo curriculo =
-                curriculoService.buscarCurriculo(idCurriculo);
+        Curriculo curriculo = curriculoService.buscarCurriculo(idCurriculo);
 
         if (curriculo == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("El currículo no existe.")
+                    .entity(jsonMensaje("El currículo no existe."))
                     .build();
         }
 
@@ -131,80 +138,64 @@ public class CurriculoResource {
 
     @PUT
     @Path("/{id}")
-    public Response actualizarCurriculo(
-            @PathParam("id") int idCurriculo,
-            Curriculo curriculo,
-            @Context HttpServletRequest httpRequest) {
-
-        Response acceso = validarAcceso(httpRequest);
-
+    public Response actualizarCurriculo(@PathParam("id") int idCurriculo, Curriculo curriculo, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para gestionar currículos.");
         if (acceso != null) {
             return acceso;
         }
 
         if (curriculo == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("El currículo no puede ser nulo.")
+                    .entity(jsonMensaje("El currículo no puede ser nulo."))
                     .build();
         }
 
         curriculo.setIdCurriculo(idCurriculo);
+        String resultado = curriculoService.actualizarCurriculo(curriculo);
 
-        String resultado =
-                curriculoService.actualizarCurriculo(curriculo);
+        if (resultado.toLowerCase().contains("correctamente")) {
+            return Response.ok(jsonMensaje(resultado)).build();
+        }
 
-        if (resultado.equals("El currículo no existe.")) {
+        if (resultado.toLowerCase().contains("no existe")) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        if (!resultado.equals("Currículo actualizado correctamente.")) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(resultado)
-                    .build();
-        }
-
-        return Response.ok(curriculo).build();
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
     }
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @PathParam("id") int idCurriculo,
-            Curriculo curriculo,
-            @Context HttpServletRequest httpRequest) {
-
-        Response acceso = validarAcceso(httpRequest);
-
+    public Response cambiarEstado(@PathParam("id") int idCurriculo, Curriculo curriculo, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para cambiar el estado.");
         if (acceso != null) {
             return acceso;
         }
 
         if (curriculo == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("El currículo no puede ser nulo.")
+                    .entity(jsonMensaje("El currículo no puede ser nulo."))
                     .build();
         }
 
-        String resultado =
-                curriculoService.cambiarEstado(
-                        idCurriculo,
-                        curriculo.isEstado()
-                );
+        String resultado = curriculoService.cambiarEstado(idCurriculo, curriculo.isEstado());
 
-        if (resultado.equals("El currículo no existe.")) {
+        if (resultado.toLowerCase().contains("correctamente")) {
+            return Response.ok(jsonMensaje(resultado)).build();
+        }
+
+        if (resultado.toLowerCase().contains("no existe")) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        if (!resultado.equals("Estado del currículo actualizado correctamente.")) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(resultado)
-                    .build();
-        }
-
-        return Response.ok(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
     }
 }

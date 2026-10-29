@@ -9,6 +9,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import modelo.iteracion4.Solvencia;
 
 /**
@@ -16,17 +18,12 @@ import modelo.iteracion4.Solvencia;
  * @author fernan
  */
 public class SolvenciaDAO {
-    
-    public static final int ESTUDIANTE_NO_ENCONTRADO = -1;
-    public static final int ERROR = -2;
-
     public Solvencia generarSolvencia(int idEstudiante, int idAñoLectivo) {
 
         String sqlInscripcion = """
             SELECT COUNT(*)
             FROM inscripcion i
-            INNER JOIN seccion s
-                ON i.id_seccion = s.id_seccion
+            INNER JOIN seccion s ON i.id_seccion = s.id_seccion
             WHERE i.id_estudiante = ?
               AND s.id_año_lectivo = ?
               AND i.estado = 'ACTIVA'
@@ -48,29 +45,20 @@ public class SolvenciaDAO {
 
         try (Connection conexion = Conexion.getInstance().getConnection()) {
 
-            // 1. Verificar que el estudiante exista.
             try (PreparedStatement ps = conexion.prepareStatement(sqlEstudiante)) {
-
                 ps.setInt(1, idEstudiante);
-
                 try (ResultSet rs = ps.executeQuery()) {
-
                     if (rs.next() && rs.getInt(1) == 0) {
                         return null;
                     }
                 }
             }
 
-            // 2. Verificar inscripción activa.
             boolean tieneInscripcionActiva = false;
-
             try (PreparedStatement ps = conexion.prepareStatement(sqlInscripcion)) {
-
                 ps.setInt(1, idEstudiante);
                 ps.setInt(2, idAñoLectivo);
-
                 try (ResultSet rs = ps.executeQuery()) {
-
                     if (rs.next()) {
                         tieneInscripcionActiva = rs.getInt(1) > 0;
                     }
@@ -78,7 +66,6 @@ public class SolvenciaDAO {
             }
 
             if (!tieneInscripcionActiva) {
-
                 return new Solvencia(
                     idEstudiante,
                     idAñoLectivo,
@@ -87,16 +74,11 @@ public class SolvenciaDAO {
                 );
             }
 
-            // 3. Verificar obligaciones pendientes o vencidas.
             boolean tieneDeudas = false;
-
             try (PreparedStatement ps = conexion.prepareStatement(sqlObligaciones)) {
-
                 ps.setInt(1, idEstudiante);
                 ps.setInt(2, idAñoLectivo);
-
                 try (ResultSet rs = ps.executeQuery()) {
-
                     if (rs.next()) {
                         tieneDeudas = rs.getInt(1) > 0;
                     }
@@ -104,7 +86,6 @@ public class SolvenciaDAO {
             }
 
             if (tieneDeudas) {
-
                 return new Solvencia(
                     idEstudiante,
                     idAñoLectivo,
@@ -113,7 +94,6 @@ public class SolvenciaDAO {
                 );
             }
 
-            // 4. Si cumple ambas condiciones, está solvente.
             return new Solvencia(
                 idEstudiante,
                 idAñoLectivo,
@@ -122,9 +102,61 @@ public class SolvenciaDAO {
             );
 
         } catch (SQLException e) {
-
             System.out.println("Error al generar solvencia: " + e.getMessage());
             return null;
         }
+    }
+
+    public Map<String, Object> obtenerDatosParaReporte(int idEstudiante, int idAñoLectivo) {
+        Map<String, Object> parametros = new HashMap<>();
+
+        String sql = """
+            SELECT 
+                e.codigo_estudiante, 
+                CONCAT(p.nombres, ' ', p.apellidos) AS nombre_completo, 
+                g.nombre AS grado_nombre, 
+                s.nombre AS seccion_nombre, 
+                a.año AS anio
+            FROM estudiante e
+            INNER JOIN persona p ON e.id_persona = p.id_persona
+            INNER JOIN inscripcion i ON e.id_estudiante = i.id_estudiante
+            INNER JOIN seccion s ON i.id_seccion = s.id_seccion
+            INNER JOIN grado g ON s.id_grado = g.id_grado
+            INNER JOIN año_lectivo a ON s.id_año_lectivo = a.id_año_lectivo
+            WHERE e.id_estudiante = ? 
+              AND a.id_año_lectivo = ? 
+              AND i.estado = 'ACTIVA'
+            LIMIT 1
+        """;
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, idEstudiante);
+            ps.setInt(2, idAñoLectivo);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String anio = rs.getString("anio");
+                    String noSolvencia = "SOL-" + anio + "-" + String.format("%04d", idEstudiante);
+
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                    String fechaHoy = sdf.format(new java.util.Date());
+
+                    parametros.put("NO_SOLVENCIA", noSolvencia);
+                    parametros.put("FECHA_EMISION", fechaHoy);
+                    parametros.put("ESTUDIANTE_NOMBRE", rs.getString("nombre_completo"));
+                    parametros.put("CODIGO_ESTUDIANTE", rs.getString("codigo_estudiante"));
+                    parametros.put("GRADO_SECCION", rs.getString("grado_nombre") + " - Sección " + rs.getString("seccion_nombre"));
+                    parametros.put("ANIO_LECTIVO", anio);
+                    parametros.put("SECRETARIA_NOMBRE", "Secretaría General"); 
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al consultar datos para reporte de solvencia: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return parametros;
     }
 }

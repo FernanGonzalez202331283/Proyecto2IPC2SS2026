@@ -5,6 +5,7 @@
 package Resource;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -15,21 +16,22 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 import modelo.AñoLectivo;
 import modelo.Usuario;
+import seguridad.JwtService;
 import servicio.AñoLectivoService;
 
 /**
  *
  * @author fernan
  */
-@Path("/años-lectivos")
+@Path("/anos-lectivos")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AñoLectivoResource {
     private final AñoLectivoService añoLectivoService;
+    private final JwtService jwtService = new JwtService();
 
     public AñoLectivoResource() {
         this.añoLectivoService = new AñoLectivoService();
@@ -45,10 +47,14 @@ public class AñoLectivoResource {
         String resultado = añoLectivoService.registrarAñoLectivo(añoLectivo);
 
         if ("Año lectivo registrado correctamente".equals(resultado)) {
-            return Response.status(Response.Status.CREATED).entity(resultado).build();
+            return Response.status(Response.Status.CREATED)
+                    .entity(jsonMensaje(resultado))
+                    .build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
     }
 
     @GET
@@ -74,7 +80,7 @@ public class AñoLectivoResource {
 
         if (añoLectivo == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("El año lectivo no existe")
+                    .entity(jsonMensaje("El año lectivo no existe"))
                     .build();
         }
 
@@ -89,14 +95,16 @@ public class AñoLectivoResource {
             return errorAcceso;
         }
 
-        añoLectivo.setIdAñoLectivo(id);
+        añoLectivo.setIdAnoLectivo(id);
         String resultado = añoLectivoService.actualizarAñoLectivo(añoLectivo);
 
         if ("Año lectivo actualizado correctamente".equals(resultado)) {
-            return Response.ok(resultado).build();
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
     }
 
     @PUT
@@ -111,29 +119,58 @@ public class AñoLectivoResource {
 
         if ("Año lectivo activado correctamente".equals(resultado)
                 || "Año lectivo desactivado correctamente".equals(resultado)) {
-            return Response.ok(resultado).build();
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(jsonMensaje(resultado))
+                .build();
     }
 
-    // Método privado auxiliar para verificar la sesión activa y los permisos de rol
-    private Response validarAcceso(HttpServletRequest request, String mensajeSinPermiso) {
-        if (request.getSession(false) == null || request.getSession(false).getAttribute("usuario") == null) {
+    // Centralización de la validación de sesión y rol con respuesta inmediata de error
+    private Response validarAcceso(HttpServletRequest request, String mensajePermisos) {
+        Usuario usuario = obtenerUsuarioSesion(request);
+
+        if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión")
+                    .entity(jsonMensaje("Debe iniciar sesión"))
                     .build();
         }
 
-        Usuario usuarioSesion = (Usuario) request.getSession(false).getAttribute("usuario");
-        String rol = usuarioSesion.getRol();
-
+        String rol = usuario.getRol();
         if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity(mensajeSinPermiso)
+                    .entity(jsonMensaje(mensajePermisos))
                     .build();
         }
 
-        return null; // null indica que la validación pasó con éxito
+        return null;
+    }
+
+    // Obtención segura de usuario (por Sesión HTTP o por Token JWT)
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        // 1. Intentar por la sesión HTTP tradicional (JSESSIONID)
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+
+        // 2. Si no hay sesión, extraer y validar desde el Token JWT de la cabecera Authorization
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    // Generador de respuestas JSON homogéneas
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

@@ -27,7 +27,7 @@ public class AñoLectivoService {
             return errorValidacion;
         }
 
-        if (añoLectivoDAO.existeAño(añoLectivo.getAño())) {
+        if (añoLectivoDAO.existeAño(añoLectivo.getAnio())) {
             return "El año lectivo ya existe";
         }
         
@@ -53,11 +53,11 @@ public class AñoLectivoService {
             return "Los datos del año lectivo son obligatorios";
         }
 
-        if (añoLectivo.getIdAñoLectivo() <= 0) {
+        if (añoLectivo.getIdAnoLectivo() <= 0) {
             return "El ID del año lectivo es obligatorio";
         }
 
-        AñoLectivo existente = añoLectivoDAO.buscarPorId(añoLectivo.getIdAñoLectivo());
+        AñoLectivo existente = añoLectivoDAO.buscarPorId(añoLectivo.getIdAnoLectivo());
         if (existente == null) {
             return "El año lectivo no existe";
         }
@@ -67,7 +67,7 @@ public class AñoLectivoService {
             return errorValidacion;
         }
 
-        if (añoLectivoDAO.existeAño(añoLectivo.getAño()) && existente.getAño() != añoLectivo.getAño()) {
+        if (añoLectivoDAO.existeAño(añoLectivo.getAnio()) && existente.getAnio()!= añoLectivo.getAnio()) {
             return "El año lectivo ya existe en otro registro";
         }
 
@@ -101,7 +101,7 @@ public class AñoLectivoService {
             return "Los datos del año lectivo son obligatorios";
         }
 
-        if (añoLectivo.getAño() <= 0) {
+        if (añoLectivo.getAnio()<= 0) {
             return "El año lectivo debe ser mayor que 0";
         }
 

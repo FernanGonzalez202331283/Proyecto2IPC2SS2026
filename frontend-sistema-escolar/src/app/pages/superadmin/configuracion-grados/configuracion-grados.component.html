@@ -1,0 +1,159 @@
+<div class="container my-4">
+  
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-info text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-journal-bookmark-fill me-2"></i>CU007: Configuración Global de Grados</h3>
+    </div>
+    <a routerLink="/superadmin/dashboard" class="btn btn-light btn-sm text-info fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alerta de Éxito -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Alerta de Error -->
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <div class="row g-4">
+
+    <!-- Formulario Integrado (5 columnas) -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white py-2">
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Grado Predeterminado' : 'Nuevo Grado Predeterminado' }}</h6>
+        </div>
+        <div class="card-body p-3">
+          <form [formGroup]="configForm" (ngSubmit)="guardarConfiguracion()">
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Nivel Educativo *</label>
+              <select formControlName="nivel" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('nivel')">
+                <option value="PREPRIMARIA">PREPRIMARIA</option>
+                <option value="PRIMARIA">PRIMARIA</option>
+                <option value="BASICO">BÁSICO</option>
+                <option value="DIVERSIFICADO">DIVERSIFICADO</option>
+              </select>
+              <div class="invalid-feedback small">Seleccione un nivel válido.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Nombre del Grado *</label>
+              <input 
+                type="text" 
+                formControlName="nombreGrado" 
+                class="form-control form-control-sm"
+                [class.is-invalid]="esCampoInvalido('nombreGrado')"
+                placeholder="Ej. Primero Primaria, Tercero Básico">
+              <div class="invalid-feedback small">El nombre del grado es obligatorio.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Orden Secuencial *</label>
+              <input 
+                type="number" 
+                formControlName="orden" 
+                class="form-control form-control-sm"
+                [class.is-invalid]="esCampoInvalido('orden')"
+                placeholder="1, 2, 3...">
+              <div class="invalid-feedback small">Ingrese un número de orden mayor que 0.</div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-info text-white btn-sm fw-semibold" [disabled]="procesando">
+                {{ modoEdicion ? 'Actualizar Configuración' : 'Registrar Configuración' }}
+              </button>
+              @if (modoEdicion) {
+                <button type="button" (click)="cancelarEdicion()" class="btn btn-outline-secondary btn-sm" [disabled]="procesando">
+                  Cancelar
+                </button>
+              }
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Configuraciones (7 columnas) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-secondary">Grados Institucionales Predeterminados</h6>
+          <span class="badge bg-info">Total: {{ configuraciones.length }}</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-dark">
+                <tr>
+                  <th>Orden</th>
+                  <th>Nivel</th>
+                  <th>Grado</th>
+                  <th>Estado</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cargando) {
+                  <tr>
+                    <td colspan="5" class="text-center py-3 text-muted">Cargando...</td>
+                  </tr>
+                } @else if (configuraciones.length === 0) {
+                  <tr>
+                    <td colspan="5" class="text-center py-3 text-muted">Sin configuraciones de grado registradas.</td>
+                  </tr>
+                } @else {
+                  @for (c of configuraciones; track c.idConfiguracion || $index) {
+                    <tr>
+                      <td class="fw-bold text-center">#{{ c.orden }}</td>
+                      <td>
+                        <span class="badge bg-outline-dark border text-dark">
+                          {{ c.nivel }}
+                        </span>
+                      </td>
+                      <td class="fw-semibold text-primary">{{ c.nombreGrado }}</td>
+                      <td>
+                        <span class="badge" [class.bg-success]="c.estado" [class.bg-secondary]="!c.estado">
+                          {{ c.estado ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                          <button (click)="editarConfiguracion(c)" class="btn btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                          </button>
+                          <button 
+                            (click)="toggleEstado(c)" 
+                            class="btn" 
+                            [class.btn-outline-danger]="c.estado" 
+                            [class.btn-outline-success]="!c.estado"
+                            title="{{ c.estado ? 'Desactivar' : 'Activar' }}">
+                            <i class="bi" [class.bi-power]="c.estado" [class.bi-check-circle]="!c.estado"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

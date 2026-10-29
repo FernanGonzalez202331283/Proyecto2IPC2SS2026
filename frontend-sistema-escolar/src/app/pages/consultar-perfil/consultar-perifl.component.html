@@ -1,0 +1,127 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-person-badge me-2"></i>CU0033: Mi Perfil de Usuario</h3>
+      <small class="text-white-50">Información de la cuenta y datos personales registrados</small>
+    </div>
+    <button (click)="volver()" class="btn btn-outline-light btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  <!-- Estado de Carga -->
+  @if (cargando) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted fw-semibold">Cargando datos del perfil...</p>
+    </div>
+  }
+
+  <!-- Mensaje de Error -->
+  @if (errorMessage && !cargando) {
+    <div class="alert alert-danger shadow-sm fw-semibold d-flex justify-content-between align-items-center">
+      <div>
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>{{ errorMessage }}
+      </div>
+      <button (click)="cargarPerfil()" class="btn btn-outline-danger btn-sm fw-bold">
+        <i class="bi bi-arrow-clockwise me-1"></i> Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- Contenido Principal -->
+  @if (perfil && !cargando) {
+    <div class="row g-4">
+      
+      <!-- Resumen / Avatar -->
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 text-center p-4">
+          <div class="mb-3">
+            <i class="bi bi-person-circle display-1 text-primary"></i>
+          </div>
+          <h4 class="fw-bold mb-1">{{ perfil.nombres }} {{ perfil.apellidos }}</h4>
+          <span class="badge bg-primary fs-6 mb-3">{{ perfil.rol }}</span>
+          
+          <ul class="list-group list-group-flush text-start small">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted fw-bold">Usuario:</span>
+              <span class="fw-semibold">{{ perfil.nombreUsuario }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted fw-bold">Tipo Perfil:</span>
+              <span class="badge bg-secondary">{{ perfil.tipoPerfil }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted fw-bold">Estado Cuenta:</span>
+              <span class="badge" [ngClass]="perfil.estadoPersona ? 'bg-success' : 'bg-danger'">
+                {{ perfil.estadoPersona ? 'ACTIVO' : 'INACTIVO' }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Información Detallada -->
+      <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-primary text-white fw-bold py-2">
+            <i class="bi bi-info-circle me-2"></i>Información Personal y del Sistema
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3">
+
+              <div class="col-md-6">
+                <label class="form-label small text-muted fw-bold mb-0">Nombres</label>
+                <p class="fw-semibold fs-6 border-bottom pb-1">{{ perfil.nombres }}</p>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small text-muted fw-bold mb-0">Apellidos</label>
+                <p class="fw-semibold fs-6 border-bottom pb-1">{{ perfil.apellidos }}</p>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small text-muted fw-bold mb-0">DPI / Identificación</label>
+                <p class="fw-semibold fs-6 border-bottom pb-1">{{ perfil.dpi || 'No registrado' }}</p>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small text-muted fw-bold mb-0">Teléfono</label>
+                <p class="fw-semibold fs-6 border-bottom pb-1">{{ perfil.telefono || 'No registrado' }}</p>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small text-muted fw-bold mb-0">Correo Electrónico</label>
+                <p class="fw-semibold fs-6 border-bottom pb-1">{{ perfil.correo || 'No registrado' }}</p>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small text-muted fw-bold mb-0">Dirección</label>
+                <p class="fw-semibold fs-6 border-bottom pb-1">{{ perfil.direccion || 'No registrada' }}</p>
+              </div>
+
+              @if (perfil.codigoEstudiante) {
+                <div class="col-md-6">
+                  <label class="form-label small text-muted fw-bold mb-0">Código Estudiante</label>
+                  <p class="fw-bold fs-6 text-success border-bottom pb-1">{{ perfil.codigoEstudiante }}</p>
+                </div>
+              }
+
+              @if (perfil.puesto) {
+                <div class="col-md-6">
+                  <label class="form-label small text-muted fw-bold mb-0">Puesto de Empleado</label>
+                  <p class="fw-bold fs-6 text-info border-bottom pb-1">{{ perfil.puesto }}</p>
+                </div>
+              }
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  }
+
+</div>

@@ -1,0 +1,218 @@
+<div class="container my-4">
+  
+  <!-- Encabezado simple -->
+  <div class="p-3 mb-4 bg-danger text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-shield-lock-fill me-2"></i>CU004: Usuarios Administrativos</h3>
+    </div>
+    <a routerLink="/superadmin/dashboard" class="btn btn-light btn-sm text-danger fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alerta de Éxito -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Alerta de Error -->
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <div class="row g-4">
+
+    <!-- Formulario Integrado (5 columnas) -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white py-2">
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Usuario' : 'Nuevo Usuario' }}</h6>
+        </div>
+        <div class="card-body p-3">
+          <form [formGroup]="usuarioForm" (ngSubmit)="guardarUsuario()">
+            
+            <span class="fw-bold text-secondary small d-block mb-2">Datos Personales</span>
+
+            <div formGroupName="persona">
+              <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                  <label class="form-label small">Nombres *</label>
+                  <input 
+                    type="text" 
+                    formControlName="nombres" 
+                    class="form-control form-control-sm"
+                    [class.is-invalid]="esCampoInvalido('persona.nombres')">
+                  <div class="invalid-feedback small">Campo obligatorio.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small">Apellidos *</label>
+                  <input 
+                    type="text" 
+                    formControlName="apellidos" 
+                    class="form-control form-control-sm"
+                    [class.is-invalid]="esCampoInvalido('persona.apellidos')">
+                  <div class="invalid-feedback small">Campo obligatorio.</div>
+                </div>
+              </div>
+
+              <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                  <label class="form-label small">DPI (13 dígitos) *</label>
+                  <input 
+                    type="text" 
+                    formControlName="dpi" 
+                    class="form-control form-control-sm"
+                    [class.is-invalid]="esCampoInvalido('persona.dpi')"
+                    placeholder="13 dígitos">
+                  <div class="invalid-feedback small">Debe tener 13 dígitos.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small">Teléfono</label>
+                  <input type="text" formControlName="telefono" class="form-control form-control-sm">
+                </div>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small">Correo Electrónico</label>
+                <input 
+                  type="email" 
+                  formControlName="correo" 
+                  class="form-control form-control-sm"
+                  [class.is-invalid]="esCampoInvalido('persona.correo')">
+                <div class="invalid-feedback small">Correo no válido.</div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small">Dirección</label>
+                <input type="text" formControlName="direccion" class="form-control form-control-sm">
+              </div>
+            </div>
+
+            <span class="fw-bold text-secondary small d-block mb-2">Credenciales de Acceso</span>
+
+            <div class="mb-2">
+              <label class="form-label small">Usuario *</label>
+              <input 
+                type="text" 
+                formControlName="username" 
+                class="form-control form-control-sm"
+                [class.is-invalid]="esCampoInvalido('username')">
+              <div class="invalid-feedback small">Nombre de usuario obligatorio.</div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label small">Contraseña {{ modoEdicion ? '(Opcional)' : '*' }}</label>
+              <input 
+                type="password" 
+                formControlName="contraseña" 
+                class="form-control form-control-sm"
+                [class.is-invalid]="esCampoInvalido('contraseña')">
+              <div class="invalid-feedback small">Mínimo 4 caracteres.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small">Rol *</label>
+              <select formControlName="rol" class="form-select form-select-sm">
+                <option value="ADMIN">ADMIN</option>
+                <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+              </select>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-danger btn-sm fw-semibold" [disabled]="procesando">
+                @if (procesando) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Procesando...
+                } @else {
+                  {{ modoEdicion ? 'Actualizar Usuario' : 'Registrar Usuario' }}
+                }
+              </button>
+              @if (modoEdicion) {
+                <button type="button" (click)="cancelarEdicion()" class="btn btn-outline-secondary btn-sm" [disabled]="procesando">
+                  Cancelar
+                </button>
+              }
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Usuarios (7 columnas) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-secondary">Usuarios Administrativos</h6>
+          <span class="badge bg-secondary">Total: {{ usuarios.length }}</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Usuario</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cargando) {
+                  <tr>
+                    <td colspan="5" class="text-center py-3 text-muted">Cargando...</td>
+                  </tr>
+                } @else if (usuarios.length === 0) {
+                  <tr>
+                    <td colspan="5" class="text-center py-3 text-muted">Sin usuarios registrados.</td>
+                  </tr>
+                } @else {
+                  @for (u of usuarios; track u.idUsuario) {
+                    <tr>
+                      <td class="fw-bold">#{{ u.idUsuario }}</td>
+                      <td>{{ u.username }}</td>
+                      <td>
+                        <span class="badge" [class.bg-danger]="u.rol === 'SUPER_ADMIN'" [class.bg-warning]="u.rol === 'ADMIN'" [class.text-dark]="u.rol === 'ADMIN'">
+                          {{ u.rol }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="badge" [class.bg-success]="u.estado" [class.bg-secondary]="!u.estado">
+                          {{ u.estado ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                          <button (click)="editarUsuario(u)" class="btn btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                          </button>
+                          <button 
+                            (click)="toggleEstado(u)" 
+                            class="btn" 
+                            [class.btn-outline-danger]="u.estado" 
+                            [class.btn-outline-success]="!u.estado"
+                            title="{{ u.estado ? 'Desactivar' : 'Activar' }}">
+                            <i class="bi" [class.bi-person-x-fill]="u.estado" [class.bi-person-check-fill]="!u.estado"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

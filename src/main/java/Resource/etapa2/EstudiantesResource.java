@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import modelo.Usuario;
 import modelo.iteracion2.Estudiante;
+import seguridad.JwtService;
 import seguridad.iteracion2.EstudianteService;
 
 /**
@@ -26,91 +27,95 @@ import seguridad.iteracion2.EstudianteService;
  * @author fernan
  */
 @Path("/estudiantes")
-@Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
 public class EstudiantesResource {
+
     private final EstudianteService estudianteService;
-    
-    public EstudiantesResource(){
+    private final JwtService jwtService = new JwtService();
+
+    public EstudiantesResource() {
         this.estudianteService = new EstudianteService();
     }
-    
-    private Response validarAcceso(HttpServletRequest request, String mensajePermiso){
-        HttpSession session = request.getSession(false);
-        
-        if(session == null){
+
+    private Response validarAcceso(HttpServletRequest httpRequest, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioSesion(httpRequest);
+
+        if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("debe iniciar sesion")
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
-        
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        
-        if(usuario == null){
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("debe iniciar sesion")
-                    .build();
-        }
-        
-        if(!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())){
+
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"SECRETARIA".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity(mensajePermiso)
+                    .entity(jsonMensaje(mensajePermiso))
                     .build();
         }
+
         return null;
     }
-    
-    @POST
-    public Response registrarEstudiante(Estudiante estudiante,
-            @Context HttpServletRequest request) {
-        Response acceso = validarAcceso(request,
-                "No tiene permisos para registrar estudiantes."
-        );
-        if (acceso != null) {
-            return acceso;
+
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
         }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
+    @POST
+    public Response registrarEstudiante(Estudiante estudiante, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para registrar estudiantes.");
+        if (acceso != null) return acceso;
+
         String resultado = estudianteService.registrarEstudiante(estudiante);
-        if (resultado.equals("Estudiante registrado correctamente.")) {
+
+        if (resultado.toLowerCase().contains("correctamente")) {
             return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
     @GET
-    public Response obtenerTodos(@Context HttpServletRequest request) {
+    public Response obtenerTodos(@Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar estudiantes.");
+        if (acceso != null) return acceso;
 
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para consultar estudiantes."
-        );
-        if (acceso != null) {
-            return acceso;
-        }
         ArrayList<Estudiante> estudiantes = estudianteService.obtenerTodos();
         return Response.ok(estudiantes).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response buscarPorId(
-            @PathParam("id") int id,
-            @Context HttpServletRequest request) {
-        Response acceso = validarAcceso(request,
-                "No tiene permisos para consultar estudiantes."
-        );
-        if (acceso != null) {
-            return acceso;
-        }
+    public Response buscarPorId(@PathParam("id") int idEstudiante, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar estudiantes.");
+        if (acceso != null) return acceso;
 
-        Estudiante estudiante = estudianteService.buscarPorId(id);
+        Estudiante estudiante = estudianteService.buscarPorId(idEstudiante);
         if (estudiante == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("El estudiante no existe.")
+                    .entity(jsonMensaje("El estudiante no existe."))
                     .build();
         }
 
@@ -119,65 +124,48 @@ public class EstudiantesResource {
 
     @PUT
     @Path("/{id}")
-    public Response actualizar(@PathParam("id") int id,Estudiante estudiante,
-            @Context HttpServletRequest request) {
-        Response acceso = validarAcceso(request,
-                "No tiene permisos para actualizar estudiantes."
-        );
-        if (acceso != null) {
-            return acceso;
-        }
+    public Response actualizar(@PathParam("id") int idEstudiante, Estudiante estudiante, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para actualizar estudiantes.");
+        if (acceso != null) return acceso;
+
         if (estudiante == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Debe proporcionar la información del estudiante.")
+                    .entity(jsonMensaje("Los datos no pueden ser nulos."))
                     .build();
         }
 
-        estudiante.setIdEstudiante(id);
+        estudiante.setIdEstudiante(idEstudiante);
         String resultado = estudianteService.actualizar(estudiante);
-        if (resultado.equals("Estudiante actualizado correctamente.")) {
-            return Response.ok(resultado).build();
+
+        if (resultado.toLowerCase().contains("correctamente")) {
+            return Response.ok(jsonMensaje(resultado)).build();
         }
-        if (resultado.equals("El estudiante no existe.")) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
-                    .build();
-        }
+
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado( @PathParam("id") int id, Estudiante estudiante,
-            @Context HttpServletRequest request) {
-        Response acceso = validarAcceso(
-                request,
-                "No tiene permisos para cambiar el estado de estudiantes."
-        );
-        if (acceso != null) {
-            return acceso;
-        }
-        if (estudiante == null) {
+    public Response cambiarEstado(@PathParam("id") int idEstudiante, Estudiante estudiante, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para modificar estados de estudiantes.");
+        if (acceso != null) return acceso;
+
+        if (estudiante == null || estudiante.getEstado() == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Debe proporcionar el estado del estudiante.")
+                    .entity(jsonMensaje("Debe proporcionar un estado válido."))
                     .build();
         }
-        String resultado = estudianteService.cambiarEstado( id, estudiante.getEstado());
 
-        if (resultado.equals("Estado del estudiante actualizado correctamente.")) {
-            return Response.ok(resultado).build();
-        }
+        String resultado = estudianteService.cambiarEstado(idEstudiante, estudiante.getEstado());
 
-        if (resultado.equals("El estudiante no existe.")) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
-                    .build();
+        if (resultado.toLowerCase().contains("correctamente")) {
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 }

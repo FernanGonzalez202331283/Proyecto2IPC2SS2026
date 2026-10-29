@@ -1,87 +1,99 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Resource.etapa2;
 
-import jakarta.data.repository.Query;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import modelo.Usuario;
 import modelo.iteracion2.NominaAlumno;
+import seguridad.JwtService;
 import seguridad.iteracion2.NominaAlumnoService;
 
 /**
  *
  * @author fernan
  */
-
-@Path("/nominas")
+@Path("nominas")
 @Produces(MediaType.APPLICATION_JSON)
 public class NominaAlumnoResource {
+    
     private final NominaAlumnoService nominaAlumnoService = new NominaAlumnoService();
-    
-    @Context
-    private HttpServletRequest request;
-    
+    private final JwtService jwtService = new JwtService(); // Servicio para leer el Token
+
+    private Response validarAcceso(String authHeader, String mensajePermiso) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
+                    .build();
+        }
+
+        String token = authHeader.substring(7);
+        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Token inválido o expirado. Debe iniciar sesión nuevamente."))
+                    .build();
+        }
+
+        String rol = usuario.getRol();
+        if (!"SUPER_ADMIN".equals(rol) 
+                && !"ADMIN".equals(rol) 
+                && !"MAESTRO".equals(rol)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje(mensajePermiso))
+                    .build();
+        }
+
+        return null; // Si devuelve null, significa que todo está bien y tiene acceso
+    }
+
+    // --- FORMATEADOR DE MENSAJES JSON ---
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
     @GET
     public Response obtenerNomina(
-    @QueryParam("año") Integer año,
-    @QueryParam("idGrado") Integer idGrado,
-    @QueryParam("idSeccion") Integer idSeccion){
-        HttpSession session = request.getSession(false);
+            @HeaderParam("Authorization") String authHeader, // Recibimos el Token aquí
+            @QueryParam("año") Integer año,
+            @QueryParam("idGrado") Integer idGrado,
+            @QueryParam("idSeccion") Integer idSeccion) {
         
-        if(session == null){
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("debe iniciar sesion")
-                    .build();
-        }
+        // 1. Validamos el token y los roles
+        Response acceso = validarAcceso(authHeader, "No tienes permiso para consultar estas nóminas.");
+        if (acceso != null) return acceso;
         
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        
-        if(usuario == null){
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("debe de iniciar sesion")
-                    .build();
-        }
-        
-        String rol = usuario.getRol();
-        
-        if(!rol.equals("SUPER_ADMIN") && !rol.equals("ADMIN") && !rol.equals("SECRETARIA")){
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("no tienes permiso para consultar estas nominas").build();   
-        }
-        
-        try{
-            if(año == null){
+        // 2. Si pasó la validación, consultamos la base de datos
+        try {
+            if (año == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("debe de ingresar el año lectivo")
+                        .entity(jsonMensaje("Debe de ingresar el año lectivo"))
                         .build();
             }
             
-            int grado = (idGrado == null)?0: idGrado;
-            int seccion = (idSeccion == null)?0: idSeccion;
+            int grado = (idGrado == null) ? 0 : idGrado;
+            int seccion = (idSeccion == null) ? 0 : idSeccion;
             
             ArrayList<NominaAlumno> nomina = nominaAlumnoService.obtenerNomina(año, grado, seccion);
             return Response.ok(nomina).build();
-        }catch(IllegalArgumentException e){
+            
+        } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(e.getMessage())
+                    .entity(jsonMensaje(e.getMessage()))
                     .build();
-        }catch(Exception e){
+        } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("error al consultar la nomina de alumnos")
+                    .entity(jsonMensaje("Error al consultar la nomina de alumnos: " + e.getMessage()))
                     .build();
         }
-       
     }
-            
 }

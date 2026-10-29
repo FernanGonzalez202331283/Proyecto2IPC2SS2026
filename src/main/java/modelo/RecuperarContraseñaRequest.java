@@ -11,8 +11,8 @@ package modelo;
 public class RecuperarContraseñaRequest {
     
     private String username;
-    private String contraseñaAnterior;
-    private String nuevaContraseña;
+    private String passwordAnterior;
+    private String nuevoPassword;
 
     public RecuperarContraseñaRequest() {
     }
@@ -25,19 +25,21 @@ public class RecuperarContraseñaRequest {
         this.username = username;
     }
 
-    public String getContraseñaAnterior() {
-        return contraseñaAnterior;
+    public String getPasswordAnterior() {
+        return passwordAnterior;
     }
 
-    public void setContraseñaAnterior(String contraseñaAnterior) {
-        this.contraseñaAnterior = contraseñaAnterior;
+    public void setPasswordAnterior(String passwordAnterior) {
+        this.passwordAnterior = passwordAnterior;
     }
 
-    public String getNuevaContraseña() {
-        return nuevaContraseña;
+    public String getNuevoPassword() {
+        return nuevoPassword;
     }
 
-    public void setNuevaContraseña(String nuevaContraseña) {
-        this.nuevaContraseña = nuevaContraseña;
+    public void setNuevoPassword(String nuevoPassword) {
+        this.nuevoPassword = nuevoPassword;
     }
+    
+    
 }

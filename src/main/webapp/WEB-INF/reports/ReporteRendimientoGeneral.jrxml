@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="ReporteRendimientoGeneral"
+              pageWidth="595" pageHeight="842" columnWidth="535"
+              leftMargin="30" rightMargin="30" topMargin="40" bottomMargin="40"
+              uuid="b2345678-c901-2345-6789-012345678901">
+
+    <parameter name="FECHA_EMISION" class="java.lang.String"/>
+    <parameter name="ANIO_LECTIVO" class="java.lang.String"/>
+
+    <field name="codigoEstudiante" class="java.lang.String"/>
+    <field name="nombres" class="java.lang.String"/>
+    <field name="apellidos" class="java.lang.String"/>
+    <field name="grado" class="java.lang.String"/>
+    <field name="seccion" class="java.lang.String"/>
+    <field name="nombreCurso" class="java.lang.String"/>
+    <field name="promedio" class="java.lang.Double"/>
+
+    <title>
+        <band height="100" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="0" width="535" height="25" uuid="11111111-1111-1111-1111-111111111111"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="16" isBold="true"/>
+                </textElement>
+                <text><![CDATA[CENTRO EDUCATIVO SISTEMA ESCOLAR]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="25" width="535" height="20" uuid="22222222-2222-2222-2222-222222222222"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="12" isBold="true" isUnderline="true"/>
+                </textElement>
+                <text><![CDATA[CU0036: REPORTE DE RENDIMIENTO ACADÉMICO]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="0" y="55" width="280" height="15" uuid="33333333-3333-3333-3333-333333333333"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Ciclo / Año Lectivo: " + $P{ANIO_LECTIVO}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="285" y="55" width="250" height="15" uuid="44444444-4444-4444-4444-444444444444"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Fecha de emisión: " + $P{FECHA_EMISION}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="75" width="535" height="1" uuid="55555555-5555-5555-5555-555555555555"/>
+            </line>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="25" splitType="Stretch">
+            <rectangle>
+                <reportElement x="0" y="0" width="535" height="25" backcolor="#198754" uuid="66666666-6666-6666-6666-666666666666"/>
+            </rectangle>
+            <staticText>
+                <reportElement x="5" y="0" width="75" height="25" forecolor="#FFFFFF" uuid="77777777-7777-7777-7777-777777777777"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Código]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="80" y="0" width="160" height="25" forecolor="#FFFFFF" uuid="88888888-8888-8888-8888-888888888888"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Estudiante]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="240" y="0" width="110" height="25" forecolor="#FFFFFF" uuid="99999999-9999-9999-9999-999999999999"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Grado y Sección]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="350" y="0" width="120" height="25" forecolor="#FFFFFF" uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Curso]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="470" y="0" width="60" height="25" forecolor="#FFFFFF" uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Promedio]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="20" splitType="Stretch">
+            <textField>
+                <reportElement x="5" y="0" width="75" height="20" uuid="cccccccc-cccc-cccc-cccc-cccccccccccc"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{codigoEstudiante}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="80" y="0" width="160" height="20" uuid="dddddddd-dddd-dddd-dddd-dddddddddddd"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{apellidos} + ", " + $F{nombres}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="240" y="0" width="110" height="20" uuid="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{grado} + " - Sec. " + $F{seccion}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="350" y="0" width="120" height="20" uuid="ffffffff-ffff-ffff-ffff-ffffffffffff"/>
+                <textElement verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{nombreCurso}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00">
+                <reportElement x="470" y="0" width="60" height="20" uuid="00000000-0000-0000-0000-000000000000"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="8" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{promedio}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="19" width="535" height="1" forecolor="#E0E0E0" uuid="10101010-1010-1010-1010-101010101010"/>
+            </line>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="20" splitType="Stretch">
+            <textField>
+                <reportElement x="385" y="0" width="150" height="20" uuid="20202020-2020-2020-2020-202020202020"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Página " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+</jasperReport>

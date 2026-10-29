@@ -1,0 +1,194 @@
+<div class="container my-4">
+  
+  <!-- Banner de Bienvenida y Perfil (CU033) -->
+  <div class="p-4 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <h1 class="display-6 fw-bold mb-1">
+        <i class="bi bi-book-half me-2"></i>Panel de Biblioteca
+      </h1>
+      <p class="fs-6 mb-0 text-white-50">
+        Control de acervo bibliográfico, préstamos, devoluciones y gestión de mora.
+      </p>
+    </div>
+    <!-- CU0033: Consultar Perfil -->
+   <a routerLink="/usuarios/consultar-perfil" class="btn btn-light text-info fw-semibold px-3 py-2 shadow-sm">      <i class="bi bi-person-circle me-2"></i>Mi Perfil (CU033)
+      <i class="bi bi-person-circle me-2"></i>Mi Perfil (CU033)
+    </a>
+
+    <button (click)="logout()" class="btn btn-outline-light fw-semibold px-3 py-2 shadow-sm">
+        <i class="bi bi-box-arrow-right me-1"></i> Cerrar Sesión
+      </button>
+  </div>
+
+  <!-- Sección 1: Catálogo e Inventario de Libros -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-journal-bookmark-fill me-2"></i>Acervo y Catálogo Bibliográfico
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU0023: Gestión de Libros -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-primary border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-journal-plus fs-2 text-primary me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Gestión de Libros</h5>
+              <small class="text-muted">CU0023</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Registra, edita y consulta el inventario de libros: título, autor, editorial y stock disponible.
+          </p>
+          <a routerLink="/biblioteca/libros" class="btn btn-outline-primary w-100 mt-2">
+            <i class="bi bi-journal-text me-1"></i> Administrar Libros
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0027: Consultar Catálogo -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-info border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-search-heart fs-2 text-info me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Consultar Catálogo</h5>
+              <small class="text-muted">CU0027</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Buscador rápido de libros registrados para verificar disponibilidad física en tiempo real.
+          </p>
+          <a routerLink="/biblioteca/catalogo" class="btn btn-outline-info w-100 mt-2">
+            <i class="bi bi-search me-1"></i> Ver Catálogo
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección 2: Circulación (Préstamos y Devoluciones) -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-arrow-left-right me-2"></i>Circulación y Control de Préstamos
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU0024: Registrar Préstamo -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-box-arrow-up-right fs-2 text-success me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Registrar Préstamo</h5>
+              <small class="text-muted">CU0024</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Asigna un libro a un estudiante o maestro estableciendo la fecha estimada de devolución.
+          </p>
+          <a routerLink="/biblioteca/prestamos" class="btn btn-outline-success w-100 mt-2">
+            <i class="bi bi-plus-circle me-1"></i> Registrar Préstamo
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0025: Registrar Devolución -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-warning border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-box-arrow-in-down-left fs-2 text-warning me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Registrar Devolución</h5>
+              <small class="text-muted">CU0025</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Recepciona libros devueltos, registra la fecha real y detecta retrasos en el proceso.
+          </p>
+          <a routerLink="/biblioteca/devoluciones" class="btn btn-outline-warning w-100 mt-2">
+            <i class="bi bi-arrow-return-left me-1"></i> Recepcionar Libro
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0028: Consultar Préstamos y Multas -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-secondary border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-clock-history fs-2 text-secondary me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Historial Préstamos</h5>
+              <small class="text-muted">CU0028</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Consulta el historial global de préstamos vigentes, devueltos y estado de sanciones.
+          </p>
+          <a routerLink="/biblioteca/historial-prestamos" class="btn btn-outline-secondary w-100 mt-2">
+            <i class="bi bi-list-task me-1"></i> Ver Historial
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección 3: Multas y Reportes de Mora -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>Multas y Penalizaciones
+  </h5>
+  <div class="row g-4">
+
+    <!-- CU0026: Gestionar Multas -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-danger border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-receipt-cutoff fs-2 text-danger me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Gestionar Multas</h5>
+              <small class="text-muted">CU0026</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Consulta días de mora y recargos calculados automáticamente por retraso en la entrega.
+          </p>
+          <a routerLink="/biblioteca/multas" class="btn btn-outline-danger w-100 mt-2">
+            <i class="bi bi-cash-stack me-1"></i> Ver Multas
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0039: Reporte de Préstamos en Mora -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-dark border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-file-earmark-pdf-fill fs-2 text-dark me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Reporte de Mora</h5>
+              <small class="text-muted">CU0039</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Genera un informe con los préstamos vencidos, usuarios responsables y montos de recargo.
+          </p>
+          <a routerLink="/reporte/prestamo-mora" class="btn btn-outline-dark w-100 mt-2">
+            <i class="bi bi-file-earmark-bar-graph me-1"></i> Reporte de Mora
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

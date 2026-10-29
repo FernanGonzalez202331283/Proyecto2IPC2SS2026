@@ -72,8 +72,8 @@ public class ReporteSolvenciaDAO {
                     reporte.setNombres(rs.getString("nombres"));
                     reporte.setApellidos(rs.getString("apellidos"));
 
-                    reporte.setIdAñoLectivo(rs.getInt("id_año_lectivo"));
-                    reporte.setAñoLectivo(rs.getInt("año"));
+                    reporte.setIdAnioLectivo(rs.getInt("id_año_lectivo"));
+                    reporte.setAnioLectivo(rs.getInt("año"));
 
                     reporte.setGrado(rs.getString("grado"));
                     reporte.setSeccion(rs.getString("seccion"));

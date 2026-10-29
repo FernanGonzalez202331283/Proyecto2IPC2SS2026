@@ -1,0 +1,160 @@
+<div class="container my-4">
+  
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-diagram-2-fill me-2"></i>CU012: Currículo y Malla Curricular por Grado</h3>
+    </div>
+    <a routerLink="/admin/dashboard" class="btn btn-light btn-sm text-primary fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <div class="row g-4">
+
+    <!-- Formulario Integrado (5 columnas) -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white py-2">
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Asignación Curricular' : 'Asignar Curso a Grado' }}</h6>
+        </div>
+        <div class="card-body p-3">
+          <form [formGroup]="curriculoForm" (ngSubmit)="guardarCurriculo()">
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Ciclo Escolar / Año Lectivo *</label>
+              <select formControlName="idAnioLectivo" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idAnioLectivo')">
+                <option [ngValue]="null" disabled>Seleccione un ciclo escolar</option>
+                @for (a of anosLectivos; track a.idAnoLectivo) {
+                  <option [value]="a.idAnoLectivo">Ciclo {{ a.anio }}</option>
+                }
+              </select>
+              <div class="invalid-feedback small">El ciclo escolar es obligatorio.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Grado Destino *</label>
+              <select formControlName="idGrado" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idGrado')">
+                <option [ngValue]="null" disabled>Seleccione un grado</option>
+                @for (g of grados; track g.idGrado) {
+                  <option [value]="g.idGrado">{{ g.nombre }} ({{ g.nivel }})</option>
+                }
+              </select>
+              <div class="invalid-feedback small">Seleccione un grado.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Materia / Curso a Asignar *</label>
+              <select formControlName="idCurso" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idCurso')">
+                <option [ngValue]="null" disabled>Seleccione un curso del catálogo</option>
+                @for (c of cursos; track c.idCurso) {
+                  <option [value]="c.idCurso">{{ c.nombre }}</option>
+                }
+              </select>
+              <div class="invalid-feedback small">Seleccione una materia del catálogo.</div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-primary btn-sm fw-semibold" [disabled]="procesando">
+                {{ modoEdicion ? 'Actualizar Asignación' : 'Asignar Curso a Malla' }}
+              </button>
+              @if (modoEdicion) {
+                <button type="button" (click)="cancelarEdicion()" class="btn btn-outline-secondary btn-sm" [disabled]="procesando">
+                  Cancelar
+                </button>
+              }
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla Malla Curricular (7 columnas) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-secondary">Malla Curricular Configurada</h6>
+          <span class="badge bg-primary">Total: {{ curriculos.length }}</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Ciclo</th>
+                  <th>Grado</th>
+                  <th>Curso / Materia</th>
+                  <th>Estado</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cargando) {
+                  <tr>
+                    <td colspan="6" class="text-center py-3 text-muted">Cargando...</td>
+                  </tr>
+                } @else if (curriculos.length === 0) {
+                  <tr>
+                    <td colspan="6" class="text-center py-3 text-muted">Sin cursos asignados a la malla curricular.</td>
+                  </tr>
+                } @else {
+                  @for (item of curriculos; track item.idCurriculo || $index) {
+                    <tr>
+                      <td class="fw-bold">#{{ item.idCurriculo }}</td>
+                      <td>
+                        <span class="badge bg-outline-dark border text-dark">
+                          {{ obtenerAnioLectivo(item.idAnioLectivo) }}
+                        </span>
+                      </td>
+                      <td class="fw-semibold text-primary">{{ obtenerNombreGrado(item.idGrado) }}</td>
+                      <td class="fw-bold fs-6 text-dark">{{ obtenerNombreCurso(item.idCurso) }}</td>
+                      <td>
+                        <span class="badge" [class.bg-success]="item.estado" [class.bg-secondary]="!item.estado">
+                          {{ item.estado ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                          <button (click)="editarCurriculo(item)" class="btn btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                          </button>
+                          <button 
+                            (click)="toggleEstado(item)" 
+                            class="btn" 
+                            [class.btn-outline-danger]="item.estado" 
+                            [class.btn-outline-success]="!item.estado"
+                            title="{{ item.estado ? 'Desactivar' : 'Activar' }}">
+                            <i class="bi" [class.bi-power]="item.estado" [class.bi-check-circle]="!item.estado"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

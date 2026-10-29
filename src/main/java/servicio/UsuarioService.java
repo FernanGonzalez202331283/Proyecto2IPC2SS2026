@@ -4,10 +4,12 @@
  */
 package servicio;
 
+import Dao.PersonaDAO;
 import Dao.UsuarioDAO;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import modelo.Persona;
 import modelo.Usuario;
 
 /**
@@ -15,10 +17,12 @@ import modelo.Usuario;
  * @author fernan
  */
 public class UsuarioService {
-    private final UsuarioDAO usuarioDAO;
+  private final UsuarioDAO usuarioDAO;
+    private final PersonaDAO personaDAO;
 
     public UsuarioService() {
         this.usuarioDAO = new UsuarioDAO();
+        this.personaDAO = new PersonaDAO();
     }
 
     public Usuario buscarUsuario(int idUsuario) {
@@ -35,7 +39,7 @@ public class UsuarioService {
             return errorValidacion;
         }
 
-        // Permisos según el rol de sesión
+        // Permisos según el rol de la sesión activa
         if ("SUPER_ADMIN".equals(usuario.getRol()) && !"SUPER_ADMIN".equals(rolSesion)) {
             return "No tiene permisos para crear un SUPER_ADMIN";
         }
@@ -50,10 +54,31 @@ public class UsuarioService {
             return "El username ya está registrado";
         }
 
-        // Codificar contraseña a Base64 antes de guardar
+        // 1. Registro en cascada de la Persona si viene el objeto anidado
+        if (usuario.getPersona() != null) {
+            Persona persona = usuario.getPersona();
+            String errorPersona = validarPersona(persona);
+            if (errorPersona != null) {
+                return errorPersona;
+            }
+
+            persona.setEstado(true);
+            int idPersonaGenerado = personaDAO.insertarObteniendoId(persona);
+
+            if (idPersonaGenerado <= 0) {
+                return "No se pudieron registrar los datos personales";
+            }
+
+            usuario.setIdPersona(idPersonaGenerado);
+        } else if (usuario.getIdPersona() <= 0) {
+            return "Debe asignar una persona válida al usuario";
+        }
+
+        // 2. Codificar contraseña a Base64 antes de guardar
         String contraseñaBase64 = codificarBase64(usuario.getContraseña());
         usuario.setContraseña(contraseñaBase64);
 
+        // 3. Insertar la cuenta de Usuario
         boolean registrado = usuarioDAO.insertar(usuario);
         return registrado ? "OK" : "No se pudo registrar el usuario";
     }
@@ -73,7 +98,12 @@ public class UsuarioService {
             return errorValidacion;
         }
 
-        // Validación de protección para el último SUPER_ADMIN activo
+        // Si se enviaron datos de persona para actualizar
+        if (usuario.getPersona() != null && usuario.getPersona().getIdPersona() > 0) {
+            personaDAO.actualizar(usuario.getPersona());
+        }
+
+        // Protección para el último SUPER_ADMIN activo
         if ("SUPER_ADMIN".equals(actual.getRol()) && actual.isEstado()) {
             boolean dejaDeSerSuperAdmin = !"SUPER_ADMIN".equals(usuario.getRol());
             boolean seDesactiva = !usuario.isEstado();
@@ -86,15 +116,19 @@ public class UsuarioService {
             }
         }
 
-        // Verificar si el nuevo username está ocupado por otro usuario distinto
+        // Verificar que el nuevo username no esté ocupado por otro usuario
         Usuario usuarioExistente = usuarioDAO.buscarPorUsername(usuario.getUsername());
         if (usuarioExistente != null && usuarioExistente.getIdUsuario() != usuario.getIdUsuario()) {
             return "El username ya está registrado";
         }
 
-        // Si la contraseña cambió/se envió nueva, la codificamos a Base64
-        if (!usuario.getContraseña().equals(actual.getContraseña())) {
+        // Codificar la nueva contraseña en Base64 si fue modificada
+        if (usuario.getContraseña() != null 
+                && !usuario.getContraseña().trim().isEmpty() 
+                && !usuario.getContraseña().equals(actual.getContraseña())) {
             usuario.setContraseña(codificarBase64(usuario.getContraseña()));
+        } else {
+            usuario.setContraseña(actual.getContraseña());
         }
 
         boolean actualizado = usuarioDAO.actualizar(usuario);
@@ -118,7 +152,7 @@ public class UsuarioService {
         return actualizado ? "OK" : "No se pudo cambiar el estado del usuario";
     }
 
-    // Método auxiliar privado para la validación de presencia de campos obligatorios
+    // Validación de campos obligatorios del usuario
     private String validarDatosBasicos(Usuario usuario) {
         if (usuario == null) {
             return "Los datos del usuario son obligatorios";
@@ -129,16 +163,32 @@ public class UsuarioService {
         if (usuario.getContraseña() == null || usuario.getContraseña().trim().isEmpty()) {
             return "La contraseña es obligatoria";
         }
-        if (usuario.getIdPersona() <= 0) {
-            return "La persona es obligatoria";
-        }
         if (usuario.getRol() == null || usuario.getRol().trim().isEmpty()) {
             return "El rol es obligatorio";
         }
         return null;
     }
 
-    // Método auxiliar para codificar cadenas a Base64
+    // Validación interna de datos personales
+    private String validarPersona(Persona persona) {
+        if (persona.getNombres() == null || persona.getNombres().trim().isEmpty()) {
+            return "Los nombres de la persona son obligatorios";
+        }
+        if (persona.getApellidos() == null || persona.getApellidos().trim().isEmpty()) {
+            return "Los apellidos de la persona son obligatorios";
+        }
+        if (persona.getDpi() != null && !persona.getDpi().trim().isEmpty()) {
+            String dpi = persona.getDpi().trim();
+            if (dpi.length() != 13) {
+                return "El DPI debe contener exactamente 13 dígitos";
+            }
+            if (personaDAO.existeDpi(dpi)) {
+                return "El DPI ya se encuentra registrado";
+            }
+        }
+        return null;
+    }
+
     private String codificarBase64(String texto) {
         return Base64.getEncoder().encodeToString(texto.getBytes(StandardCharsets.UTF_8));
     }

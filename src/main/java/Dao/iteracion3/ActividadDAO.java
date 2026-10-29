@@ -17,82 +17,83 @@ import modelo.iteracion3.Actividad;
  * @author fernan
  */
 public class ActividadDAO {
-    public boolean registrar(Actividad actividad){
+
+    public boolean registrar(Actividad actividad) {
         String sql = """
                      INSERT INTO actividad
                      (id_asignacion, nombre, descripcion, porcentaje, fecha, estado)
                      VALUES(?, ?, ?, ?, ?, ?)
                      """;
         try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
+                PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, actividad.getIdAsignacion());
             ps.setString(2, actividad.getNombre());
             ps.setString(3, actividad.getDescripcion());
             ps.setDouble(4, actividad.getPorcentaje());
             ps.setString(5, actividad.getFecha());
             ps.setBoolean(6, actividad.isEstado());
-            
-            return ps.executeUpdate() > 0 ;
-            
+
+            return ps.executeUpdate() > 0;
+
         } catch (SQLException e) {
-            System.out.println("Error al registrar actividad: "+e.getMessage());
+            System.out.println("Error al registrar actividad: " + e.getMessage());
             return false;
         }
     }
-    
-    public ArrayList<Actividad> obtenerTodos(){
+
+    public ArrayList<Actividad> obtenerTodos() {
         ArrayList<Actividad> actividades = new ArrayList<>();
-        
+
         String sql = """
                      SELECT * FROM actividad
-                     ORDER BY  id_actividad
+                     ORDER BY id_actividad
                      """;
-        
+
         try (Connection connection = Conexion.getInstance().getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()){
-            while (rs.next()) {                
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
                 actividades.add(mapearActividad(rs));
             }
         } catch (SQLException e) {
-            System.out.println("Error al obtener actividades: "+e.getMessage());
+            System.out.println("Error al obtener actividades: " + e.getMessage());
         }
         return actividades;
     }
-    
-    public Actividad buscarPorId(int idActividad){
+
+    public Actividad buscarPorId(int idActividad) {
         String sql = """
                      SELECT * FROM actividad
                      WHERE id_actividad = ?
                      """;
-        try(Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idActividad);
-            
-            try(ResultSet rs = ps.executeQuery()){
-                if(rs.next()){
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
                     return mapearActividad(rs);
                 }
             }
         } catch (SQLException e) {
-            System.out.println("error al buscar actividad: "+e.getMessage());
+            System.out.println("Error al buscar actividad: " + e.getMessage());
         }
         return null;
     }
-    
-    public boolean actualizar(Actividad actividad){
+
+    public boolean actualizar(Actividad actividad) {
         String sql = """
                      UPDATE actividad 
                      SET id_asignacion = ?,
-                        nombre = ?,
-                        descripcion = ?,
-                        porcentaje = ?,
-                        fecha = ?, 
-                        estado = ?
+                         nombre = ?,
+                         descripcion = ?,
+                         porcentaje = ?,
+                         fecha = ?, 
+                         estado = ?
                      WHERE id_actividad = ?
-                     """; 
-        
-        try(Connection connection = Conexion.getInstance().getConnection();
+                     """;
+
+        try (Connection connection = Conexion.getInstance().getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, actividad.getIdAsignacion());
             ps.setString(2, actividad.getNombre());
@@ -101,20 +102,20 @@ public class ActividadDAO {
             ps.setString(5, actividad.getFecha());
             ps.setBoolean(6, actividad.isEstado());
             ps.setInt(7, actividad.getIdActividad());
-            
-            return ps.executeUpdate()>0;
+
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.out.println("Error al actualizar actividad: "+e.getMessage());
+            System.out.println("Error al actualizar actividad: " + e.getMessage());
             return false;
         }
     }
-    
-    public boolean cambiarEstado(int idActividad, boolean estado){
-        
+
+    public boolean cambiarEstado(int idActividad, boolean estado) {
+
         String sql = "UPDATE actividad SET estado = ? WHERE id_actividad = ?";
 
         try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
             ps.setInt(2, idActividad);
@@ -136,7 +137,7 @@ public class ActividadDAO {
                 + "ORDER BY fecha, id_actividad";
 
         try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idAsignacion);
 
@@ -156,12 +157,12 @@ public class ActividadDAO {
 
     public double obtenerSumaPorcentajes(int idAsignacion) {
 
-        String sql = "SELECT COALESCE(SUM(porcentaje), 0) AS total "
+        String sql = "SELECT COALESCE(SUM(porcentaje), 0.0) AS total "
                 + "FROM actividad "
                 + "WHERE id_asignacion = ? AND estado = 1";
 
         try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idAsignacion);
 
@@ -176,7 +177,7 @@ public class ActividadDAO {
             System.out.println("Error al calcular porcentajes: " + e.getMessage());
         }
 
-        return 0;
+        return 0.0;
     }
 
     private Actividad mapearActividad(ResultSet rs) throws SQLException {
@@ -193,5 +194,4 @@ public class ActividadDAO {
 
         return actividad;
     }
-    
 }

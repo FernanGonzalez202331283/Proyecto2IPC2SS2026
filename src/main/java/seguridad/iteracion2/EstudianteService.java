@@ -5,10 +5,13 @@
 package seguridad.iteracion2;
 
 import Dao.PersonaDAO;
+import Dao.iteracion2.EncargadoDAO;
 import Dao.iteracion2.EstudianteDAO;
 import java.util.ArrayList;
 import modelo.Persona;
+import modelo.iteracion2.Encargado;
 import modelo.iteracion2.Estudiante;
+import modelo.iteracion2.EstudianteEncargado;
 
 /**
  *
@@ -17,9 +20,12 @@ import modelo.iteracion2.Estudiante;
 public class EstudianteService {
     private final EstudianteDAO estudianteDAO;
     private final PersonaDAO personaDAO;
+    private final EncargadoDAO encargadoDAO;
+
     public EstudianteService() {
         this.estudianteDAO = new EstudianteDAO();
         this.personaDAO = new PersonaDAO();
+        this.encargadoDAO = new EncargadoDAO();
     }
 
     public String registrarEstudiante(Estudiante estudiante) {
@@ -35,13 +41,13 @@ public class EstudianteService {
         }
 
         if (persona.getNombres() == null || persona.getNombres().trim().isEmpty()) {
-            return "Los nombres son obligatorios.";
+            return "Los nombres del estudiante son obligatorios.";
         }
         if (persona.getApellidos() == null || persona.getApellidos().trim().isEmpty()) {
-            return "Los apellidos son obligatorios.";
+            return "Los apellidos del estudiante son obligatorios.";
         }
         if (persona.getDpi() == null || persona.getDpi().trim().isEmpty()) {
-            return "El DPI es obligatorio.";
+            return "El DPI del estudiante es obligatorio.";
         }
         if (estudiante.getCodigoEstudiante() == null
                 || estudiante.getCodigoEstudiante().trim().isEmpty()) {
@@ -52,6 +58,41 @@ public class EstudianteService {
         }
         if (estudianteDAO.existeCodigo(estudiante.getCodigoEstudiante())) {
             return "El código de estudiante ya se encuentra registrado.";
+        }
+
+        // Validacion de encargados
+        ArrayList<EstudianteEncargado> encargados = estudiante.getEncargados();
+        if (encargados == null || encargados.isEmpty()) {
+            return "Debe proporcionar los datos del encargado / padre del estudiante.";
+        }
+
+        boolean tieneResponsablePrincipal = false;
+        for (EstudianteEncargado rel : encargados) {
+            if (rel.getIdEncargado() <= 0) {
+                Encargado enc = rel.getEncargado();
+                if (enc == null) {
+                    return "Debe ingresar la información del encargado.";
+                }
+                if (enc.getNombres() == null || enc.getNombres().trim().isEmpty()) {
+                    return "El nombre del encargado es obligatorio.";
+                }
+                if (enc.getApellidos() == null || enc.getApellidos().trim().isEmpty()) {
+                    return "El apellido del encargado es obligatorio.";
+                }
+                if (enc.getTelefono() == null || enc.getTelefono().trim().isEmpty()) {
+                    return "El teléfono de contacto del encargado es obligatorio.";
+                }
+            }
+            if (rel.getParentesco() == null || rel.getParentesco().trim().isEmpty()) {
+                return "Debe especificar el parentesco con el estudiante.";
+            }
+            if (rel.isResponsablePrincipal()) {
+                tieneResponsablePrincipal = true;
+            }
+        }
+
+        if (!tieneResponsablePrincipal) {
+            return "Debe indicar que el encargado es el responsable principal.";
         }
 
         if (estudiante.getEstado() == null || estudiante.getEstado().trim().isEmpty()) {
@@ -70,16 +111,13 @@ public class EstudianteService {
     }
 
     public Estudiante buscarPorId(int idEstudiante) {
-
         if (idEstudiante <= 0) {
             return null;
         }
-
         return estudianteDAO.buscarPorId(idEstudiante);
     }
 
     public ArrayList<Estudiante> obtenerTodos() {
-
         return estudianteDAO.obtenerTodos();
     }
 
@@ -177,9 +215,8 @@ public class EstudianteService {
     }
 
     private boolean estadoValido(String estado) {
-
-        return estado.equals("ACTIVO")
-                || estado.equals("INACTIVO")
-                || estado.equals("GRADUADO");
+        return "ACTIVO".equals(estado)
+                || "INACTIVO".equals(estado)
+                || "GRADUADO".equals(estado);
     }
 }

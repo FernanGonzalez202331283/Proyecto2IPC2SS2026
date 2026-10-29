@@ -1,0 +1,114 @@
+<div class="container my-4">
+
+  <!-- Header -->
+  <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-journal-bookmark-fill me-2"></i>Historial Académico</h3>
+      <small class="text-white-50">Consulta de calificaciones por asignatura, ciclo lectivo y actividades</small>
+    </div>
+    <button (click)="volver()" class="btn btn-outline-light btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  <!-- Formulario de Búsqueda -->
+  @if (!esVistaEstudiante) {
+    <div class="card shadow-sm border-0 mb-4 p-3 bg-light">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-4">
+          <label class="form-label fw-bold mb-1">ID de Estudiante:</label>
+          <input type="number" class="form-control" [(ngModel)]="idEstudianteBusqueda" placeholder="Ej: 1">
+        </div>
+        <div class="col-md-3 align-self-end">
+          <button (click)="consultar()" class="btn btn-primary w-100 fw-semibold" [disabled]="cargando">
+            <i class="bi bi-search me-1"></i> Consultar Historial
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Spinner de Carga -->
+  @if (cargando) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted fw-semibold">Cargando historial académico...</p>
+    </div>
+  }
+
+  <!-- Mensaje de Error -->
+  @if (errorMessage && !cargando) {
+    <div class="alert alert-danger shadow-sm fw-semibold">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+    </div>
+  }
+
+  <!-- Resultado del Historial -->
+  @if (historial && !cargando) {
+    
+    <!-- Ficha del Alumno -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body bg-dark text-white rounded-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h4 class="fw-bold mb-0">{{ historial.nombres }} {{ historial.apellidos }}</h4>
+          <span class="text-info fw-semibold">Código: {{ historial.codigoEstudiante }}</span>
+        </div>
+        <span class="badge bg-secondary fs-6">ID Estudiante: {{ historial.idEstudiante }}</span>
+      </div>
+    </div>
+
+    <!-- Lista de Cursos -->
+    @for (curso of historial.cursos; track curso.idAsignacion) {
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center py-3">
+          <div>
+            <h5 class="fw-bold text-primary mb-0">{{ curso.nombreCurso }}</h5>
+            <small class="text-muted">
+              Año: <strong>{{ curso.anioLectivo }}</strong> | Grado: <strong>{{ curso.grado }}</strong> | Sección: <strong>{{ curso.seccion }}</strong>
+            </small>
+          </div>
+          <div class="text-end">
+            <small class="text-muted d-block fw-bold">Promedio Final</small>
+            <span class="badge fs-6" [ngClass]="obtenerBadgePromedio(curso.promedio)">
+              {{ curso.promedio }} pts
+            </span>
+          </div>
+        </div>
+
+        <div class="card-body p-0">
+          @if (curso.calificaciones && curso.calificaciones.length > 0) {
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                  <tr>
+                    <th>Actividad</th>
+                    <th>Descripción</th>
+                    <th class="text-center">Fecha</th>
+                    <th class="text-center">Ponderación</th>
+                    <th class="text-end">Calificación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (det of curso.calificaciones; track det.idNota) {
+                    <tr>
+                      <td class="fw-bold">{{ det.nombreActividad }}</td>
+                      <td class="text-muted small">{{ det.descripcion || '-' }}</td>
+                      <td class="text-center small">{{ det.fecha }}</td>
+                      <td class="text-center"><span class="badge bg-light text-dark border">{{ det.porcentaje }}%</span></td>
+                      <td class="text-end fw-bold text-primary">{{ det.calificacion }} pts</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="p-3 text-center text-muted small">
+              No hay actividades o notas registradas para este curso en este ciclo lectivo.
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+
+</div>

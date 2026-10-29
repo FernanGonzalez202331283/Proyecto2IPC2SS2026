@@ -16,7 +16,10 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
+import modelo.Usuario;
 import modelo.iteracion2.AsignacionDocente;
+import seguridad.JwtService;
 import seguridad.iteracion2.AsignacionDocenteService;
 
 /**
@@ -24,80 +27,100 @@ import seguridad.iteracion2.AsignacionDocenteService;
  * @author fernan
  */
 
-@Path("/asignaciones-docentes")
+@Path("asignaciones-docentes")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AsignacionDocenteResource {
 
-    private AsignacionDocenteService asignacionService =
-            new AsignacionDocenteService();
+    private final AsignacionDocenteService asignacionService;
+    private final JwtService jwtService = new JwtService();
 
-    @Context
-    private HttpServletRequest request;
+    public AsignacionDocenteResource() {
+        this.asignacionService = new AsignacionDocenteService();
+    }
 
-    // Registrar una asignación docente
-    @POST
-    public Response registrar(AsignacionDocente asignacion) {
+    private Response validarAcceso(HttpServletRequest httpRequest, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioSesion(httpRequest);
 
-        // Comprobar sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
+        if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
 
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje(mensajePermiso))
+                    .build();
+        }
+
+        return null;
+    }
+
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
+    // Registrar una asignación docente
+    @POST
+    public Response registrar(AsignacionDocente asignacion, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para registrar asignaciones docentes.");
+        if (acceso != null) return acceso;
+
         String mensaje = asignacionService.registrar(asignacion);
 
-        if (mensaje.equals("Asignación docente registrada correctamente.")) {
-
+        if (mensaje.contains("correctamente")) {
             return Response.status(Response.Status.CREATED)
-                    .entity("{\"mensaje\":\"" + mensaje + "\"}")
+                    .entity(jsonMensaje(mensaje))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"mensaje\":\"" + mensaje + "\"}")
+                .entity(jsonMensaje(mensaje))
                 .build();
     }
 
     // Obtener todas las asignaciones docentes
     @GET
-    public Response obtenerTodos() {
+    public Response obtenerTodos(@Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar asignaciones docentes.");
+        if (acceso != null) return acceso;
 
-        // Comprobar sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
-
-        return Response.ok(asignacionService.obtenerTodos()).build();
+        ArrayList<AsignacionDocente> asignaciones = asignacionService.obtenerTodos();
+        return Response.ok(asignaciones).build();
     }
 
     // Buscar una asignación por ID
     @GET
     @Path("/{id}")
-    public Response buscarPorId(@PathParam("id") int idAsignacion) {
+    public Response buscarPorId(@PathParam("id") int idAsignacion, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar asignaciones docentes.");
+        if (acceso != null) return acceso;
 
-        // Comprobar sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
-
-        AsignacionDocente asignacion =
-                asignacionService.buscarPorId(idAsignacion);
+        AsignacionDocente asignacion = asignacionService.buscarPorId(idAsignacion);
 
         if (asignacion == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"La asignación docente no existe.\"}")
+                    .entity(jsonMensaje("La asignación docente no existe."))
                     .build();
         }
 
@@ -107,109 +130,71 @@ public class AsignacionDocenteResource {
     // Actualizar una asignación docente
     @PUT
     @Path("/{id}")
-    public Response actualizar(@PathParam("id") int idAsignacion, AsignacionDocente asignacion) {
-
-        // Comprobar sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
+    public Response actualizar(@PathParam("id") int idAsignacion, AsignacionDocente asignacion, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para actualizar asignaciones docentes.");
+        if (acceso != null) return acceso;
 
         if (asignacion == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"mensaje\":\"Los datos de la asignación son obligatorios.\"}")
+                    .entity(jsonMensaje("Los datos de la asignación son obligatorios."))
                     .build();
         }
 
-        // Establecer el ID recibido en la URL
         asignacion.setIdAsignacion(idAsignacion);
-
         String mensaje = asignacionService.actualizar(asignacion);
 
-        if (mensaje.equals("Asignación docente actualizada correctamente.")) {
-
-            return Response.ok()
-                    .entity("{\"mensaje\":\"" + mensaje + "\"}")
-                    .build();
+        if (mensaje.contains("correctamente")) {
+            return Response.ok(jsonMensaje(mensaje)).build();
         }
 
-        if (mensaje.equals(
-                "La asignación docente que desea actualizar no existe.")) {
-
+        if (mensaje.contains("no existe")) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"" + mensaje + "\"}")
+                    .entity(jsonMensaje(mensaje))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"mensaje\":\"" + mensaje + "\"}")
+                .entity(jsonMensaje(mensaje))
                 .build();
     }
 
     // Cambiar estado de una asignación docente
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @PathParam("id") int idAsignacion,
-            EstadoRequest datos) {
-
-        // Comprobar sesión
-        HttpSession session = request.getSession(false);
-
-        if (session == null || session.getAttribute("usuario") == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"mensaje\":\"Debe iniciar sesión.\"}")
-                    .build();
-        }
+    public Response cambiarEstado(@PathParam("id") int idAsignacion, EstadoRequest datos, @Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest, "No tiene permisos para modificar el estado de la asignación.");
+        if (acceso != null) return acceso;
 
         if (datos == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"mensaje\":\"Debe proporcionar el estado.\"}")
+                    .entity(jsonMensaje("Debe proporcionar el estado."))
                     .build();
         }
 
-        String mensaje = asignacionService.cambiarEstado(
-                idAsignacion,
-                datos.isEstado()
-        );
+        String mensaje = asignacionService.cambiarEstado(idAsignacion, datos.isEstado());
 
-        if (mensaje.equals("Asignación docente activada correctamente.")
-                || mensaje.equals("Asignación docente desactivada correctamente.")) {
-
-            return Response.ok()
-                    .entity("{\"mensaje\":\"" + mensaje + "\"}")
-                    .build();
+        if (mensaje.contains("correctamente")) {
+            return Response.ok(jsonMensaje(mensaje)).build();
         }
 
-        if (mensaje.equals("La asignación docente no existe.")) {
-
+        if (mensaje.contains("no existe")) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\":\"" + mensaje + "\"}")
+                    .entity(jsonMensaje(mensaje))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"mensaje\":\"" + mensaje + "\"}")
+                .entity(jsonMensaje(mensaje))
                 .build();
     }
 
-    // Clase para recibir el estado desde JSON
     public static class EstadoRequest {
-
         private boolean estado;
 
-        public EstadoRequest() {
-        }
+        public EstadoRequest() {}
 
-        public boolean isEstado() {
-            return estado;
-        }
-
-        public void setEstado(boolean estado) {
-            this.estado = estado;
-        }
+        public boolean isEstado() { return estado; }
+        public void setEstado(boolean estado) { this.estado = estado; }
     }
+    
 }

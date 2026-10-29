@@ -1,0 +1,183 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-info text-dark rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-folder-symlink-fill me-2"></i>CU015: Consultar Expediente de Estudiante</h3>
+      <small class="text-secondary">Consulta integral de información académica, personal y encargados</small>
+    </div>
+    <button type="button" (click)="volver()" class="btn btn-dark btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  <!-- Buscador / Selección de Estudiante -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3 bg-light rounded">
+      <div class="row align-items-center g-2">
+        <div class="col-md-9">
+          <label class="form-label small fw-bold mb-1">Seleccionar Estudiante a Consultar *</label>
+          <select class="form-select form-select-sm" [(ngModel)]="idEstudianteSeleccionado" (change)="consultarExpediente()">
+            <option [ngValue]="null" disabled>--- Seleccione un estudiante ---</option>
+            @for (est of estudiantesLista; track est.idEstudiante) {
+              <option [ngValue]="est.idEstudiante">
+                {{ est.codigoEstudiante }} - {{ est.persona.nombres }} {{ est.persona.apellidos }} (DPI: {{ est.persona.dpi }})
+              </option>
+            }
+          </select>
+        </div>
+        <div class="col-md-3 d-grid">
+          <label class="form-label d-none d-md-block mb-1">&nbsp;</label>
+          <button class="btn btn-primary btn-sm fw-semibold" (click)="consultarExpediente()" [disabled]="!idEstudianteSeleccionado || cargando">
+            <i class="bi bi-search me-1"></i> Consultar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerta para Escenario Alterno (Línea 4) o Errores -->
+  @if (errorMessage) {
+    <div class="alert alert-warning alert-dismissible fade show shadow-sm fw-semibold" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Indicador de Carga -->
+  @if (cargando) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary me-2" role="status"></div>
+      <span class="fw-semibold text-secondary">Organizando información del expediente...</span>
+    </div>
+  }
+
+  <!-- Expediente Completo -->
+  @if (expediente && !cargando) {
+
+    <!-- Tarjeta Principal del Estudiante -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="bg-primary text-white p-3 rounded-circle fs-2">
+          <i class="bi bi-person-vcard"></i>
+        </div>
+        <div>
+          <h4 class="fw-bold mb-0 text-dark">{{ expediente.nombres }} {{ expediente.apellidos }}</h4>
+          <span class="text-muted me-3"><i class="bi bi-card-text me-1"></i>Código: <b>{{ expediente.codigoEstudiante }}</b></span>
+          <span class="text-muted me-3"><i class="bi bi-fingerprint me-1"></i>CUI/DPI: <b>{{ expediente.dpi }}</b></span>
+          <span class="badge" [class.bg-success]="expediente.estado === 'ACTIVO'" [class.bg-secondary]="expediente.estado !== 'ACTIVO'">
+            {{ expediente.estado }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- Columna Izquierda: Información Personal y Encargados -->
+      <div class="col-lg-6">
+
+        <!-- Datos Personales -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-dark text-white py-2">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-person-lines-fill me-2"></i>Información Personal y Contacto</h6>
+          </div>
+          <div class="card-body small">
+            <div class="row mb-2">
+              <div class="col-sm-4 text-muted fw-semibold">Teléfono:</div>
+              <div class="col-sm-8 fw-bold">{{ expediente.telefono || 'Sin registrar' }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-sm-4 text-muted fw-semibold">Correo:</div>
+              <div class="col-sm-8 fw-bold">{{ expediente.correo || 'Sin registrar' }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-sm-4 text-muted fw-semibold">Dirección:</div>
+              <div class="col-sm-8 fw-bold">{{ expediente.direccion || 'Sin registrar' }}</div>
+            </div>
+            <div class="row">
+              <div class="col-sm-4 text-muted fw-semibold">Información Médica:</div>
+              <div class="col-sm-8 fw-bold text-danger">{{ expediente.informacionMedica || 'Sin observaciones' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Encargados Registrados -->
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-secondary text-white py-2">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-people-fill me-2"></i>Padres / Encargados Asignados</h6>
+          </div>
+          <div class="card-body p-0">
+            <ul class="list-group list-group-flush small">
+              @for (enc of expediente.encargados; track enc.idEncargado || $index) {
+                <li class="list-group-item p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-dark">{{ enc.encargado?.nombres }} {{ enc.encargado?.apellidos }}</span>
+                    <span class="badge bg-info text-dark">{{ enc.parentesco }}</span>
+                  </div>
+                  <div class="text-muted"><i class="bi bi-telephone me-1"></i> Teléfono: {{ enc.encargado?.telefono || 'Sin teléfono' }}</div>
+                  @if (enc.responsablePrincipal) {
+                    <span class="badge bg-success-subtle text-success border border-success mt-2">Responsable Principal</span>
+                  }
+                </li>
+              } @empty {
+                <li class="list-group-item text-center text-muted py-3">No existen encargados asignados a este estudiante.</li>
+              }
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Columna Derecha: Historial Académico -->
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-journal-bookmark-fill me-2"></i>Historial de Inscripciones</h6>
+            <span class="badge bg-light text-primary">Total: {{ expediente.historialAcademico.length }}</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>No.</th>
+                    <th>Grado y Sección</th>
+                    <th>Fecha Matrícula</th>
+                    <th class="text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (insc of expediente.historialAcademico; track insc.idInscripcion || $index) {
+                    <tr>
+                      <td class="fw-bold text-secondary">#{{ insc.idInscripcion }}</td>
+                      <td class="fw-bold text-dark">{{ obtenerDetalleSeccion(insc.idSeccion) }}</td>
+                      <td class="text-muted">{{ insc.fechaInscripcion }}</td>
+                      <td class="text-center">
+                        <span class="badge" 
+                          [class.bg-success]="insc.estado === 'ACTIVA'" 
+                          [class.bg-warning]="insc.estado === 'RETIRADA'" 
+                          [class.bg-secondary]="insc.estado === 'FINALIZADA'">
+                          {{ insc.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="text-center py-4 text-muted">
+                        No hay historial de inscripciones registrado para este estudiante.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  }
+
+</div>

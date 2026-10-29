@@ -19,73 +19,83 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import modelo.Carrera;
 import modelo.Usuario;
+import seguridad.JwtService;
 import servicio.CarreraService;
+
 
 /**
  *
  * @author fernan
  */
+
 @Path("/carreras")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class CarreraResource {
 
-    private CarreraService carreraService;
+    private final CarreraService carreraService;
+    private final JwtService jwtService = new JwtService();
 
     public CarreraResource() {
-        carreraService = new CarreraService();
+        this.carreraService = new CarreraService();
     }
 
     private Response validarAcceso(HttpServletRequest httpRequest) {
-        HttpSession session = httpRequest.getSession(false);
-        if (session == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        Usuario usuario = obtenerUsuarioSesion(httpRequest);
 
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
 
-        if (!usuario.getRol().equals("SUPER_ADMIN")
-                && !usuario.getRol().equals("ADMIN")) {
-
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para gestionar carreras.")
+                    .entity(jsonMensaje("No tiene permisos para gestionar carreras."))
                     .build();
         }
 
         return null;
     }
 
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
     @GET
-    public Response obtenerCarreras(
-            @Context HttpServletRequest httpRequest) {
-
+    public Response obtenerCarreras(@Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-
         if (acceso != null) {
             return acceso;
         }
 
         ArrayList<Carrera> carreras = carreraService.obtenerCarreras();
-
         return Response.ok(carreras).build();
     }
 
     @GET
     @Path("/{id}")
-    public Response buscarCarrera(
-            @PathParam("id") int idCarrera,
-            @Context HttpServletRequest httpRequest) {
-
+    public Response buscarCarrera(@PathParam("id") int idCarrera, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-
         if (acceso != null) {
             return acceso;
         }
@@ -94,7 +104,7 @@ public class CarreraResource {
 
         if (carrera == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("La carrera no existe.")
+                    .entity(jsonMensaje("La carrera no existe."))
                     .build();
         }
 
@@ -102,21 +112,23 @@ public class CarreraResource {
     }
 
     @POST
-    public Response registrarCarrera(
-            Carrera carrera,
-            @Context HttpServletRequest httpRequest) {
-
+    public Response registrarCarrera(Carrera carrera, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-
         if (acceso != null) {
             return acceso;
         }
 
+        if (carrera == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("La carrera no puede ser nula."))
+                    .build();
+        }
+
         String resultado = carreraService.registrarCarrera(carrera);
 
-        if (!resultado.equals("Carrera registrada correctamente.")) {
+        if (!"Carrera registrada correctamente.".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
@@ -127,36 +139,30 @@ public class CarreraResource {
 
     @PUT
     @Path("/{id}")
-    public Response actualizarCarrera(
-            @PathParam("id") int idCarrera,
-            Carrera carrera,
-            @Context HttpServletRequest httpRequest) {
-
+    public Response actualizarCarrera(@PathParam("id") int idCarrera, Carrera carrera, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-
         if (acceso != null) {
             return acceso;
         }
 
         if (carrera == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("La carrera no puede ser nula.")
+                    .entity(jsonMensaje("La carrera no puede ser nula."))
                     .build();
         }
 
         carrera.setIdCarrera(idCarrera);
-
         String resultado = carreraService.actualizarCarrera(carrera);
 
-        if (resultado.equals("La carrera no existe.")) {
+        if ("La carrera no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        if (!resultado.equals("Carrera actualizada correctamente.")) {
+        if (!"Carrera actualizada correctamente.".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
@@ -165,40 +171,32 @@ public class CarreraResource {
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @PathParam("id") int idCarrera,
-            Carrera carrera,
-            @Context HttpServletRequest httpRequest) {
-
+    public Response cambiarEstado(@PathParam("id") int idCarrera, Carrera carrera, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-
         if (acceso != null) {
             return acceso;
         }
 
         if (carrera == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("La carrera no puede ser nula.")
+                    .entity(jsonMensaje("La carrera no puede ser nula."))
                     .build();
         }
 
-        String resultado = carreraService.cambiarEstado(
-                idCarrera,
-                carrera.isEstado()
-        );
+        String resultado = carreraService.cambiarEstado(idCarrera, carrera.isEstado());
 
-        if (resultado.equals("La carrera no existe.")) {
+        if ("La carrera no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        if (!resultado.equals("Estado de la carrera actualizado correctamente.")) {
+        if (!"Estado de la carrera actualizado correctamente.".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        return Response.ok(resultado).build();
+        return Response.ok(jsonMensaje(resultado)).build();
     }
 }

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package servicio.etapa3;
 
 import Dao.iteracion3.LibroDAO;
@@ -114,9 +110,10 @@ public class PrestamoService {
             return "El préstamo indicado no existe.";
         }
 
-        // Verificar que el préstamo todavía esté pendiente
-        if (!prestamo.getEstado().equals("PRESTADO")) {
-            return "Este préstamo ya fue devuelto o no se encuentra prestado.";
+        // Verificar que el préstamo esté activo (acepta PRESTADO o VENCIDO)
+        String estadoActual = prestamo.getEstado();
+        if (!"PRESTADO".equals(estadoActual) && !"VENCIDO".equals(estadoActual)) {
+            return "Este préstamo ya fue devuelto o no se encuentra activo.";
         }
 
         // Registrar devolución

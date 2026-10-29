@@ -23,7 +23,7 @@ import servicio.iteracion4.ObligacionPagoService;
  * @author fernan
  */
 
-@Path("obligaciones-pago")
+@Path("obligaciones")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class ObligacionPagoResource {

@@ -5,6 +5,7 @@
 package Resource;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -15,11 +16,13 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 import modelo.ConfiguracionGrado;
 import modelo.Usuario;
+import seguridad.JwtService;
 import servicio.ConfiguracionGradoService;
+
+
 
 /**
  *
@@ -31,6 +34,7 @@ import servicio.ConfiguracionGradoService;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ConfiguracionGradoResource {
     private final ConfiguracionGradoService servicio;
+    private final JwtService jwtService = new JwtService();
 
     public ConfiguracionGradoResource() {
         this.servicio = new ConfiguracionGradoService();
@@ -46,10 +50,10 @@ public class ConfiguracionGradoResource {
         String resultado = servicio.registrarConfiguracion(configuracion);
 
         if (resultado.contains("correctamente")) {
-            return Response.status(Response.Status.CREATED).entity(resultado).build();
+            return Response.status(Response.Status.CREATED).entity(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 
     @GET
@@ -75,7 +79,7 @@ public class ConfiguracionGradoResource {
 
         if (configuracion == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("La configuración de grado no existe.")
+                    .entity(jsonMensaje("La configuración de grado no existe."))
                     .build();
         }
 
@@ -92,7 +96,7 @@ public class ConfiguracionGradoResource {
 
         if (configuracion == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("La configuración no puede ser nula.")
+                    .entity(jsonMensaje("La configuración no puede ser nula."))
                     .build();
         }
 
@@ -100,14 +104,14 @@ public class ConfiguracionGradoResource {
         String resultado = servicio.actualizarConfiguracion(configuracion);
 
         if (resultado.contains("correctamente")) {
-            return Response.ok(resultado).build();
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
         if (resultado.contains("no existe")) {
-            return Response.status(Response.Status.NOT_FOUND).entity(resultado).build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 
     @PUT
@@ -120,51 +124,65 @@ public class ConfiguracionGradoResource {
 
         if (configuracion == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Debe enviar la configuración.")
+                    .entity(jsonMensaje("Debe enviar la configuración."))
                     .build();
         }
 
         String resultado = servicio.cambiarEstado(id, configuracion.isEstado());
 
         if (resultado.contains("correctamente")) {
-            return Response.ok(resultado).build();
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
         if (resultado.contains("no existe")) {
-            return Response.status(Response.Status.NOT_FOUND).entity(resultado).build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST).entity(resultado).build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 
-    // Método auxiliar privado para centralizar la validación de autenticación y autorización
     private Response validarAcceso(HttpServletRequest request, String mensajeSinPermiso) {
         Usuario usuarioSesion = obtenerUsuario(request);
 
         if (usuarioSesion == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Debe iniciar sesión."))
                     .build();
         }
 
         if (!puedeGestionar(usuarioSesion)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity(mensajeSinPermiso)
+                    .entity(jsonMensaje(mensajeSinPermiso))
                     .build();
         }
 
-        return null; // null indica que el usuario está autenticado y autorizado
+        return null;
     }
 
     private Usuario obtenerUsuario(HttpServletRequest request) {
-        Object usuario = (request.getSession(false) != null)
-                ? request.getSession(false).getAttribute("usuario")
-                : null;
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+            return (Usuario) session.getAttribute("usuario");
+        }
 
-        return (usuario instanceof Usuario) ? (Usuario) usuario : null;
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
     }
 
     private boolean puedeGestionar(Usuario usuario) {
         return "SUPER_ADMIN".equals(usuario.getRol()) || "ADMIN".equals(usuario.getRol());
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

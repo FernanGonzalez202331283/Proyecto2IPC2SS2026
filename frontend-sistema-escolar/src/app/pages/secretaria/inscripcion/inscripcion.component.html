@@ -1,0 +1,221 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-success text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-journal-check me-2"></i>CU014: Inscripción de Estudiantes</h3>
+      <small class="text-white-50">Selección de grado y asignación de sección disponible</small>
+    </div>
+    <a routerLink="/secretaria/dashboard" class="btn btn-light btn-sm text-success fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <div class="row g-4">
+
+    <!-- Formulario de Registro / Edición (5 Columnas) -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white py-2">
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Inscripción' : 'Registrar Nueva Inscripción' }}</h6>
+        </div>
+        <div class="card-body p-3">
+          <form [formGroup]="inscripcionForm" (ngSubmit)="guardarInscripcion()">
+
+            <!-- 1. Estudiante Activo -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">1. Estudiante Activo *</label>
+              <select formControlName="idEstudiante" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idEstudiante')">
+                <option [ngValue]="null" disabled>Seleccione un estudiante</option>
+                @for (est of estudiantesActivos; track est.idEstudiante) {
+                  <option [ngValue]="est.idEstudiante">
+                    {{ est.codigoEstudiante }} - {{ est.persona.nombres }} {{ est.persona.apellidos }} (DPI: {{ est.persona.dpi }})
+                  </option>
+                }
+              </select>
+            </div>
+
+            <!-- 2. Grado -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">2. Grado *</label>
+              <select formControlName="idGradoAux" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idGradoAux')">
+                <option [ngValue]="null" disabled>Seleccione primero el grado</option>
+                @for (g of gradosLista; track g.idGrado) {
+                  <option [ngValue]="g.idGrado">
+                    {{ g.nombre }} {{ g.nivel ? ' - ' + g.nivel : '' }}
+                  </option>
+                }
+              </select>
+            </div>
+
+            <!-- 3. Sección Disponible -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">3. Sección Disponible *</label>
+              <select formControlName="idSeccion" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('idSeccion')">
+                <option [ngValue]="null" disabled>
+                  {{ seccionesFiltradas.length === 0 ? '--- Seleccione un grado para ver secciones ---' : 'Seleccione una sección disponible' }}
+                </option>
+                @for (sec of seccionesFiltradas; track sec.idSeccion) {
+                  <option [ngValue]="sec.idSeccion">
+                    Sección {{ sec.nombre }} (Capacidad: {{ sec.capacidad }} alumnos)
+                  </option>
+                }
+              </select>
+            </div>
+
+            <!-- Fecha y Estado -->
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Fecha Inscripción *</label>
+                <input type="date" formControlName="fechaInscripcion" class="form-control form-control-sm" [class.is-invalid]="esCampoInvalido('fechaInscripcion')">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Estado *</label>
+                <select formControlName="estado" class="form-select form-select-sm">
+                  <option value="ACTIVA">ACTIVA</option>
+                  <option value="RETIRADA">RETIRADA</option>
+                  <option value="FINALIZADA">FINALIZADA</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-success btn-sm fw-semibold" [disabled]="procesando">
+                <i class="bi bi-save me-1"></i> {{ modoEdicion ? 'Actualizar Matrícula' : 'Confirmar Inscripción' }}
+              </button>
+              @if (modoEdicion) {
+                <button type="button" (click)="cancelarEdicion()" class="btn btn-outline-secondary btn-sm" [disabled]="procesando">
+                  Cancelar
+                </button>
+              }
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial de Inscripciones (7 Columnas - Rediseñado) -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-list-task me-2 text-success"></i>Historial de Inscripciones</h6>
+          <span class="badge bg-success-subtle text-success border border-success fw-bold px-3 py-1 rounded-pill">
+            Total: {{ inscripciones.length }}
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-light border-bottom">
+                <tr>
+                  <th class="ps-3" style="width: 80px;">No.</th>
+                  <th>Estudiante</th>
+                  <th>Aula / Asignación</th>
+                  <th>Fecha</th>
+                  <th class="text-center">Estado</th>
+                  <th class="text-center pe-3" style="width: 100px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cargando) {
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                      <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                      Cargando historial de inscripciones...
+                    </td>
+                  </tr>
+                } @else if (inscripciones.length === 0) {
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                      <i class="bi bi-inbox fs-4 d-block mb-1 text-secondary"></i>
+                      No existen inscripciones registradas.
+                    </td>
+                  </tr>
+                } @else {
+                  @for (item of inscripciones; track item.idInscripcion || $index) {
+                    <tr>
+                      <!-- ID -->
+                      <td class="ps-3 fw-bold text-secondary">#{{ item.idInscripcion }}</td>
+
+                      <!-- Estudiante -->
+                      <td>
+                        <div class="fw-bold text-dark">{{ obtenerNombreEstudiante(item.idEstudiante) }}</div>
+                      </td>
+
+                      <!-- Sección y Grado -->
+                      <td>
+                        <div class="d-flex align-items-center gap-1">
+                          <i class="bi bi-door-open text-secondary me-1"></i>
+                          <span>{{ obtenerNombreSeccion(item.idSeccion) }}</span>
+                        </div>
+                      </td>
+
+                      <!-- Fecha -->
+                      <td class="text-nowrap text-muted">
+                        <i class="bi bi-calendar3 me-1 small"></i>{{ item.fechaInscripcion }}
+                      </td>
+
+                      <!-- Estado Badge -->
+                      <td class="text-center">
+                        <span class="badge rounded-pill px-2 py-1 fw-semibold"
+                          [class.bg-success]="item.estado === 'ACTIVA'" 
+                          [class.bg-warning-subtle]="item.estado === 'RETIRADA'"
+                          [class.text-warning-emphasis]="item.estado === 'RETIRADA'"
+                          [class.bg-secondary]="item.estado === 'FINALIZADA'">
+                          {{ item.estado }}
+                        </span>
+                      </td>
+
+                      <!-- Acciones Compactas -->
+                      <td class="text-center pe-3">
+                        <div class="d-flex justify-content-center gap-1">
+                          <!-- Botón Editar -->
+                          <button (click)="editarInscripcion(item)" class="btn btn-outline-primary btn-sm px-2 py-0" title="Editar registro">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          
+                          <!-- Menú Dropdown de Cambiar Estado -->
+                          <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cambiar Estado">
+                              <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm small">
+                              <li><h6 class="dropdown-header">Cambiar Estado</h6></li>
+                              <li><a class="dropdown-item text-success" (click)="cambiarEstadoInscripcion(item, 'ACTIVA')"><i class="bi bi-check-circle me-2"></i> ACTIVA</a></li>
+                              <li><a class="dropdown-item text-warning" (click)="cambiarEstadoInscripcion(item, 'RETIRADA')"><i class="bi bi-dash-circle me-2"></i> RETIRADA</a></li>
+                              <li><a class="dropdown-item text-secondary" (click)="cambiarEstadoInscripcion(item, 'FINALIZADA')"><i class="bi bi-flag me-2"></i> FINALIZADA</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                      </td>
+
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

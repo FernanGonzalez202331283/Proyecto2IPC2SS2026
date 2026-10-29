@@ -7,6 +7,15 @@
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>
+    <filter>
+        <filter-name>GlobalCorsFilter</filter-name>
+        <filter-class>Resource.GlobalCorsFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>GlobalCorsFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
 
     <!-- Pool de conexiones -->
     <resource-ref>

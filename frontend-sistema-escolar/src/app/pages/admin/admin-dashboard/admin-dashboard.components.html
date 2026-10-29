@@ -1,0 +1,265 @@
+<div class="container my-4">
+  
+  <!-- Banner de Bienvenida y Perfil (CU033) -->
+  <div class="p-4 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <h1 class="display-6 fw-bold mb-1">
+        <i class="bi bi-person-workspace me-2"></i>Panel de Administrador
+      </h1>
+      <p class="fs-6 mb-0 text-white-50">
+        Gestión operativa del colegio: personal, estructura académica, estudiantes y reportes institucionales.
+      </p>
+    </div>
+    <!-- CU033: Consultar Perfil -->
+   <a routerLink="/usuarios/consultar-perfil" class="btn btn-light text-info fw-semibold px-3 py-2 shadow-sm">      <i class="bi bi-person-circle me-2"></i>Mi Perfil (CU033)
+      <i class="bi bi-person-circle me-2"></i>Mi Perfil (CU033)
+    </a>
+
+     <button (click)="logout()" class="btn btn-outline-light fw-semibold px-3 py-2 shadow-sm">
+        <i class="bi bi-box-arrow-right me-1"></i> Cerrar Sesión
+      </button>
+  </div>
+
+  <!-- Sección 1: Gestión de Usuarios y Personal -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-people-fill me-2"></i>Personal y Usuarios Operativos
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU005: Usuarios Operativos -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-warning border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-person-gear fs-2 text-warning me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Usuarios Operativos</h5>
+              <small class="text-muted">CU005</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Crea, modifica y desactiva cuentas de Secretaría, Maestros, Bibliotecarios y Mantenimiento.
+          </p>
+          <a routerLink="/admin/usuarios-operativos" class="btn btn-outline-warning w-100 mt-2">
+            <i class="bi bi-person-plus-fill me-1"></i> Gestionar Cuentas
+          </a>
+        </div>
+      </div>
+    </div>
+
+    
+
+  <!-- Sección 2: Estructura y Oferta Académica -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-diagram-3-fill me-2"></i>Estructura y Currículo Académico
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU008: Gestión de Grados -->
+    <div class="col-md-6 col-lg-4">
+      <div  routerLink="/admin/grados" class="card h-100 shadow-sm border-0 border-start border-primary border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-journal-bookmark-fill fs-2 text-primary me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Grados Académicos</h5>
+              <small class="text-muted">CU008</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Registra, edita y administra los grados habilitados para los distintos niveles educativos.
+          </p>
+          <a routerLink="/admin/grados" class="btn btn-outline-primary w-100 mt-2">
+            <i class="bi bi-list-nested me-1"></i> Gestionar Grados
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU009: Gestión de Secciones -->
+    <div class="col-md-6 col-lg-4">
+      <div  routerLink="/admin/secciones" class="card h-100 shadow-sm border-0 border-start border-info border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-grid-3x3-gap-fill fs-2 text-info me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Secciones</h5>
+              <small class="text-muted">CU009</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Organiza las secciones asignadas a cada grado para la distribución de los estudiantes.
+          </p>
+          <a routerLink="/admin/secciones" class="btn btn-outline-info w-100 mt-2">
+            <i class="bi bi-border-all me-1"></i> Organizar Secciones
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU010: Gestión de Carreras -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-mortarboard-fill fs-2 text-success me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Carreras Diversificado</h5>
+              <small class="text-muted">CU010</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Administra las carreras técnicas y bachilleratos preservando el historial institucional.
+          </p>
+          <a routerLink="/admin/carreras" class="btn btn-outline-success w-100 mt-2">
+            <i class="bi bi-book-half me-1"></i> Gestionar Carreras
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU011: Catálogo de Cursos -->
+    <div class="col-md-6 col-lg-4">
+      <div  routerLink="/admin/curso" class="card h-100 shadow-sm border-0 border-start border-dark border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-journals fs-2 text-dark me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Catálogo de Cursos</h5>
+              <small class="text-muted">CU011</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Crea y actualiza la lista global de materias que se ofrecen dentro del colegio.
+          </p>
+          <a routerLink="/admin/curso" class="btn btn-outline-dark w-100 mt-2">
+            <i class="bi bi-folder-plus me-1"></i> Catálogo Cursos
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU012: Currículo por Grado -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-primary border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-diagram-2-fill fs-2 text-primary me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Currículo por Grado</h5>
+              <small class="text-muted">CU012</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Establece los cursos requeridos que corresponden a cada grado para el ciclo escolar.
+          </p>
+          <a routerLink="/admin/curriculo" class="btn btn-outline-primary w-100 mt-2">
+            <i class="bi bi-sliders2 me-1"></i> Asignar Malla
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección 3: Estudiantes y Cargas Docentes -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-person-vcard-fill me-2"></i>Gestión Estudiantil y Carga Docente
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU013: Gestión de Estudiantes -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-backpack-fill fs-2 text-success me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Expediente Estudiantes</h5>
+              <small class="text-muted">CU013</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Gestión de fichas personales, datos médicos, encargados y estados (Activo/Graduado).
+          </p>
+          <a routerLink="/admin/estudiantes" class="btn btn-outline-success w-100 mt-2">
+            <i class="bi bi-person-vcard me-1"></i> Ficha Estudiantes
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU017: Asignar Maestro a Curso -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-warning border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-person-workspace fs-2 text-warning me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Cargas Docentes</h5>
+              <small class="text-muted">CU017</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Asigna maestros a cursos, grados y secciones con validación directa del sistema.
+          </p>
+          <a routerLink="/admin/asignacion-docente" class="btn btn-outline-warning w-100 mt-2">
+            <i class="bi bi-link-45deg me-1"></i> Asignar Cursos
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección 4: Reportes e Indicadores -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-bar-chart-line-fill me-2"></i>Reportes de Gestión
+  </h5>
+  <div class="row g-4">
+
+    <!-- CU036: Rendimiento Académico -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-info border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-graph-up-arrow fs-2 text-info me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Rendimiento Académico</h5>
+              <small class="text-muted">CU036</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Promedios por grado y sección, cursos críticos e identificación de alumnos destacados.
+          </p>
+          <a routerLink="/reporte/rendimiento" class="btn btn-outline-info w-100 mt-2">
+            <i class="bi bi-pie-chart-fill me-1"></i> Ver Reporte
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU038: Reporte de Ingresos -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-dark border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-cash-stack fs-2 text-dark me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Reporte de Ingresos</h5>
+              <small class="text-muted">CU038</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Consulta ingresos detallados por periodo de tiempo y rubro financiero correspondiente.
+          </p>
+          <a routerLink="/reporte/ingresos" class="btn btn-outline-dark w-100 mt-2">
+            <i class="bi bi-receipt me-1"></i> Ver Ingresos
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

@@ -9,8 +9,8 @@ package modelo;
  * @author fernan
  */
 public class AñoLectivo {
-    private int idAñoLectivo;
-    private int año;
+    private int idAnoLectivo;
+    private int anio;
     private String fechaInicio;
     private String fechaFin;
     private boolean estado;
@@ -19,28 +19,28 @@ public class AñoLectivo {
         
     }
 
-    public AñoLectivo(int idAñoLectivo, int año, String fechaInicio, String fechaFin, boolean estado) {
-        this.idAñoLectivo = idAñoLectivo;
-        this.año = año;
+    public AñoLectivo(int idAnoLectivo, int anio, String fechaInicio, String fechaFin, boolean estado) {
+        this.idAnoLectivo = idAnoLectivo;
+        this.anio = anio;
         this.fechaInicio = fechaInicio;
         this.fechaFin = fechaFin;
         this.estado = estado;
     }
 
-    public int getIdAñoLectivo() {
-        return idAñoLectivo;
+    public int getIdAnoLectivo() {
+        return idAnoLectivo;
     }
 
-    public void setIdAñoLectivo(int idAñoLectivo) {
-        this.idAñoLectivo = idAñoLectivo;
+    public void setIdAnoLectivo(int idAnoLectivo) {
+        this.idAnoLectivo = idAnoLectivo;
     }
 
-    public int getAño() {
-        return año;
+    public int getAnio() {
+        return anio;
     }
 
-    public void setAño(int año) {
-        this.año = año;
+    public void setAnio(int anio) {
+        this.anio = anio;
     }
 
     public String getFechaInicio() {
@@ -66,4 +66,6 @@ public class AñoLectivo {
     public void setEstado(boolean estado) {
         this.estado = estado;
     }
+
+    
 }

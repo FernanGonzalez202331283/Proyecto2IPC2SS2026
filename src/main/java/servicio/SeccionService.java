@@ -37,7 +37,7 @@ public class SeccionService {
             return "El ID del grado no es válido.";
         }
 
-        if (seccion.getIdAñoLectivo() <= 0) {
+        if (seccion.getIdAnioLectivo()<= 0) {
             return "El ID del año lectivo no es válido.";
         }
 
@@ -58,7 +58,7 @@ public class SeccionService {
         }
 
         AñoLectivo añoLectivo = añoLectivoDAO.buscarPorId(
-                seccion.getIdAñoLectivo());
+                seccion.getIdAnioLectivo());
 
         if (añoLectivo == null) {
             return "El año lectivo no existe.";
@@ -112,7 +112,7 @@ public class SeccionService {
             return "El ID del grado no es válido.";
         }
 
-        if (seccion.getIdAñoLectivo() <= 0) {
+        if (seccion.getIdAnioLectivo()<= 0) {
             return "El ID del año lectivo no es válido.";
         }
 
@@ -133,7 +133,7 @@ public class SeccionService {
         }
 
         AñoLectivo añoLectivo = añoLectivoDAO.buscarPorId(
-                seccion.getIdAñoLectivo());
+                seccion.getIdAnioLectivo());
 
         if (añoLectivo == null) {
             return "El año lectivo no existe.";

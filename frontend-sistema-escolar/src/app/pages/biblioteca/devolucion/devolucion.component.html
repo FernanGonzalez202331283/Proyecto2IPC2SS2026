@@ -1,0 +1,114 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-arrow-return-left me-2 text-warning"></i>Recepcionar Devolución de Libro (CU0025)</h3>
+      <small class="text-white-50">Recepción de ejemplares prestados y generación automática de sanciones si existe mora</small>
+    </div>
+  </div>
+
+  <!-- Alertas del Servidor -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Tabla Exclusiva de Devoluciones -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-box-arrow-in-down me-1"></i> Control de Devoluciones y Recepción</h6>
+      
+      <!-- Toggle de filtro -->
+      <div class="form-check form-switch mb-0 small">
+        <input class="form-check-input" type="checkbox" id="checkPendientes" [(ngModel)]="soloPendientes" (change)="aplicarFiltro()">
+        <label class="form-check-label fw-semibold text-secondary" for="checkPendientes">
+          Mostrar solo pendientes
+        </label>
+      </div>
+    </div>
+
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-dark">
+            <tr>
+              <th style="width: 60px;" class="text-center">ID</th>
+              <th>Detalle / Libro</th>
+              <th>Prestatario</th>
+              <th class="text-center">F. Préstamo</th>
+              <th class="text-center">F. Esperada</th>
+              <th class="text-center">F. Real Devolución</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center" style="width: 140px;">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cargando) {
+              <tr>
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                  Cargando préstamos...
+                </td>
+              </tr>
+            } @else if (prestamosFiltrados.length === 0) {
+              <tr>
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                  No hay préstamos para mostrar.
+                </td>
+              </tr>
+            } @else {
+              @for (p of prestamosFiltrados; track p.idPrestamo) {
+                <tr>
+                  <td class="text-center fw-bold text-secondary">#{{ p.idPrestamo }}</td>
+                  <td class="fw-bold text-dark">Libro #{{ p.idLibro }}</td>
+                  <td><span class="badge bg-light text-dark border">Persona #{{ p.idPersona }}</span></td>
+                  <td class="text-center">{{ p.fechaPrestamo }}</td>
+                  <td class="text-center text-primary fw-bold">{{ p.fechaDevolucionEsperada }}</td>
+                  <td class="text-center">
+                    {{ p.fechaDevolucionReal ? p.fechaDevolucionReal : 'Pendiente' }}
+                  </td>
+                  <td class="text-center">
+                    <span class="badge" 
+                          [class.bg-warning]="p.estado === 'PRESTADO'" 
+                          [class.text-dark]="p.estado === 'PRESTADO'"
+                          [class.bg-danger]="p.estado === 'VENCIDO'"
+                          [class.bg-success]="p.estado === 'DEVUELTO'">
+                      {{ p.estado }}
+                    </span>
+                  </td>
+                  
+                  <td class="text-center">
+                    @if ((p.estado === 'PRESTADO' || p.estado === 'VENCIDO') && p.idPrestamo) {
+                      <button type="button" 
+                              (click)="devolverLibro(p.idPrestamo)" 
+                              class="btn btn-success btn-sm fw-bold shadow-sm"
+                              title="Registrar la recepción y devolución de este libro">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> Recepcionar
+                      </button>
+                    } @else {
+                      <small class="text-success fw-bold">
+                        <i class="bi bi-check2-all me-1"></i> Devuelto
+                      </small>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,52 @@
+<div class="row justify-content-center align-items-center vh-100">
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-primary text-white text-center py-3">
+        <h4 class="mb-0 fw-bold">Sistema Escolar</h4>
+        <small>Iniciar Sesión</small>
+      </div>
+      <div class="card-body p-4">
+        
+        <!-- Mensaje de error dinámico e instantáneo -->
+        @if (errorMessage) {
+          <div class="alert alert-danger d-flex align-items-center shadow-sm fw-semibold" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+            <div>{{ errorMessage }}</div>
+          </div>
+        }
+
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+          <div class="mb-3">
+            <label for="username" class="form-label">Usuario:</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="username" 
+              formControlName="username" 
+              placeholder="Ingrese su usuario">
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña:</label>
+            <input 
+              type="password" 
+              class="form-control" 
+              id="password" 
+              formControlName="contraseña" 
+              placeholder="••••••••">
+          </div>
+
+          <div class="mb-3">
+            <a routerLink="/recuperar-password" class="text-decoration-none small text-primary fw-semibold">
+              ¿Olvidaste tu contraseña?
+            </a>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100" [disabled]="loginForm.invalid || procesando">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Ingresar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,14 +1,6 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package servicio.iteracion4;
 
-import Conexion.Conexion;
 import Dao.iteracion4.ObligacionPagoDAO;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import modelo.iteracion4.ObligacionPago;
 
 /**
@@ -51,17 +43,17 @@ public class ObligacionPagoService {
             return DATOS_INVALIDOS;
         }
 
-        // Verificar que exista el estudiante y esté activo
-        if (!estudianteActivo(obligacion.getIdEstudiante())) {
+        // Verificar que exista el estudiante y esté activo llamando al DAO
+        if (!obligacionDAO.estudianteActivo(obligacion.getIdEstudiante())) {
             return ESTUDIANTE_NO_ENCONTRADO;
         }
 
-        if (!añoLectivoActivo(obligacion.getIdAñoLectivo())) {
+        if (!obligacionDAO.añoLectivoActivo(obligacion.getIdAñoLectivo())) {
             return AÑO_NO_ENCONTRADO;
         }
 
-        // Evitar obligaciones duplicadas
-        if (existeObligacion(
+        // Evitar obligaciones duplicadas llamando al DAO
+        if (obligacionDAO.existeObligacion(
                 obligacion.getIdEstudiante(),
                 obligacion.getIdAñoLectivo(),
                 obligacion.getConcepto())) {
@@ -77,82 +69,53 @@ public class ObligacionPagoService {
 
         return obligacionDAO.registrar(obligacion);
     }
+    
+    // Registrar obligación (actividad) para todos los estudiantes de una sección
+    public String registrarObligacionPorSeccion(int idSeccion, ObligacionPago datosObligacion) {
+        
+        // 1. Validaciones básicas de los datos de la actividad
+        if (datosObligacion == null || datosObligacion.getMonto() <= 0 || datosObligacion.getFechaVencimiento() == null) {
+            return "Datos de la actividad inválidos.";
+        }
+        
+        if (!"ACTIVIDAD".equals(datosObligacion.getConcepto())) {
+            return "El concepto debe ser 'ACTIVIDAD'.";
+        }
 
-    private boolean estudianteActivo(int idEstudiante) {
-
-        String sql = """
-                SELECT id_estudiante
-                FROM estudiante
-                WHERE id_estudiante = ?
-                AND estado = 'ACTIVO'
-                """;
-
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setInt(1, idEstudiante);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+        // 2. Obtener la lista de estudiantes de esa sección
+        java.util.ArrayList<Integer> idEstudiantes = obligacionDAO.obtenerEstudiantesPorSeccion(idSeccion);
+        
+        if (idEstudiantes.isEmpty()) {
+            return "No hay estudiantes activos en esta sección para asignar el cobro.";
+        }
+        
+        int asignados = 0;
+        int duplicados = 0;
+        
+        // 3. Recorrer la lista y asignarle la deuda a cada uno
+        for (Integer idEstudiante : idEstudiantes) {
+            
+            // Verificamos que no se le haya cobrado ya la misma actividad (para evitar cobros dobles)
+            if (obligacionDAO.existeObligacion(idEstudiante, datosObligacion.getIdAñoLectivo(), datosObligacion.getConcepto())) {
+                // Aquí podrías mejorar la validación usando la descripción también, 
+                // para que puedan haber 2 "ACTIVIDADES" distintas en el mismo año.
+                duplicados++;
+                continue; 
             }
 
-        } catch (Exception e) {
-            System.out.println("Error al verificar estudiante: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private boolean añoLectivoActivo(int idAñoLectivo) {
-
-        String sql = """
-                SELECT id_año_lectivo
-                FROM año_lectivo
-                WHERE id_año_lectivo = ?
-                AND estado = 1
-                """;
-
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setInt(1, idAñoLectivo);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+            ObligacionPago nuevaDeuda = new ObligacionPago();
+            nuevaDeuda.setIdEstudiante(idEstudiante);
+            nuevaDeuda.setIdAñoLectivo(datosObligacion.getIdAñoLectivo());
+            nuevaDeuda.setConcepto(datosObligacion.getConcepto());
+            nuevaDeuda.setDescripcion(datosObligacion.getDescripcion());
+            nuevaDeuda.setMonto(datosObligacion.getMonto());
+            nuevaDeuda.setFechaVencimiento(datosObligacion.getFechaVencimiento());
+            
+            if (obligacionDAO.registrar(nuevaDeuda) > 0) {
+                asignados++;
             }
-
-        } catch (Exception e) {
-            System.out.println("Error al verificar año lectivo: " + e.getMessage());
-            return false;
         }
-    }
-
-    private boolean existeObligacion(int idEstudiante, int idAñoLectivo,
-            String concepto) {
-
-        String sql = """
-                SELECT id_obligacion
-                FROM obligacion_pago
-                WHERE id_estudiante = ?
-                AND id_año_lectivo = ?
-                AND concepto = ?
-                AND estado != 'ANULADA'
-                """;
-
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
-
-            ps.setInt(1, idEstudiante);
-            ps.setInt(2, idAñoLectivo);
-            ps.setString(3, concepto);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error al verificar obligación: " + e.getMessage());
-            return true;
-        }
-                
+        
+        return "Actividad asignada a " + asignados + " estudiantes. (" + duplicados + " ya la tenían asignada).";
     }
 }

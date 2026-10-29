@@ -11,7 +11,7 @@ package modelo;
 public class Seccion {
     private int idSeccion;
     private int idGrado;
-    private int idAñoLectivo;
+    private int idAnioLectivo;
     private String nombre; 
     private int capacidad;
     private boolean estado;
@@ -24,10 +24,10 @@ public class Seccion {
         return idSeccion;
     }
     
-    public Seccion(int idSeccion, int idGrado, int idAñoLectivo, String nombre, int capacidad, boolean estado) {
+    public Seccion(int idSeccion, int idGrado, int idAnioLectivo, String nombre, int capacidad, boolean estado) {
         this.idSeccion = idSeccion;
         this.idGrado = idGrado;
-        this.idAñoLectivo = idAñoLectivo;
+        this.idAnioLectivo = idAnioLectivo;
         this.nombre = nombre;
         this.capacidad = capacidad;
         this.estado = estado;
@@ -45,12 +45,12 @@ public class Seccion {
         this.idGrado = idGrado;
     }
 
-    public int getIdAñoLectivo() {
-        return idAñoLectivo;
+    public int getIdAnioLectivo() {
+        return idAnioLectivo;
     }
 
-    public void setIdAñoLectivo(int idAñoLectivo) {
-        this.idAñoLectivo = idAñoLectivo;
+    public void setIdAnioLectivo(int idAnioLectivo) {
+        this.idAnioLectivo = idAnioLectivo;
     }
 
     public String getNombre() {

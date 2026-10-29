@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package servicio.etapa3;
 
 import Dao.iteracion3.LibroDAO;
@@ -13,48 +9,57 @@ import modelo.iteracion3.Libro;
  * @author fernan
  */
 public class LibroService {
+
     private final LibroDAO libroDAO;
-    
-    public LibroService(){
+
+    public LibroService() {
         this.libroDAO = new LibroDAO();
     }
-    
-    public String registrarLibro(Libro libro){
-        if(libro == null){
-            return "los datos del libro son obligatorios";
+
+    public String registrarLibro(Libro libro) {
+        if (libro == null) {
+            return "Los datos del libro son obligatorios";
         }
-        
-        if(libro.getTitulo() == null || libro.getTitulo().trim().isEmpty()){
-            return "EL titulo del libro es obligatorio";
+
+        if (libro.getTitulo() == null || libro.getTitulo().trim().isEmpty()) {
+            return "El título del libro es obligatorio";
         }
-        
-        if(libro.getTitulo().trim().length() > 200){
-            return "El titulo del libro no debe superar los 200 caracteres";
+
+        if (libro.getTitulo().trim().length() > 200) {
+            return "El título del libro no debe superar los 200 caracteres";
         }
-        
-        if(libro.getAutor() == null || libro.getAutor().trim().isEmpty()){
-            return "el aurtor es obligatorio";
+
+        if (libro.getAutor() == null || libro.getAutor().trim().isEmpty()) {
+            return "El autor es obligatorio";
         }
-        
-        if(libro.getAutor().trim().length() > 150){
-            return "el autor no puede superar los 150 caracteres";
+
+        if (libro.getAutor().trim().length() > 150) {
+            return "El autor no puede superar los 150 caracteres";
         }
-        
-        if(libro.getEditorial() != null && libro.getEditorial().trim().length()> 150){
-            return "el editorial no puede superar los 150 caracteres";
+
+        if (libro.getEditorial() != null && libro.getEditorial().trim().length() > 150) {
+            return "La editorial no puede superar los 150 caracteres";
         }
-        
-        if(libro.getCantidadTotal() <= 0){
+
+        if (libro.getCantidadTotal() <= 0) {
             return "La cantidad debe ser mayor a 0";
         }
-        
-        if(libro.getCantidadDisponible() < 0){
+
+        if (libro.getCantidadDisponible() < 0) {
             return "La cantidad disponible no puede ser negativa";
         }
-       
-        if(libro.getCantidadDisponible() > libro.getCantidadTotal()){
-            return "la cantidad disponible no puede ser mayor que la cantidad total";
+
+        if (libro.getCantidadDisponible() > libro.getCantidadTotal()) {
+            return "La cantidad disponible no puede ser mayor que la cantidad total";
         }
+
+        if (libroDAO.existeLibroPorTituloYAutor(libro.getTitulo().trim(), libro.getAutor().trim(), null)) {
+            return "Ya existe un libro registrado con este título y autor.";
+        }
+
+        // Asegurar que por defecto entra como ACTIVO (true)
+        libro.setEstado(true);
+
         libro.setTitulo(libro.getTitulo().trim());
         libro.setAutor(libro.getAutor().trim());
         if (libro.getEditorial() != null) {
@@ -64,6 +69,7 @@ public class LibroService {
                 libro.setEditorial(null);
             }
         }
+
         boolean resultado = libroDAO.registrar(libro);
         if (resultado) {
             return "Libro registrado correctamente.";
@@ -89,8 +95,8 @@ public class LibroService {
         if (libro.getIdLibro() <= 0) {
             return "Debe proporcionar un ID de libro válido.";
         }
-        Libro existente = libroDAO.buscarPorId(libro.getIdLibro());
 
+        Libro existente = libroDAO.buscarPorId(libro.getIdLibro());
         if (existente == null) {
             return "El libro que intenta actualizar no existe.";
         }
@@ -111,8 +117,7 @@ public class LibroService {
             return "El autor no puede superar los 150 caracteres.";
         }
 
-        if (libro.getEditorial() != null
-                && libro.getEditorial().trim().length() > 150) {
+        if (libro.getEditorial() != null && libro.getEditorial().trim().length() > 150) {
             return "La editorial no puede superar los 150 caracteres.";
         }
 
@@ -128,14 +133,23 @@ public class LibroService {
             return "La cantidad disponible no puede ser mayor que la cantidad total.";
         }
 
-        int ejemplaresPrestados = existente.getCantidadTotal()- existente.getCantidadDisponible();
+        int ejemplaresPrestados = existente.getCantidadTotal() - existente.getCantidadDisponible();
         if (libro.getCantidadTotal() < ejemplaresPrestados) {
             return "La cantidad total no puede ser menor que los ejemplares actualmente prestados.";
         }
-        int nuevaCantidadDisponible = libro.getCantidadTotal()- ejemplaresPrestados;
+
+        if (libroDAO.existeLibroPorTituloYAutor(libro.getTitulo().trim(), libro.getAutor().trim(), libro.getIdLibro())) {
+            return "Ya existe otro libro registrado con este título y autor.";
+        }
+
+        // Conservar el estado original en lugar de permitir que se vuelva 'false' por defecto
+        libro.setEstado(existente.isEstado());
+
+        int nuevaCantidadDisponible = libro.getCantidadTotal() - ejemplaresPrestados;
         libro.setCantidadDisponible(nuevaCantidadDisponible);
         libro.setTitulo(libro.getTitulo().trim());
         libro.setAutor(libro.getAutor().trim());
+
         if (libro.getEditorial() != null) {
             libro.setEditorial(libro.getEditorial().trim());
 
@@ -143,6 +157,7 @@ public class LibroService {
                 libro.setEditorial(null);
             }
         }
+
         boolean resultado = libroDAO.actualizar(libro);
 
         if (resultado) {
@@ -153,13 +168,11 @@ public class LibroService {
     }
 
     public String cambiarEstado(int idLibro, boolean estado) {
-
         if (idLibro <= 0) {
             return "Debe proporcionar un ID de libro válido.";
         }
 
         Libro existente = libroDAO.buscarPorId(idLibro);
-
         if (existente == null) {
             return "El libro que intenta modificar no existe.";
         }
@@ -174,9 +187,8 @@ public class LibroService {
 
         return "No se pudo cambiar el estado del libro.";
     }
-    
+
     public ArrayList<Libro> obtenerCatalogo() {
         return libroDAO.obtenerCatalogo();
     }
-        
 }

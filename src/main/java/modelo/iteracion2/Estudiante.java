@@ -4,6 +4,7 @@
  */
 package modelo.iteracion2;
 
+import java.util.ArrayList;
 import modelo.Persona;
 
 /**
@@ -18,7 +19,7 @@ public class Estudiante {
     private String estado;
     
     private Persona persona;
-    
+    private ArrayList<EstudianteEncargado> encargados = new ArrayList<>(); 
     public Estudiante(){
         
     }
@@ -79,6 +80,12 @@ public class Estudiante {
     public void setPersona(Persona persona) {
         this.persona = persona;
     }
-    
-    
+
+    public ArrayList<EstudianteEncargado> getEncargados() {
+        return encargados;
+    }
+
+    public void setEncargados(ArrayList<EstudianteEncargado> encargados) {
+        this.encargados = encargados;
+    }
 }

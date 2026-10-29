@@ -76,36 +76,25 @@ public class PerfilDAO {
 
                     perfil.setEstadoPersona(rs.getBoolean("estado"));
 
-                    perfil.setCodigoEstudiante(
-                            rs.getString("codigo_estudiante")
-                    );
-
+                    perfil.setCodigoEstudiante(rs.getString("codigo_estudiante"));
                     perfil.setPuesto(rs.getString("puesto"));
 
-                    // Identificar el tipo de perfil.
-                    if ("ESTUDIANTE".equals(perfil.getRol())) {
+                    // Identificar el tipo de perfil según el Rol de usuario
+                    String rol = perfil.getRol() != null ? perfil.getRol().toUpperCase() : "";
 
-                    perfil.setTipoPerfil("ESTUDIANTE");
+                    if ("ESTUDIANTE".equals(rol)) {
+                        perfil.setTipoPerfil("ESTUDIANTE");
+                    } else if ("MAESTRO".equals(rol) || "SECRETARIA".equals(rol) || "BIBLIOTECARIO".equals(rol) || "PERSONAL".equals(rol)) {
+                        perfil.setTipoPerfil("EMPLEADO");
+                    } else {
+                        perfil.setTipoPerfil("ADMINISTRATIVO");
+                    }
 
-                } else if (
-                        "MAESTRO".equals(perfil.getRol())
-                        || "SECRETARIA".equals(perfil.getRol())
-                        || "PERSONAL".equals(perfil.getRol())
-                ) {
-
-                    perfil.setTipoPerfil("EMPLEADO");
-
-                } else {
-
-                    perfil.setTipoPerfil("ADMINISTRATIVO");
-
-                }
                     return perfil;
                 }
             }
 
         } catch (SQLException e) {
-
             System.out.println("Error al consultar perfil: " + e.getMessage());
         }
 

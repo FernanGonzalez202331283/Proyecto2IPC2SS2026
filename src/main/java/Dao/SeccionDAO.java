@@ -29,7 +29,7 @@ public class SeccionDAO {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, seccion.getIdGrado());
-            ps.setInt(2, seccion.getIdAñoLectivo());
+            ps.setInt(2, seccion.getIdAnioLectivo());
             ps.setString(3, seccion.getNombre());
             ps.setInt(4, seccion.getCapacidad());
             ps.setBoolean(5, seccion.isEstado());
@@ -75,7 +75,7 @@ public class SeccionDAO {
                     seccion.setIdGrado(
                             rs.getInt("id_grado"));
 
-                    seccion.setIdAñoLectivo(
+                    seccion.setIdAnioLectivo(
                             rs.getInt("id_año_lectivo"));
 
                     seccion.setNombre(
@@ -127,7 +127,7 @@ public class SeccionDAO {
                 seccion.setIdGrado(
                         rs.getInt("id_grado"));
 
-                seccion.setIdAñoLectivo(
+                seccion.setIdAnioLectivo(
                         rs.getInt("id_año_lectivo"));
 
                 seccion.setNombre(
@@ -166,7 +166,7 @@ public class SeccionDAO {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, seccion.getIdGrado());
-            ps.setInt(2, seccion.getIdAñoLectivo());
+            ps.setInt(2, seccion.getIdAnioLectivo());
             ps.setString(3, seccion.getNombre());
             ps.setInt(4, seccion.getCapacidad());
             ps.setBoolean(5, seccion.isEstado());

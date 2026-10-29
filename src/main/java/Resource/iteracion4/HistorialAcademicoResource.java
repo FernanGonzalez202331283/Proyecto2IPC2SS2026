@@ -29,24 +29,19 @@ public class HistorialAcademicoResource {
 
     @GET
     @Path("/estudiante/{idEstudiante}")
-    public Response obtenerHistorial(
-            @PathParam("idEstudiante") int idEstudiante) {
+    public Response obtenerHistorial(@PathParam("idEstudiante") int idEstudiante) {
 
-        // Validar el ID del estudiante
         if (idEstudiante <= 0) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("El ID del estudiante debe ser mayor que cero.")
+                    .entity("{\"mensaje\": \"El ID del estudiante debe ser mayor que cero.\"}")
                     .build();
         }
 
-        // Consultar el historial académico
-        HistorialAcademico historial =
-                historialService.obtenerHistorialAcademico(idEstudiante);
+        HistorialAcademico historial = historialService.obtenerHistorialAcademico(idEstudiante);
 
-        // Verificar si existe el historial
         if (historial == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontró el estudiante o su historial académico.")
+                    .entity("{\"mensaje\": \"No se encontró información del historial académico del estudiante.\"}")
                     .build();
         }
 

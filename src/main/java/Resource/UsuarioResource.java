@@ -19,6 +19,8 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import modelo.Usuario;
+import seguridad.JwtService;
+import servicio.AuthService;
 import servicio.UsuarioService;
 
 /**
@@ -197,15 +199,25 @@ public class UsuarioResource {
 
         return null;
     }
-
-    // Obtención segura de usuario desde la sesión
+    
+    private final JwtService jwtService = new JwtService();
+    // Obtención segura de usuario (por Sesión HTTP o por Token JWT)
     private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
-            return (Usuario) session.getAttribute("usuario");
-        }
-        return null;
+    // 1. Intentar por la sesión HTTP tradicional (JSESSIONID)
+    HttpSession session = request.getSession(false);
+    if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+        return (Usuario) session.getAttribute("usuario");
     }
+
+    // 2. Si no hay sesión, extraer y validar desde el Token JWT de la cabecera Authorization
+    String authHeader = request.getHeader("Authorization");
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        String token = authHeader.substring(7);
+        return jwtService.obtenerUsuarioDesdeToken(token);
+    }
+
+    return null;
+}
 
     // Generador de respuestas JSON homogéneas
     private String jsonMensaje(String mensaje) {

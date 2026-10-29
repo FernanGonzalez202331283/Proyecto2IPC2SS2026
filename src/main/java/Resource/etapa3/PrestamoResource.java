@@ -1,13 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Resource.etapa3;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -19,195 +16,184 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import modelo.Usuario;
 import modelo.iteracion3.Prestamo;
+import seguridad.JwtService;
 import servicio.etapa3.PrestamoService;
 
 /**
  *
  * @author fernan
  */
-
 @Path("prestamos")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class PrestamoResource {
-    
-    private final PrestamoService prestamoService;
 
-    public PrestamoResource() {
-        this.prestamoService = new PrestamoService();
-    }
+    private final PrestamoService prestamoService = new PrestamoService();
+    private final JwtService jwtService = new JwtService();
 
-    @Context
-    private HttpServletRequest request;
-
-    private Usuario usuarioSesion() {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
-            return null;
-        }
-
-        return (Usuario) session.getAttribute("usuario");
-    }
-
-    // Verificar permisos
-    private boolean tienePermiso(Usuario usuario) {
-
-        return usuario != null
-                && (usuario.getRol().equals("SUPER_ADMIN")
-                || usuario.getRol().equals("BIBLIOTECARIO"));
-    }
-
-    // Registrar préstamo
-    @POST
-    public Response registrar(Prestamo prestamo) {
-
-        Usuario usuario = usuarioSesion();
-
+    // Validar acceso exclusivo para administradores / bibliotecarios
+    private Response validarAccesoAdmin(String authHeader, String mensajePermiso) {
+        Usuario usuario = obtenerUsuarioDesdeHeader(authHeader);
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
+                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token) válido."))
                     .build();
         }
 
-        if (!tienePermiso(usuario)) {
+        String rol = usuario.getRol();
+        if (!"SUPER_ADMIN".equals(rol) && !"BIBLIOTECARIO".equals(rol)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para registrar préstamos.")
+                    .entity(jsonMensaje(mensajePermiso))
+                    .build();
+        }
+
+        return null;
+    }
+
+    // Validar acceso permitido también a estudiantes y maestros (Consulta propia)
+    private Response validarAccesoConsulta(String authHeader) {
+        Usuario usuario = obtenerUsuarioDesdeHeader(authHeader);
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token) válido."))
+                    .build();
+        }
+
+        String rol = usuario.getRol();
+        boolean rolValido = "SUPER_ADMIN".equals(rol) || 
+                            "BIBLIOTECARIO".equals(rol) || 
+                            "ESTUDIANTE".equals(rol) || 
+                            "MAESTRO".equals(rol);
+
+        if (!rolValido) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar préstamos."))
+                    .build();
+        }
+
+        return null;
+    }
+
+    private Usuario obtenerUsuarioDesdeHeader(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        String token = authHeader.substring(7);
+        return jwtService.obtenerUsuarioDesdeToken(token);
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
+    // Registrar préstamo (Solo Admin / Bibliotecario)
+    @POST
+    public Response registrar(
+            @HeaderParam("Authorization") String authHeader,
+            Prestamo prestamo) {
+
+        Response acceso = validarAccesoAdmin(authHeader, "No tiene permisos para registrar préstamos.");
+        if (acceso != null) return acceso;
+
+        if (prestamo == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("Debe proporcionar los datos del préstamo."))
                     .build();
         }
 
         String resultado = prestamoService.registrar(prestamo);
 
-        if (resultado.equals("Préstamo registrado correctamente.")) {
+        if ("Préstamo registrado correctamente.".equals(resultado)) {
             return Response.status(Response.Status.CREATED)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
-    // Obtener todos los préstamos
+    // Obtener todos los préstamos (Solo Admin / Bibliotecario)
     @GET
-    public Response obtenerTodos() {
+    public Response obtenerTodos(@HeaderParam("Authorization") String authHeader) {
 
-        Usuario usuario = usuarioSesion();
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!tienePermiso(usuario)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar préstamos.")
-                    .build();
-        }
+        Response acceso = validarAccesoAdmin(authHeader, "No tiene permisos para consultar préstamos.");
+        if (acceso != null) return acceso;
 
         ArrayList<Prestamo> prestamos = prestamoService.obtenerTodos();
-
         return Response.ok(prestamos).build();
     }
 
-    // Buscar préstamo por ID
+    // Buscar préstamo por ID (Solo Admin / Bibliotecario)
     @GET
     @Path("/{id}")
-    public Response buscarPorId(@PathParam("id") int id) {
+    public Response buscarPorId(
+            @HeaderParam("Authorization") String authHeader,
+            @PathParam("id") int id) {
 
-        Usuario usuario = usuarioSesion();
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!tienePermiso(usuario)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar préstamos.")
-                    .build();
-        }
+        Response acceso = validarAccesoAdmin(authHeader, "No tiene permisos para consultar préstamos.");
+        if (acceso != null) return acceso;
 
         Prestamo prestamo = prestamoService.buscarPorId(id);
 
         if (prestamo == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontró el préstamo indicado.")
+                    .entity(jsonMensaje("No se encontró el préstamo indicado."))
                     .build();
         }
 
         return Response.ok(prestamo).build();
     }
 
-    // Obtener préstamos de una persona
+    // Obtener préstamos de una persona (PERMITIDO A: ESTUDIANTE, MAESTRO, BIBLIOTECARIO, SUPER_ADMIN)
     @GET
     @Path("/persona/{idPersona}")
     public Response obtenerPorPersona(
+            @HeaderParam("Authorization") String authHeader,
             @PathParam("idPersona") int idPersona) {
 
-        Usuario usuario = usuarioSesion();
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!tienePermiso(usuario)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para consultar préstamos.")
-                    .build();
-        }
+        Response acceso = validarAccesoConsulta(authHeader);
+        if (acceso != null) return acceso;
 
         if (idPersona <= 0) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("El ID de persona debe ser válido.")
+                    .entity(jsonMensaje("El ID de persona debe ser válido."))
                     .build();
         }
 
-        ArrayList<Prestamo> prestamos =
-                prestamoService.obtenerPorPersona(idPersona);
-
+        ArrayList<Prestamo> prestamos = prestamoService.obtenerPorPersona(idPersona);
         return Response.ok(prestamos).build();
     }
-    
-    // Registrar devolución
+
+    // Registrar devolución (Solo Admin / Bibliotecario)
     @PUT
     @Path("/{id}/devolucion")
-    public Response registrarDevolucion(@PathParam("id") int id) {
+    public Response registrarDevolucion(
+            @HeaderParam("Authorization") String authHeader,
+            @PathParam("id") int id) {
 
-        Usuario usuario = usuarioSesion();
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("Debe iniciar sesión.")
-                    .build();
-        }
-
-        if (!tienePermiso(usuario)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("No tiene permisos para registrar devoluciones.")
-                    .build();
-        }
+        Response acceso = validarAccesoAdmin(authHeader, "No tiene permisos para registrar devoluciones.");
+        if (acceso != null) return acceso;
 
         String resultado = prestamoService.registrarDevolucion(id);
 
-        if (resultado.equals("Devolución registrada correctamente.")) {
-            return Response.ok(resultado).build();
+        if ("Devolución registrada correctamente.".equals(resultado)) {
+            return Response.ok(jsonMensaje(resultado)).build();
         }
 
-        if (resultado.equals("El préstamo indicado no existe.")) {
+        if ("El préstamo indicado no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(resultado)
+                    .entity(jsonMensaje(resultado))
                     .build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(resultado)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 }

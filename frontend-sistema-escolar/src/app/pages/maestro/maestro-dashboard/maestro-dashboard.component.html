@@ -1,0 +1,194 @@
+<div class="container my-4">
+  
+  <!-- Banner de Bienvenida y Perfil (CU033) -->
+  <div class="p-4 mb-4 bg-warning text-dark rounded-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <h1 class="display-6 fw-bold mb-1">
+        <i class="bi bi-person-workspace me-2"></i>Portal Docente
+      </h1>
+      <p class="fs-6 mb-0 text-dark-50">
+        Gestión de cursos asignados, registro de notas, asistencia y actividades académicas.
+      </p>
+    </div>
+    <!-- CU0033: Consultar Perfil -->
+  <a routerLink="/usuarios/consultar-perfil" class="btn btn-light text-info fw-semibold px-3 py-2 shadow-sm">      <i class="bi bi-person-circle me-2"></i>Mi Perfil (CU033)
+      <i class="bi bi-person-circle me-2"></i>Mi Perfil (CU033)
+    </a>
+
+    <button (click)="logout()" class="btn btn-outline-light fw-semibold px-3 py-2 shadow-sm">
+        <i class="bi bi-box-arrow-right me-1"></i> Cerrar Sesión
+      </button>
+  </div>
+
+  <!-- Sección 1: Cursos y Nómina de Alumnos -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-journal-bookmark-fill me-2"></i>Gestión Académica y Cursos
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU0018: Consultar Cursos Asignados -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-primary border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-journal-text fs-2 text-primary me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Mis Cursos Asignados</h5>
+              <small class="text-muted">CU0018</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Consulta la lista de cursos, grados y secciones asignadas para el ciclo escolar activo.
+          </p>
+          <a routerLink="/maestro/cursos-asignados" class="btn btn-outline-primary w-100 mt-2">
+            <i class="bi bi-list-check me-1"></i> Ver Mis Cursos
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0019: Consultar Nómina de Alumnos -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-info border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-people-fill fs-2 text-info me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Nómina de Alumnos</h5>
+              <small class="text-muted">CU0019</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Visualiza el listado de estudiantes inscritos en cada grado y sección correspondientes a tus asignaturas.
+          </p>
+          <a routerLink="/maestro/nomina-alumnos" class="btn btn-outline-info w-100 mt-2">
+            <i class="bi bi-person-lines-fill me-1"></i> Consultar Alumnos
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección 2: Control de Asistencia y Calificaciones -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-pencil-square me-2"></i>Evaluaciones y Control Diario
+  </h5>
+  <div class="row g-4 mb-4">
+
+    <!-- CU0020: Registrar Asistencia -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-calendar-check-fill fs-2 text-success me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Control de Asistencia</h5>
+              <small class="text-muted">CU0020</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Lleva el registro diario de asistencia para los estudiantes pertenecientes a tus cursos y secciones.
+          </p>
+          <a routerLink="/maestro/asistencia" class="btn btn-outline-success w-100 mt-2">
+            <i class="bi bi-check2-square me-1"></i> Tomar Asistencia
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0021: Gestionar Ponderaciones de Actividades -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-warning border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-sliders fs-2 text-warning me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Ponderación / Zonas</h5>
+              <small class="text-muted">CU0021</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Define y administra los punteos, tareas y zonas evaluativas de cada una de tus asignaturas.
+          </p>
+          <a routerLink="/maestro/actividades" class="btn btn-outline-warning w-100 mt-2">
+            <i class="bi bi-diagram-3 me-1"></i> Configurar Zonas
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0022: Registrar Notas -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-danger border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-award-fill fs-2 text-danger me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Ingresar Notas</h5>
+              <small class="text-muted">CU0022</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Ingresa y modifica las calificaciones acumuladas por estudiante y por actividad en el ciclo activo.
+          </p>
+          <a routerLink="/maestro/registrar-notas" class="btn btn-outline-danger w-100 mt-2">
+            <i class="bi bi-pencil-fill me-1"></i> Cargar Notas
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección 3: Servicios de Biblioteca -->
+  <h5 class="fw-bold text-secondary mb-3">
+    <i class="bi bi-book-half me-2"></i>Servicios de Biblioteca
+  </h5>
+  <div class="row g-4">
+
+    <!-- CU0027: Consultar Catálogo de Biblioteca -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-secondary border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-search-heart fs-2 text-secondary me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Catálogo de Libros</h5>
+              <small class="text-muted">CU0027</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Consulta los libros disponibles en la biblioteca para material de apoyo o lecturas sugeridas.
+          </p>
+          <a routerLink="/biblioteca/catalogo" class="btn btn-outline-secondary w-100 mt-2">
+            <i class="bi bi-search me-1"></i> Buscar Libros
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- CU0028: Consultar Préstamos y Multas -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-dark border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-clock-history fs-2 text-dark me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Mis Préstamos</h5>
+              <small class="text-muted">CU0028</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Verifica el estado de tus préstamos personales de libros y posibles recargos por fecha de devolución.
+          </p>
+          <a routerLink="/maestro/prestamos-multas" class="btn btn-outline-dark w-100 mt-2">
+            <i class="bi bi-bookmark-check-fill me-1"></i> Ver Mis Préstamos
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

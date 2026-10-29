@@ -1,0 +1,106 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>CU0037: Historial de Pagos</h3>
+      <small class="text-white-50">Consulta detallada de abonos, mensualidades y recibos emitidos</small>
+    </div>
+    <button (click)="volver()" class="btn btn-light btn-sm text-dark fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  <!-- Alerta Informativa (Búsqueda sin pagos registrados) -->
+  @if (infoMessage) {
+    <div class="alert alert-info alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-info-circle-fill me-2"></i>{{ infoMessage }}
+      <button type="button" class="btn-close" (click)="infoMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Alerta de Error (Fallo de servidor o API) -->
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Formulario de Búsqueda (Solo para personal administrativo) -->
+  @if (!esEstudiante) {
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-light py-2">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-search me-2"></i>Consultar Estudiante</h6>
+      </div>
+      <div class="card-body p-3">
+        <form [formGroup]="busquedaForm" (ngSubmit)="consultar()" class="row g-2 align-items-center">
+          <div class="col-md-8">
+            <input type="number" formControlName="idEstudiante" class="form-control form-control-sm" placeholder="Ingrese ID de Estudiante o Persona (ej. 7 o 32)">
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn btn-primary btn-sm fw-bold w-100" [disabled]="cargando || busquedaForm.invalid">
+              @if (cargando) {
+                <span class="spinner-border spinner-border-sm me-1"></span> Buscando...
+              } @else {
+                <i class="bi bi-search me-1"></i> Consultar
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Tabla de Historial -->
+  @if (listaHistorial.length > 0) {
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+        <div>
+          <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-receipt-cutoff me-2 text-primary"></i>Pagos Realizados por {{ listaHistorial[0].apellidos }}, {{ listaHistorial[0].nombres }}</h6>
+          <small class="text-muted">Código: {{ listaHistorial[0].codigoEstudiante }}</small>
+        </div>
+        <button class="btn btn-danger btn-sm fw-bold px-3" [disabled]="descargandoPdf" (click)="descargarPdf()">
+          @if (descargandoPdf) {
+            <span class="spinner-border spinner-border-sm me-1"></span> Generando PDF...
+          } @else {
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Imprimir Historial PDF
+          }
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small text-center">
+            <thead class="table-light border-bottom text-uppercase">
+              <tr>
+                <th>ID Pago</th>
+                <th>No. Comprobante</th>
+                <th class="text-start">Concepto</th>
+                <th>Fecha Pago</th>
+                <th class="text-end">Monto</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of listaHistorial; track item.idPago) {
+                <tr>
+                  <td class="fw-bold text-secondary">#{{ item.idPago }}</td>
+                  <td class="fw-semibold text-primary">{{ item.numeroComprobante || '-' }}</td>
+                  <td class="text-start fw-semibold">{{ item.concepto }}</td>
+                  <td>{{ item.fechaPago | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="text-end fw-bold text-success">Q {{ item.monto | number:'1.2-2' }}</td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success px-3 py-1 rounded-pill">
+                      {{ item.estado }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

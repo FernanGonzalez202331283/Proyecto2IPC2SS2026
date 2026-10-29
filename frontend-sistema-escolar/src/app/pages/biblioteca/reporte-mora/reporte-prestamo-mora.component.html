@@ -1,0 +1,93 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-danger text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-book-half me-2"></i>CU0039: Préstamos de Biblioteca en Mora</h3>
+      <small class="text-white-50">Listado de libros prestados con fecha de devolución vencida y multas acumuladas</small>
+    </div>
+    <button (click)="volver()" class="btn btn-light btn-sm text-danger fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </button>
+  </div>
+
+  <!-- Alerta de Error -->
+  @if (errorMessage) {
+    <div class="alert alert-warning alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Spinner -->
+  @if (cargando) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-danger" role="status"></div>
+      <p class="mt-2 text-muted fw-semibold">Consultando registro de mora en biblioteca...</p>
+    </div>
+  }
+
+  <!-- Tabla de Resultados -->
+  @if (!cargando && listaMora.length > 0) {
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+        <div>
+          <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>Registros Vencidos</h6>
+          <small class="text-muted">Total: {{ listaMora.length }} préstamos retrasados</small>
+        </div>
+        <button class="btn btn-danger btn-sm fw-bold px-3" [disabled]="descargandoPdf" (click)="descargarPdf()">
+          @if (descargandoPdf) {
+            <span class="spinner-border spinner-border-sm me-1"></span> Generando PDF...
+          } @else {
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Exportar PDF
+          }
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light border-bottom">
+              <tr>
+                <th class="ps-3">ID</th>
+                <th>Usuario</th>
+                <th>Libro / Autor</th>
+                <th>Fecha Devolución</th>
+                <th class="text-center">Atraso</th>
+                <th class="text-end">Multa</th>
+                <th class="text-center pe-3">Estado Multa</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of listaMora; track item.idPrestamo) {
+                <tr>
+                  <td class="ps-3 fw-bold text-secondary">#{{ item.idPrestamo }}</td>
+                  <td class="fw-semibold">{{ item.apellidos }}, {{ item.nombres }}</td>
+                  <td>
+                    <div class="fw-bold text-primary">{{ item.titulo }}</div>
+                    <small class="text-muted">{{ item.autor }}</small>
+                  </td>
+                  <td>{{ item.fechaDevolucionEsperada }}</td>
+                  <td class="text-center">
+                    <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 fw-bold rounded-pill">
+                      {{ item.diasAtraso }} días
+                    </span>
+                  </td>
+                  <td class="text-end fw-bold text-dark">Q {{ item.montoMulta | number:'1.2-2' }}</td>
+                  <td class="text-center pe-3">
+                    <span class="badge px-3 py-1 rounded-pill fw-bold" [ngClass]="{
+                      'bg-warning-subtle text-warning border border-warning': item.estadoMulta === 'PENDIENTE',
+                      'bg-success-subtle text-success border border-success': item.estadoMulta === 'PAGADA'
+                    }">
+                      {{ item.estadoMulta }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>
