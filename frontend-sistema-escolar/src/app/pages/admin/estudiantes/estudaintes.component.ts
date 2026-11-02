@@ -1,35 +1,76 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EstudianteService, Estudiante } from '../../../services/estudiante.service';
-import { RouterLink } from '@angular/router';
+
 @Component({
   selector: 'app-estudiantes',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './estudiantes.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './estudiantes.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EstudiantesComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private estudianteService = inject(EstudianteService);
+  private router = inject(Router);
+  private location = inject(Location);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   estudiantes: Estudiante[] = [];
   estudianteForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
   idPersonaSeleccionada: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  // Variables de paginación
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private estudianteService: EstudianteService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
     this.cargarEstudiantes();
+  }
+
+  volverDashboard(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      const rawUser = localStorage.getItem('usuario') || sessionStorage.getItem('usuario') || localStorage.getItem('user');
+      let rol = '';
+
+      if (rawUser) {
+        try {
+          const parsed = JSON.parse(rawUser);
+          rol = parsed.rol || parsed.usuario?.rol || '';
+        } catch {
+          rol = '';
+        }
+      }
+
+      if (rol === 'SECRETARIA') {
+        this.router.navigate(['/secretaria/dashboard']);
+      } else {
+        this.router.navigate(['/admin/dashboard']);
+      }
+    }
   }
 
   private initForm(): void {
@@ -45,6 +86,15 @@ export class EstudiantesComponent implements OnInit {
         telefono: ['', [Validators.maxLength(20)]],
         correo: ['', [Validators.email]],
         direccion: ['', [Validators.maxLength(255)]]
+      }),
+      encargado: this.fb.group({
+        nombres: ['', [Validators.required, Validators.maxLength(100)]],
+        apellidos: ['', [Validators.required, Validators.maxLength(100)]],
+        telefono: ['', [Validators.required, Validators.maxLength(20)]],
+        correo: ['', [Validators.email]],
+        direccion: ['', [Validators.maxLength(255)]],
+        parentesco: ['PADRE', [Validators.required]],
+        responsablePrincipal: [true]
       })
     });
   }
@@ -61,22 +111,38 @@ export class EstudiantesComponent implements OnInit {
 
   cargarEstudiantes(): void {
     this.cargando = true;
-    this.estudianteService.obtenerEstudiantes().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.estudiantes = data || [];
+    this.cdr.markForCheck();
+
+    this.estudianteService.obtenerEstudiantes(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) 
+            ? resp 
+            : (resp?.contenido || resp?.lista || resp?.datos || []);
+
+          this.estudiantes = lista;
+          this.paginaActual = resp?.paginaActual || 1;
+          this.totalPaginas = resp?.totalPaginas || 1;
+          this.totalRegistros = resp?.totalRegistros || this.estudiantes.length;
+
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.estudiantes = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarEstudiantes();
+    }
   }
 
   guardarEstudiante(): void {
@@ -85,11 +151,35 @@ export class EstudiantesComponent implements OnInit {
     if (this.estudianteForm.invalid) {
       this.estudianteForm.markAllAsTouched();
       this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
-    const datos: Estudiante = this.estudianteForm.value;
+    this.cdr.markForCheck();
+    const formVal = this.estudianteForm.value;
+
+    const datos: Estudiante = {
+      codigoEstudiante: formVal.codigoEstudiante,
+      informacionMedica: formVal.informacionMedica,
+      estado: formVal.estado,
+      persona: formVal.persona,
+      encargados: [
+        {
+          idEncargado: 0,
+          parentesco: formVal.encargado.parentesco,
+          responsablePrincipal: formVal.encargado.responsablePrincipal,
+          encargado: {
+            nombres: formVal.encargado.nombres,
+            apellidos: formVal.encargado.apellidos,
+            telefono: formVal.encargado.telefono,
+            correo: formVal.encargado.correo,
+            direccion: formVal.encargado.direccion,
+            estado: true
+          }
+        }
+      ]
+    };
 
     if (this.modoEdicion && this.idSeleccionado) {
       datos.idEstudiante = this.idSeleccionado;
@@ -98,43 +188,39 @@ export class EstudiantesComponent implements OnInit {
         datos.persona.idPersona = this.idPersonaSeleccionada;
       }
 
-      this.estudianteService.actualizarEstudiante(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Expediente de estudiante actualizado.';
+      this.estudianteService.actualizarEstudiante(this.idSeleccionado, datos)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.successMessage = this.obtenerTextoRespuesta(res) || 'Expediente de estudiante actualizado correctamente.';
             this.procesando = false;
             this.resetForm();
             this.cargarEstudiantes();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
             this.errorMessage = this.obtenerTextoRespuesta(err);
             this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+            this.cdr.markForCheck();
+          }
+        });
     } else {
-      this.estudianteService.registrarEstudiante(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Estudiante registrado correctamente.';
+      this.estudianteService.registrarEstudiante(datos)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.successMessage = this.obtenerTextoRespuesta(res) || 'Estudiante y encargado registrados correctamente.';
             this.procesando = false;
             this.resetForm();
             this.cargarEstudiantes();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
             this.errorMessage = this.obtenerTextoRespuesta(err);
             this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+            this.cdr.markForCheck();
+          }
+        });
     }
   }
 
@@ -143,21 +229,19 @@ export class EstudiantesComponent implements OnInit {
 
     this.limpiarMensajes();
 
-    this.estudianteService.cambiarEstado(e.idEstudiante, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.estudianteService.cambiarEstado(e.idEstudiante, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado actualizado.';
           e.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   editarEstudiante(e: Estudiante): void {
@@ -165,6 +249,8 @@ export class EstudiantesComponent implements OnInit {
     this.modoEdicion = true;
     this.idSeleccionado = e.idEstudiante || null;
     this.idPersonaSeleccionada = e.persona?.idPersona || null;
+
+    const primerEncargado = e.encargados && e.encargados.length > 0 ? e.encargados[0] : null;
 
     this.estudianteForm.patchValue({
       codigoEstudiante: e.codigoEstudiante,
@@ -178,8 +264,19 @@ export class EstudiantesComponent implements OnInit {
         telefono: e.persona?.telefono || '',
         correo: e.persona?.correo || '',
         direccion: e.persona?.direccion || ''
+      },
+      encargado: {
+        nombres: primerEncargado?.encargado?.nombres || '',
+        apellidos: primerEncargado?.encargado?.apellidos || '',
+        telefono: primerEncargado?.encargado?.telefono || '',
+        correo: primerEncargado?.encargado?.correo || '',
+        direccion: primerEncargado?.encargado?.direccion || '',
+        parentesco: primerEncargado?.parentesco || 'PADRE',
+        responsablePrincipal: primerEncargado?.responsablePrincipal ?? true
       }
     });
+
+    this.cdr.markForCheck();
   }
 
   cancelarEdicion(): void {
@@ -203,8 +300,18 @@ export class EstudiantesComponent implements OnInit {
         telefono: '',
         correo: '',
         direccion: ''
+      },
+      encargado: {
+        nombres: '',
+        apellidos: '',
+        telefono: '',
+        correo: '',
+        direccion: '',
+        parentesco: 'PADRE',
+        responsablePrincipal: true
       }
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

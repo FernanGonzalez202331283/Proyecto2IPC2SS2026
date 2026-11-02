@@ -12,7 +12,6 @@ import modelo.iteracion4.Solvencia;
  * @author fernan
  */
 public class SolvenciaService {
-    
     private final SolvenciaDAO solvenciaDAO;
 
     public SolvenciaService() {
@@ -21,12 +20,10 @@ public class SolvenciaService {
 
     public Solvencia generarSolvencia(int idEstudiante, int idAñoLectivo) {
 
-        // Validar identificadores.
         if (idEstudiante <= 0 || idAñoLectivo <= 0) {
             return null;
         }
 
-        // Consultar solvencia.
         return solvenciaDAO.generarSolvencia(idEstudiante, idAñoLectivo);
     }
 }

@@ -21,12 +21,10 @@ public class EstadoCuentaService {
 
     public EstadoCuenta consultarEstadoCuenta(int idEstudiante, int idAñoLectivo) {
 
-        // Validar identificadores.
         if (idEstudiante <= 0 || idAñoLectivo <= 0) {
             return null;
         }
 
-        // Consultar el estado de cuenta.
         return estadoCuentaDAO.consultarEstadoCuenta(
                 idEstudiante,
                 idAñoLectivo

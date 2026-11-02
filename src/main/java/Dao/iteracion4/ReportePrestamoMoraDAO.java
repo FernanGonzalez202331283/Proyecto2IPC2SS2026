@@ -17,6 +17,7 @@ import modelo.iteracion4.ReportePrestamoMora;
  * @author fernan
  */
 public class ReportePrestamoMoraDAO {
+
     public ArrayList<ReportePrestamoMora> obtenerReporte() {
 
         ArrayList<ReportePrestamoMora> reporte = new ArrayList<>();
@@ -46,9 +47,7 @@ public class ReportePrestamoMoraDAO {
             ORDER BY p.fecha_devolucion_esperada ASC
         """;
 
-        try (Connection conexion = Conexion.getInstance().getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conexion = Conexion.getInstance().getConnection(); PreparedStatement ps = conexion.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
 

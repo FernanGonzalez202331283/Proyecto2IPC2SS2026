@@ -1,16 +1,32 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { CursoAsignadoService, CursoAsignado } from '../../../services/curso-asignado.service';
-import { Router } from '@angular/router';
-import { RouterLink } from '@angular/router';
+
 @Component({
   selector: 'app-curso-asignado',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './curso-asignado.component.html'
+  templateUrl: './curso-asignado.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CursosAsignadosComponent implements OnInit {
+  private cursoAsignadoService = inject(CursoAsignadoService);
+  private location = inject(Location);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   cursosAsignados: CursoAsignado[] = [];
   cursosFiltrados: CursoAsignado[] = [];
 
@@ -18,54 +34,48 @@ export class CursosAsignadosComponent implements OnInit {
   cargando: boolean = false;
   errorMessage: string = '';
 
-  constructor(
-    private cursoAsignadoService: CursoAsignadoService,
-    private location: Location,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
-
   ngOnInit(): void {
-    // Solo cargamos los cursos. El backend sabrá por el Token quién es el maestro y le dará los suyos.
     this.cargarMisCursos();
   }
 
   cargarMisCursos(): void {
     this.cargando = true;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
-    this.cursoAsignadoService.obtenerTodos().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.cursosAsignados = data || [];
+    this.cursoAsignadoService.obtenerTodos()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: CursoAsignado[]) => {
+          this.cursosAsignados = Array.isArray(data) ? data : [];
           this.aplicarFiltro();
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al cargar cursos asignados:', err);
           this.errorMessage = this.obtenerTextoRespuesta(err);
+          this.cursosAsignados = [];
+          this.cursosFiltrados = [];
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   aplicarFiltro(): void {
     const txt = this.filtroTexto.trim().toLowerCase();
     if (!txt) {
       this.cursosFiltrados = [...this.cursosAsignados];
-      return;
+    } else {
+      this.cursosFiltrados = this.cursosAsignados.filter(item => 
+        (item.nombreCurso && item.nombreCurso.toLowerCase().includes(txt)) ||
+        (item.nombreGrado && item.nombreGrado.toLowerCase().includes(txt)) ||
+        (item.nombreSeccion && item.nombreSeccion.toLowerCase().includes(txt)) ||
+        (item.nivelGrado && item.nivelGrado.toLowerCase().includes(txt))
+      );
     }
-
-    this.cursosFiltrados = this.cursosAsignados.filter(item => 
-      (item.nombreCurso && item.nombreCurso.toLowerCase().includes(txt)) ||
-      (item.nombreGrado && item.nombreGrado.toLowerCase().includes(txt)) ||
-      (item.nombreSeccion && item.nombreSeccion.toLowerCase().includes(txt))
-    );
+    this.cdr.markForCheck();
   }
 
   limpiarFiltros(): void {
@@ -77,7 +87,7 @@ export class CursosAsignadosComponent implements OnInit {
     if (window.history.length > 1) {
       this.location.back();
     } else {
-      this.router.navigate(['/maestro/dashboard']); // Ajustado para que vuelva al dashboard del maestro
+      this.router.navigate(['/maestro/dashboard']);
     }
   }
 

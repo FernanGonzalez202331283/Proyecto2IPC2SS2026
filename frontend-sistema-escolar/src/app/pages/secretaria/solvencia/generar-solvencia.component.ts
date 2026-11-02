@@ -1,40 +1,122 @@
-import { Component, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { SolvenciaService, Solvencia } from '../../../services/solvencia.service';
+import { EstudianteService, Estudiante } from '../../../services/estudiante.service';
+import { AnoLectivoService, AnoLectivo } from '../../../services/ano-lectivo.service';
 
 @Component({
   selector: 'app-generar-solvencia',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './generar-solvencia.component.html'
+  templateUrl: './generar-solvencia.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class GenerarSolvenciaComponent {
-  solvenciaForm: FormGroup;
-  
-  consultando: boolean = false;
-  descargandoPdf: boolean = false;
-  
-  resultadoSolvencia: Solvencia | null = null;
-  errorMessage: string = '';
+export class GenerarSolvenciaComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private solvenciaService = inject(SolvenciaService);
+  private estudianteService = inject(EstudianteService);
+  private anoLectivoService = inject(AnoLectivoService);
+  private location = inject(Location);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
-  constructor(
-    private fb: FormBuilder,
-    private solvenciaService: SolvenciaService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone,
-    private location: Location
-  ) {
-    // Por defecto colocamos el ciclo 1 (2026)
-    this.solvenciaForm = this.fb.group({
-      idEstudiante: ['', [Validators.required, Validators.min(1)]],
-      idAñoLectivo: [1, [Validators.required, Validators.min(1)]]
-    });
+  solvenciaForm: FormGroup = this.fb.group({
+    idEstudiante: [null, [Validators.required]],
+    idAnoLectivo: [null, [Validators.required]]
+  });
+
+  estudiantesLista: Estudiante[] = [];
+  aniosLectivosLista: AnoLectivo[] = [];
+  estudianteSeleccionado: Estudiante | null = null;
+
+  cargandoCatalogos = false;
+  consultando = false;
+  descargandoPdf = false;
+
+  resultadoSolvencia: Solvencia | null = null;
+  errorMessage = '';
+
+  ngOnInit(): void {
+    this.cargarCatalogos();
   }
 
   volver(): void {
-    this.location.back();
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/secretaria/dashboard']);
+    }
+  }
+
+  cargarCatalogos(): void {
+    this.cargandoCatalogos = true;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+
+    // 1. Cargar Estudiantes
+    this.estudianteService.obtenerEstudiantes(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) ? resp : (resp?.contenido || []);
+          this.estudiantesLista = lista.filter((e: Estudiante) => e.estado === 'ACTIVO');
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.errorMessage = 'Error al cargar la lista de estudiantes.';
+          this.cdr.markForCheck();
+        }
+      });
+
+    // 2. Cargar Años Lectivos
+    this.anoLectivoService.obtenerAnosLectivos(1, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          if (resp && Array.isArray(resp.contenido)) {
+            this.aniosLectivosLista = resp.contenido;
+          } else if (Array.isArray(resp)) {
+            this.aniosLectivosLista = resp;
+          } else {
+            this.aniosLectivosLista = [];
+          }
+          
+          // Seleccionar por defecto el año lectivo activo
+          const anioActivo = this.aniosLectivosLista.find(a => a.estado === true);
+          if (anioActivo && anioActivo.idAnoLectivo) {
+            this.solvenciaForm.patchValue({ idAnoLectivo: anioActivo.idAnoLectivo });
+          }
+
+          this.cargandoCatalogos = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al cargar años lectivos:', err);
+          this.errorMessage = 'No se pudo cargar el catálogo de años lectivos.';
+          this.cargandoCatalogos = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  onEstudianteChange(): void {
+    const idEst = Number(this.solvenciaForm.value.idEstudiante);
+    this.estudianteSeleccionado = this.estudiantesLista.find(e => Number(e.idEstudiante) === idEst) || null;
+    this.resultadoSolvencia = null;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
   }
 
   verificarSolvencia(): void {
@@ -43,49 +125,48 @@ export class GenerarSolvenciaComponent {
     this.consultando = true;
     this.resultadoSolvencia = null;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
-    const { idEstudiante, idAñoLectivo } = this.solvenciaForm.value;
+    const { idEstudiante, idAnoLectivo } = this.solvenciaForm.value;
 
-    this.solvenciaService.consultarSolvencia(idEstudiante, idAñoLectivo).subscribe({
-      next: (res: Solvencia) => {
-        this.ngZone.run(() => {
+    this.solvenciaService.consultarSolvencia(Number(idEstudiante), Number(idAnoLectivo))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: Solvencia) => {
           this.resultadoSolvencia = res;
           this.consultando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
-          this.errorMessage = err.error?.mensaje || 'No se pudo verificar la solvencia del estudiante.';
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.errorMessage = err.error?.mensaje || err?.mensaje || 'No se pudo verificar la solvencia del estudiante.';
           this.consultando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   generarConstanciaPDF(): void {
     if (!this.resultadoSolvencia || this.resultadoSolvencia.estado !== 'SOLVENTE') return;
 
     this.descargandoPdf = true;
-    const { idEstudiante, idAñoLectivo } = this.solvenciaForm.value;
+    this.cdr.markForCheck();
 
-    this.solvenciaService.descargarPdfSolvencia(idEstudiante, idAñoLectivo).subscribe({
-      next: (blobData: Blob) => {
-        this.ngZone.run(() => {
+    const { idEstudiante, idAnoLectivo } = this.solvenciaForm.value;
+
+    this.solvenciaService.descargarPdfSolvencia(Number(idEstudiante), Number(idAnoLectivo))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blobData: Blob) => {
           const fileURL = URL.createObjectURL(blobData);
           window.open(fileURL, '_blank');
           this.descargandoPdf = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: () => {
           this.errorMessage = 'Ocurrió un error al generar la constancia en PDF.';
           this.descargandoPdf = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 }

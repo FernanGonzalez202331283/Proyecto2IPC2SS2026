@@ -1,30 +1,37 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component,  OnInit, inject, DestroyRef, ChangeDetectorRef,  ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CursoService, Curso } from '../../../services/curso.services';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CursoService, Curso, RespuestaPaginada } from '../../../services/curso.services';
+
 @Component({
   selector: 'app-cursos',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './curso.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './curso.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CursosComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private cursoService = inject(CursoService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   cursos: Curso[] = [];
   cursoForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private cursoService: CursoService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
@@ -46,22 +53,38 @@ export class CursosComponent implements OnInit {
 
   cargarCursos(): void {
     this.cargando = true;
-    this.cursoService.obtenerCursos().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.cursos = data || [];
+    this.cdr.markForCheck();
+
+    this.cursoService.obtenerCursos(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp)
+            ? resp
+            : (resp?.contenido || resp?.lista || resp?.elementos || resp?.data || []);
+
+          this.cursos = lista;
+          this.paginaActual = resp?.paginaActual || 1;
+          this.totalPaginas = resp?.totalPaginas || 1;
+          this.totalRegistros = resp?.totalRegistros || this.cursos.length;
+
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.cursos = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarCursos();
+    }
   }
 
   guardarCurso(): void {
@@ -70,51 +93,32 @@ export class CursosComponent implements OnInit {
     if (this.cursoForm.invalid) {
       this.cursoForm.markAllAsTouched();
       this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
+    this.cdr.markForCheck();
     const datos: Curso = this.cursoForm.value;
 
-    if (this.modoEdicion && this.idSeleccionado) {
-      this.cursoService.actualizarCurso(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Curso actualizado correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarCursos();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    } else {
-      this.cursoService.registrarCurso(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Curso registrado correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarCursos();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    }
+    const operacion$ = (this.modoEdicion && this.idSeleccionado)
+      ? this.cursoService.actualizarCurso(this.idSeleccionado, datos)
+      : this.cursoService.registrarCurso(datos);
+
+    operacion$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        const mensajeDefault = this.modoEdicion ? 'Curso actualizado correctamente.' : 'Curso registrado correctamente.';
+        this.successMessage = this.obtenerTextoRespuesta(res) || mensajeDefault;
+        this.procesando = false;
+        this.resetForm();
+        this.cargarCursos();
+      },
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoRespuesta(err);
+        this.procesando = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   toggleEstado(curso: Curso): void {
@@ -123,21 +127,19 @@ export class CursosComponent implements OnInit {
     this.limpiarMensajes();
     const nuevoEstado = !curso.estado;
 
-    this.cursoService.cambiarEstado(curso.idCurso, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.cursoService.cambiarEstado(curso.idCurso, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado actualizado correctamente.';
           curso.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   editarCurso(curso: Curso): void {
@@ -150,6 +152,8 @@ export class CursosComponent implements OnInit {
       descripcion: curso.descripcion || '',
       estado: curso.estado
     });
+
+    this.cdr.markForCheck();
   }
 
   cancelarEdicion(): void {
@@ -165,6 +169,7 @@ export class CursosComponent implements OnInit {
       descripcion: '',
       estado: true
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

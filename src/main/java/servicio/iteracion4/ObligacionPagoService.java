@@ -43,7 +43,6 @@ public class ObligacionPagoService {
             return DATOS_INVALIDOS;
         }
 
-        // Verificar que exista el estudiante y esté activo llamando al DAO
         if (!obligacionDAO.estudianteActivo(obligacion.getIdEstudiante())) {
             return ESTUDIANTE_NO_ENCONTRADO;
         }
@@ -52,7 +51,6 @@ public class ObligacionPagoService {
             return AÑO_NO_ENCONTRADO;
         }
 
-        // Evitar obligaciones duplicadas llamando al DAO
         if (obligacionDAO.existeObligacion(
                 obligacion.getIdEstudiante(),
                 obligacion.getIdAñoLectivo(),
@@ -70,10 +68,8 @@ public class ObligacionPagoService {
         return obligacionDAO.registrar(obligacion);
     }
     
-    // Registrar obligación (actividad) para todos los estudiantes de una sección
     public String registrarObligacionPorSeccion(int idSeccion, ObligacionPago datosObligacion) {
         
-        // 1. Validaciones básicas de los datos de la actividad
         if (datosObligacion == null || datosObligacion.getMonto() <= 0 || datosObligacion.getFechaVencimiento() == null) {
             return "Datos de la actividad inválidos.";
         }
@@ -82,7 +78,6 @@ public class ObligacionPagoService {
             return "El concepto debe ser 'ACTIVIDAD'.";
         }
 
-        // 2. Obtener la lista de estudiantes de esa sección
         java.util.ArrayList<Integer> idEstudiantes = obligacionDAO.obtenerEstudiantesPorSeccion(idSeccion);
         
         if (idEstudiantes.isEmpty()) {
@@ -92,13 +87,9 @@ public class ObligacionPagoService {
         int asignados = 0;
         int duplicados = 0;
         
-        // 3. Recorrer la lista y asignarle la deuda a cada uno
         for (Integer idEstudiante : idEstudiantes) {
             
-            // Verificamos que no se le haya cobrado ya la misma actividad (para evitar cobros dobles)
             if (obligacionDAO.existeObligacion(idEstudiante, datosObligacion.getIdAñoLectivo(), datosObligacion.getConcepto())) {
-                // Aquí podrías mejorar la validación usando la descripción también, 
-                // para que puedan haber 2 "ACTIVIDADES" distintas en el mismo año.
                 duplicados++;
                 continue; 
             }

@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { EmpleadoService, Empleado } from '../../../services/empleado.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EmpleadoService, Empleado, RespuestaPaginada } from '../../../services/empleado.service';
 
 @Component({
   selector: 'app-empleados',
@@ -11,25 +12,27 @@ import { EmpleadoService, Empleado } from '../../../services/empleado.service';
   templateUrl: './empleado.component.html'
 })
 export class EmpleadosComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private empleadoService = inject(EmpleadoService);
+  private router = inject(Router);
+  private location = inject(Location);
+  private destroyRef = inject(DestroyRef);
+
   empleados: Empleado[] = [];
   empleadoForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
   idPersonaSeleccionada: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private empleadoService: EmpleadoService,
-    private router: Router,
-    private location: Location,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
@@ -67,22 +70,40 @@ export class EmpleadosComponent implements OnInit {
 
   cargarEmpleados(): void {
     this.cargando = true;
-    this.empleadoService.obtenerEmpleados().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.empleados = data || [];
+
+    this.empleadoService.obtenerEmpleados(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: RespuestaPaginada<Empleado> | any) => {
+          if (resp && Array.isArray(resp.contenido)) {
+            this.empleados = resp.contenido;
+            this.paginaActual = resp.paginaActual || 1;
+            this.totalPaginas = resp.totalPaginas || 1;
+            this.totalRegistros = resp.totalRegistros || 0;
+          } else if (Array.isArray(resp)) {
+            this.empleados = resp;
+            this.totalRegistros = resp.length;
+            this.totalPaginas = 1;
+          } else {
+            this.empleados = [];
+            this.totalRegistros = 0;
+            this.totalPaginas = 1;
+          }
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+        },
+        error: (err) => {
+          this.empleados = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarEmpleados();
+    }
   }
 
   guardarEmpleado(): void {
@@ -112,50 +133,31 @@ export class EmpleadosComponent implements OnInit {
       }
     };
 
+    let operacion$;
+
     if (this.modoEdicion && this.idSeleccionado) {
       datos.idEmpleado = this.idSeleccionado;
       if (this.idPersonaSeleccionada) {
         datos.persona.idPersona = this.idPersonaSeleccionada;
       }
-
-      this.empleadoService.actualizarEmpleado(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Empleado actualizado correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarEmpleados();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+      operacion$ = this.empleadoService.actualizarEmpleado(this.idSeleccionado, datos);
     } else {
-      this.empleadoService.registrarEmpleado(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Empleado registrado correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarEmpleados();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+      operacion$ = this.empleadoService.registrarEmpleado(datos);
     }
+
+    operacion$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        const mensajeDefault = this.modoEdicion ? 'Empleado actualizado correctamente.' : 'Empleado registrado correctamente.';
+        this.successMessage = this.obtenerTextoRespuesta(res) || mensajeDefault;
+        this.procesando = false;
+        this.resetForm();
+        this.cargarEmpleados();
+      },
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoRespuesta(err);
+        this.procesando = false;
+      }
+    });
   }
 
   editarEmpleado(emp: Empleado): void {
@@ -186,21 +188,17 @@ export class EmpleadosComponent implements OnInit {
 
     this.limpiarMensajes();
 
-    this.empleadoService.cambiarEstado(emp.idEmpleado, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.empleadoService.cambiarEstado(emp.idEmpleado, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado de empleado actualizado.';
           emp.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+        }
+      });
   }
 
   cancelarEdicion(): void {

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -11,6 +11,13 @@ export interface Libro {
   cantidadTotal: number;
   cantidadDisponible: number;
   estado?: boolean;
+}
+
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
 }
 
 export interface RespuestaServidor {
@@ -33,15 +40,20 @@ export class LibroService {
     });
   }
 
-  // Obtener todos los libros (para administradores y bibliotecarios)
-  obtenerTodos(): Observable<Libro[]> {
-    return this.http.get<Libro[]>(`${this.restConstants.getApiURL()}/libros`, {
+  // Obtener libros paginados
+  obtenerTodos(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Libro>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
+
+    return this.http.get<RespuestaPaginada<Libro>>(`${this.restConstants.getApiURL()}/libros`, {
       headers: this.getHeaders(),
+      params,
       withCredentials: true
     });
   }
 
-  // Obtener catálogo de libros activos
+  // Obtener catálogo completo de activos
   obtenerCatalogo(): Observable<Libro[]> {
     return this.http.get<Libro[]>(`${this.restConstants.getApiURL()}/libros/catalogo`, {
       headers: this.getHeaders(),
@@ -49,7 +61,6 @@ export class LibroService {
     });
   }
 
-  // Registrar un nuevo libro
   registrar(libro: Libro): Observable<RespuestaServidor> {
     return this.http.post<RespuestaServidor>(`${this.restConstants.getApiURL()}/libros`, libro, {
       headers: this.getHeaders(),
@@ -57,7 +68,6 @@ export class LibroService {
     });
   }
 
-  // Actualizar un libro existente
   actualizar(id: number, libro: Libro): Observable<RespuestaServidor> {
     return this.http.put<RespuestaServidor>(`${this.restConstants.getApiURL()}/libros/${id}`, libro, {
       headers: this.getHeaders(),
@@ -65,7 +75,6 @@ export class LibroService {
     });
   }
 
-  // Cambiar estado (activar/desactivar)
   cambiarEstado(id: number, estado: boolean): Observable<RespuestaServidor> {
     return this.http.put<RespuestaServidor>(`${this.restConstants.getApiURL()}/libros/${id}/estado?estado=${estado}`, {}, {
       headers: this.getHeaders(),

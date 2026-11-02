@@ -4,6 +4,7 @@
  */
 package modelo;
 
+import modelo.Persona.Persona;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**

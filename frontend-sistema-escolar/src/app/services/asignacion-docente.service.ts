@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
+import { Seccion } from './seccion.service';
 
 export interface Persona {
   idPersona?: number;
@@ -23,13 +24,6 @@ export interface Curso {
   estado?: boolean;
 }
 
-export interface Seccion {
-  idSeccion?: number;
-  nombre?: string;
-  idGrado?: number;
-  estado?: boolean;
-}
-
 export interface AsignacionDocente {
   idAsignacion?: number;
   empleado: Empleado;
@@ -38,48 +32,58 @@ export interface AsignacionDocente {
   estado?: boolean;
 }
 
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AsignacionDocenteService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-  private httpOptions = { withCredentials: true };
+  private readonly baseUrl = this.restConstants.getApiURL();
 
-  constructor(private http: HttpClient) {}
+  private httpOptions = {
+    withCredentials: true
+  };
 
-  obtenerAsignaciones(): Observable<AsignacionDocente[]> {
-    return this.http.get<AsignacionDocente[]>(
-      `${this.restConstants.getApiURL()}/asignaciones-docentes`,
+  obtenerAsignaciones(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<AsignacionDocente>> {
+    return this.http.get<RespuestaPaginada<AsignacionDocente>>(
+      `${this.baseUrl}/asignaciones-docentes?pagina=${pagina}&limite=${limite}`,
       this.httpOptions
     );
   }
 
   buscarPorId(id: number): Observable<AsignacionDocente> {
     return this.http.get<AsignacionDocente>(
-      `${this.restConstants.getApiURL()}/asignaciones-docentes/${id}`,
+      `${this.baseUrl}/asignaciones-docentes/${id}`,
       this.httpOptions
     );
   }
 
   registrarAsignacion(asignacion: AsignacionDocente): Observable<any> {
-    return this.http.post(
-      `${this.restConstants.getApiURL()}/asignaciones-docentes`,
+    return this.http.post<any>(
+      `${this.baseUrl}/asignaciones-docentes`,
       asignacion,
       this.httpOptions
     );
   }
 
   actualizarAsignacion(id: number, asignacion: AsignacionDocente): Observable<any> {
-    return this.http.put(
-      `${this.restConstants.getApiURL()}/asignaciones-docentes/${id}`,
+    return this.http.put<any>(
+      `${this.baseUrl}/asignaciones-docentes/${id}`,
       asignacion,
       this.httpOptions
     );
   }
 
   cambiarEstado(id: number, estado: boolean): Observable<any> {
-    return this.http.put(
-      `${this.restConstants.getApiURL()}/asignaciones-docentes/${id}/estado`,
+    return this.http.put<any>(
+      `${this.baseUrl}/asignaciones-docentes/${id}/estado`,
       { estado },
       this.httpOptions
     );

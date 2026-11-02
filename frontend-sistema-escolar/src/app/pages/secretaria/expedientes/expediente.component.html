@@ -21,7 +21,7 @@
             <option [ngValue]="null" disabled>--- Seleccione un estudiante ---</option>
             @for (est of estudiantesLista; track est.idEstudiante) {
               <option [ngValue]="est.idEstudiante">
-                {{ est.codigoEstudiante }} - {{ est.persona.nombres }} {{ est.persona.apellidos }} (DPI: {{ est.persona.dpi }})
+                {{ est.codigoEstudiante }} - {{ est.persona?.nombres }} {{ est.persona?.apellidos }} (DPI: {{ est.persona?.dpi }})
               </option>
             }
           </select>
@@ -36,7 +36,7 @@
     </div>
   </div>
 
-  <!-- Alerta para Escenario Alterno (Línea 4) o Errores -->
+  <!-- Alerta de Errores / Alertas de Negocio -->
   @if (errorMessage) {
     <div class="alert alert-warning alert-dismissible fade show shadow-sm fw-semibold" role="alert">
       <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}

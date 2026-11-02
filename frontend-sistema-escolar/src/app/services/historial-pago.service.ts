@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
@@ -21,35 +21,38 @@ export interface HistorialPago {
   providedIn: 'root'
 })
 export class HistorialPagoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/historial-pagos`;
 
-  constructor(private http: HttpClient) {}
-
-  private getHeaders(): HttpHeaders {
+  private getHeaders(incluirContentType = true): HttpHeaders {
     const token = localStorage.getItem('token');
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+    let headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
     });
+
+    if (incluirContentType) {
+      headers = headers.set('Content-Type', 'application/json');
+    }
+
+    return headers;
   }
 
   obtenerHistorial(idEstudiante: number): Observable<HistorialPago[]> {
     return this.http.get<HistorialPago[]>(
-      `${this.restConstants.getApiURL()}/historial-pagos/estudiante/${idEstudiante}`,
-      { headers: this.getHeaders(), withCredentials: true }
+      `${this.baseUrl}/estudiante/${idEstudiante}`,
+      {
+        headers: this.getHeaders(),
+        withCredentials: true
+      }
     );
   }
 
   obtenerPdfHistorial(idEstudiante: number): Observable<Blob> {
-    const token = localStorage.getItem('token');
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
     return this.http.get(
-      `${this.restConstants.getApiURL()}/historial-pagos/pdf/estudiante/${idEstudiante}`,
+      `${this.baseUrl}/pdf/estudiante/${idEstudiante}`,
       {
-        headers,
+        headers: this.getHeaders(false),
         responseType: 'blob',
         withCredentials: true
       }

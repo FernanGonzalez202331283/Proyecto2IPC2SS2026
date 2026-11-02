@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -10,35 +10,46 @@ export interface Carrera {
   estado: boolean;
 }
 
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class CarreraService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/carreras`;
 
-  private httpOptions = {
-    withCredentials: true
-  };
+  obtenerCarreras(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Carrera>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
 
-  constructor(private http: HttpClient) {}
+    return this.http.get<RespuestaPaginada<Carrera>>(this.baseUrl, { params });
+  }
 
-  obtenerCarreras(): Observable<Carrera[]> {
-    return this.http.get<Carrera[]>(`${this.restConstants.getApiURL()}/carreras`, this.httpOptions);
+  obtenerCarrerasActivas(): Observable<Carrera[]> {
+    return this.http.get<Carrera[]>(`${this.baseUrl}/activas`);
   }
 
   buscarPorId(id: number): Observable<Carrera> {
-    return this.http.get<Carrera>(`${this.restConstants.getApiURL()}/carreras/${id}`, this.httpOptions);
+    return this.http.get<Carrera>(`${this.baseUrl}/${id}`);
   }
 
   registrarCarrera(carrera: Carrera): Observable<any> {
-    return this.http.post(`${this.restConstants.getApiURL()}/carreras`, carrera, this.httpOptions);
+    return this.http.post(this.baseUrl, carrera);
   }
 
   actualizarCarrera(id: number, carrera: Carrera): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/carreras/${id}`, carrera, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}`, carrera);
   }
 
   cambiarEstado(id: number, estado: boolean): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/carreras/${id}/estado`, { estado }, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}/estado`, { estado });
   }
 }

@@ -182,7 +182,7 @@
           <p class="card-text text-muted flex-grow-1 fs-7">
             Gestión de fichas personales, datos médicos, encargados y estados (Activo/Graduado).
           </p>
-          <a routerLink="/admin/estudiantes" class="btn btn-outline-success w-100 mt-2">
+          <a routerLink="/admin/estudiante" class="btn btn-outline-success w-100 mt-2">
             <i class="bi bi-person-vcard me-1"></i> Ficha Estudiantes
           </a>
         </div>
@@ -239,22 +239,64 @@
       </div>
     </div>
 
-    <!-- CU038: Reporte de Ingresos -->
+    <!-- CU0035: Alumnos Solventes y Morosos -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-start border-danger border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-exclamation-octagon-fill fs-2 text-danger me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Solventes / Morosos</h5>
+              <small class="text-muted">CU0035</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Filtra y genera el listado de alumnos clasificados por estado de pago, grado y montos adeudados.
+          </p>
+          <a routerLink="/reporte/solvencia" class="btn btn-outline-danger w-100 mt-2">
+            <i class="bi bi-funnel-fill me-1"></i> Reporte Morosidad
+          </a>
+        </div>
+      </div>
+    </div>
+   
+    <!-- CU0037: Historial de Pagos -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 shadow-sm border-0 border-start border-dark border-4">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-clock-history fs-2 text-dark me-3"></i>
+            <div>
+              <h5 class="card-title mb-0">Historial de Pagos</h5>
+              <small class="text-muted">CU0037</small>
+            </div>
+          </div>
+          <p class="card-text text-muted flex-grow-1 fs-7">
+            Consulta el historial detallado de abonos realizados por un alumno y exporta en PDF.
+          </p>
+          <a routerLink="/reporte/historial" class="btn btn-outline-dark w-100 mt-2">
+            <i class="bi bi-receipt me-1"></i> Ver Historial
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- CU0039: Reporte de Préstamos en Mora -->
     <div class="col-md-6 col-lg-4">
       <div class="card h-100 shadow-sm border-0 border-start border-dark border-4">
         <div class="card-body d-flex flex-column">
           <div class="d-flex align-items-center mb-3">
-            <i class="bi bi-cash-stack fs-2 text-dark me-3"></i>
+            <i class="bi bi-file-earmark-pdf-fill fs-2 text-dark me-3"></i>
             <div>
-              <h5 class="card-title mb-0">Reporte de Ingresos</h5>
-              <small class="text-muted">CU038</small>
+              <h5 class="card-title mb-0">Reporte de Mora</h5>
+              <small class="text-muted">CU0039</small>
             </div>
           </div>
           <p class="card-text text-muted flex-grow-1 fs-7">
-            Consulta ingresos detallados por periodo de tiempo y rubro financiero correspondiente.
+            Genera un informe con los préstamos vencidos, usuarios responsables y montos de recargo.
           </p>
-          <a routerLink="/reporte/ingresos" class="btn btn-outline-dark w-100 mt-2">
-            <i class="bi bi-receipt me-1"></i> Ver Ingresos
+          <a routerLink="/reporte/prestamo-mora" class="btn btn-outline-dark w-100 mt-2">
+            <i class="bi bi-file-earmark-bar-graph me-1"></i> Reporte de Mora
           </a>
         </div>
       </div>

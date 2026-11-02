@@ -20,6 +20,12 @@ import modelo.iteracion4.Solvencia;
 public class SolvenciaDAO {
     public Solvencia generarSolvencia(int idEstudiante, int idAñoLectivo) {
 
+        String sqlEstudiante = """
+            SELECT COUNT(*)
+            FROM estudiante
+            WHERE id_estudiante = ?
+            """;
+
         String sqlInscripcion = """
             SELECT COUNT(*)
             FROM inscripcion i
@@ -27,7 +33,7 @@ public class SolvenciaDAO {
             WHERE i.id_estudiante = ?
               AND s.id_año_lectivo = ?
               AND i.estado = 'ACTIVA'
-        """;
+            """;
 
         String sqlObligaciones = """
             SELECT COUNT(*)
@@ -35,13 +41,7 @@ public class SolvenciaDAO {
             WHERE id_estudiante = ?
               AND id_año_lectivo = ?
               AND estado IN ('PENDIENTE', 'VENCIDA')
-        """;
-
-        String sqlEstudiante = """
-            SELECT COUNT(*)
-            FROM estudiante
-            WHERE id_estudiante = ?
-        """;
+            """;
 
         try (Connection conexion = Conexion.getInstance().getConnection()) {
 
@@ -67,10 +67,10 @@ public class SolvenciaDAO {
 
             if (!tieneInscripcionActiva) {
                 return new Solvencia(
-                    idEstudiante,
-                    idAñoLectivo,
-                    "NO_SOLVENTE",
-                    "El estudiante no tiene una inscripción activa para este año lectivo."
+                        idEstudiante,
+                        idAñoLectivo,
+                        "NO_SOLVENTE",
+                        "El estudiante no tiene una inscripción activa registrada para el año lectivo seleccionado."
                 );
             }
 
@@ -87,22 +87,22 @@ public class SolvenciaDAO {
 
             if (tieneDeudas) {
                 return new Solvencia(
-                    idEstudiante,
-                    idAñoLectivo,
-                    "NO_SOLVENTE",
-                    "El estudiante tiene obligaciones de pago pendientes."
+                        idEstudiante,
+                        idAñoLectivo,
+                        "NO_SOLVENTE",
+                        "El estudiante registra obligaciones de pago pendientes o vencidas."
                 );
             }
 
             return new Solvencia(
-                idEstudiante,
-                idAñoLectivo,
-                "SOLVENTE",
-                "El estudiante tiene inscripción activa y todas sus obligaciones están pagadas."
+                    idEstudiante,
+                    idAñoLectivo,
+                    "SOLVENTE",
+                    "El estudiante cuenta con inscripción activa y se encuentra solvente de pago."
             );
 
         } catch (SQLException e) {
-            System.out.println("Error al generar solvencia: " + e.getMessage());
+            System.out.println("Error al evaluar solvencia: " + e.getMessage());
             return null;
         }
     }
@@ -127,9 +127,9 @@ public class SolvenciaDAO {
               AND a.id_año_lectivo = ? 
               AND i.estado = 'ACTIVA'
             LIMIT 1
-        """;
+            """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
@@ -149,12 +149,11 @@ public class SolvenciaDAO {
                     parametros.put("CODIGO_ESTUDIANTE", rs.getString("codigo_estudiante"));
                     parametros.put("GRADO_SECCION", rs.getString("grado_nombre") + " - Sección " + rs.getString("seccion_nombre"));
                     parametros.put("ANIO_LECTIVO", anio);
-                    parametros.put("SECRETARIA_NOMBRE", "Secretaría General"); 
+                    parametros.put("SECRETARIA_NOMBRE", "Secretaría General");
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error al consultar datos para reporte de solvencia: " + e.getMessage());
-            e.printStackTrace();
         }
 
         return parametros;

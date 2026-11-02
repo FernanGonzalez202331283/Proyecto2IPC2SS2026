@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -7,10 +7,26 @@ export interface Prestamo {
   idPrestamo?: number;
   idLibro: number;
   idPersona: number;
+  nombrePersona?: string; 
+  tituloLibro?: string; // <-- Campo agregado para resolver el error de compilación
   fechaPrestamo: string;
   fechaDevolucionEsperada: string;
   fechaDevolucionReal?: string;
   estado?: string;
+}
+
+export interface PersonaSeleccionable {
+  idPersona: number;
+  nombreCompleto: string;
+  dpi?: string;
+  tipoPersona?: string;
+}
+
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
 }
 
 export interface RespuestaServidor {
@@ -33,14 +49,26 @@ export class PrestamoService {
     });
   }
 
-  obtenerTodos(): Observable<Prestamo[]> {
-    return this.http.get<Prestamo[]>(`${this.restConstants.getApiURL()}/prestamos`, {
+  obtenerTodos(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Prestamo>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
+
+    return this.http.get<RespuestaPaginada<Prestamo>>(`${this.restConstants.getApiURL()}/prestamos`, {
+      headers: this.getHeaders(),
+      params,
+      withCredentials: true
+    });
+  }
+
+  // Obtener personas activas para el selector
+  obtenerPersonasActivas(): Observable<PersonaSeleccionable[]> {
+    return this.http.get<PersonaSeleccionable[]>(`${this.restConstants.getApiURL()}/personas/activas`, {
       headers: this.getHeaders(),
       withCredentials: true
     });
   }
 
-  // MÉTODO AGREGADO PARA EL CASO DE USO CU0028
   obtenerPorPersona(idPersona: number): Observable<Prestamo[]> {
     return this.http.get<Prestamo[]>(`${this.restConstants.getApiURL()}/prestamos/persona/${idPersona}`, {
       headers: this.getHeaders(),

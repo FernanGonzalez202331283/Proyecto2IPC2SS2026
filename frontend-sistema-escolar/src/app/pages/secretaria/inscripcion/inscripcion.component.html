@@ -6,9 +6,9 @@
       <h3 class="fw-bold mb-0"><i class="bi bi-journal-check me-2"></i>CU014: Inscripción de Estudiantes</h3>
       <small class="text-white-50">Selección de grado y asignación de sección disponible</small>
     </div>
-    <a routerLink="/secretaria/dashboard" class="btn btn-light btn-sm text-success fw-semibold">
+    <button type="button" (click)="volverDashboard()" class="btn btn-light btn-sm text-success fw-semibold">
       <i class="bi bi-arrow-left-circle me-1"></i> Volver
-    </a>
+    </button>
   </div>
 
   <!-- Alertas -->
@@ -44,7 +44,7 @@
                 <option [ngValue]="null" disabled>Seleccione un estudiante</option>
                 @for (est of estudiantesActivos; track est.idEstudiante) {
                   <option [ngValue]="est.idEstudiante">
-                    {{ est.codigoEstudiante }} - {{ est.persona.nombres }} {{ est.persona.apellidos }} (DPI: {{ est.persona.dpi }})
+                    {{ est.codigoEstudiante }} - {{ est.persona?.nombres }} {{ est.persona?.apellidos }} (DPI: {{ est.persona?.dpi }})
                   </option>
                 }
               </select>
@@ -111,13 +111,13 @@
       </div>
     </div>
 
-    <!-- Historial de Inscripciones (7 Columnas - Rediseñado) -->
+    <!-- Historial de Inscripciones (7 Columnas) -->
     <div class="col-lg-7">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
           <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-list-task me-2 text-success"></i>Historial de Inscripciones</h6>
           <span class="badge bg-success-subtle text-success border border-success fw-bold px-3 py-1 rounded-pill">
-            Total: {{ inscripciones.length }}
+            Total: {{ totalRegistros }}
           </span>
         </div>
         <div class="card-body p-0">
@@ -151,28 +151,19 @@
                 } @else {
                   @for (item of inscripciones; track item.idInscripcion || $index) {
                     <tr>
-                      <!-- ID -->
                       <td class="ps-3 fw-bold text-secondary">#{{ item.idInscripcion }}</td>
-
-                      <!-- Estudiante -->
                       <td>
                         <div class="fw-bold text-dark">{{ obtenerNombreEstudiante(item.idEstudiante) }}</div>
                       </td>
-
-                      <!-- Sección y Grado -->
                       <td>
                         <div class="d-flex align-items-center gap-1">
                           <i class="bi bi-door-open text-secondary me-1"></i>
                           <span>{{ obtenerNombreSeccion(item.idSeccion) }}</span>
                         </div>
                       </td>
-
-                      <!-- Fecha -->
                       <td class="text-nowrap text-muted">
                         <i class="bi bi-calendar3 me-1 small"></i>{{ item.fechaInscripcion }}
                       </td>
-
-                      <!-- Estado Badge -->
                       <td class="text-center">
                         <span class="badge rounded-pill px-2 py-1 fw-semibold"
                           [class.bg-success]="item.estado === 'ACTIVA'" 
@@ -182,16 +173,12 @@
                           {{ item.estado }}
                         </span>
                       </td>
-
-                      <!-- Acciones Compactas -->
                       <td class="text-center pe-3">
                         <div class="d-flex justify-content-center gap-1">
-                          <!-- Botón Editar -->
                           <button (click)="editarInscripcion(item)" class="btn btn-outline-primary btn-sm px-2 py-0" title="Editar registro">
                             <i class="bi bi-pencil"></i>
                           </button>
                           
-                          <!-- Menú Dropdown de Cambiar Estado -->
                           <div class="dropdown">
                             <button class="btn btn-outline-secondary btn-sm px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cambiar Estado">
                               <i class="bi bi-three-dots-vertical"></i>
@@ -205,7 +192,6 @@
                           </div>
                         </div>
                       </td>
-
                     </tr>
                   }
                 }
@@ -213,6 +199,29 @@
             </table>
           </div>
         </div>
+
+        <!-- Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

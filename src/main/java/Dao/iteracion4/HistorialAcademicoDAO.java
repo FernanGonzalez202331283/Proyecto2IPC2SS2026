@@ -19,7 +19,8 @@ import modelo.iteracion4.HistorialCurso;
  * @author fernan
  */
 public class HistorialAcademicoDAO {
-  public HistorialAcademico obtenerHistorialAcademico(int idEstudiante) {
+
+    public HistorialAcademico obtenerHistorialAcademico(int idEstudiante) {
 
         HistorialAcademico historial = null;
 
@@ -90,7 +91,6 @@ public class HistorialAcademicoDAO {
 
         try (Connection conexion = Conexion.getInstance().getConnection()) {
 
-            // 1. Obtener información general del estudiante
             try (PreparedStatement ps = conexion.prepareStatement(sqlEstudiante)) {
                 ps.setInt(1, idEstudiante);
 
@@ -101,7 +101,7 @@ public class HistorialAcademicoDAO {
                         historial.setCodigoEstudiante(rs.getString("codigo_estudiante"));
                         historial.setNombres(rs.getString("nombres"));
                         historial.setApellidos(rs.getString("apellidos"));
-                        
+
                         // Garantizar que la lista de cursos esté inicializada
                         if (historial.getCursos() == null) {
                             historial.setCursos(new ArrayList<>());
@@ -110,12 +110,10 @@ public class HistorialAcademicoDAO {
                 }
             }
 
-            // Si no se encuentra el estudiante en la BD
             if (historial == null) {
                 return null;
             }
 
-            // 2. Obtener historial de asignaturas, actividades y notas
             try (PreparedStatement ps = conexion.prepareStatement(sqlHistorial)) {
                 ps.setInt(1, idEstudiante);
 
@@ -127,7 +125,6 @@ public class HistorialAcademicoDAO {
 
                         HistorialCurso historialCurso = null;
 
-                        // Buscar si el curso ya fue agregado a la lista del historial
                         for (HistorialCurso curso : historial.getCursos()) {
                             if (curso.getIdInscripcion() == idInscripcion
                                     && curso.getIdAsignacion() == idAsignacion) {
@@ -136,7 +133,6 @@ public class HistorialAcademicoDAO {
                             }
                         }
 
-                        // Si no se ha agregado el curso, se crea y mapea
                         if (historialCurso == null) {
                             historialCurso = new HistorialCurso();
                             historialCurso.setIdInscripcion(idInscripcion);
@@ -154,7 +150,6 @@ public class HistorialAcademicoDAO {
                             historial.getCursos().add(historialCurso);
                         }
 
-                        // 3. Obtener la calificación de la actividad si existe
                         int idNota = rs.getInt("id_nota");
 
                         if (!rs.wasNull()) {
@@ -165,7 +160,6 @@ public class HistorialAcademicoDAO {
                             detalle.setPorcentaje(rs.getDouble("porcentaje"));
                             detalle.setCalificacion(rs.getDouble("calificacion"));
 
-                            // CORRECCIÓN 1: Manejar seguro valores nulos en fecha_actividad
                             java.sql.Date fechaSql = rs.getDate("fecha_actividad");
                             detalle.setFecha(fechaSql != null ? fechaSql.toString() : "-");
 
@@ -175,19 +169,16 @@ public class HistorialAcademicoDAO {
                 }
             }
 
-            // 4. CORRECCIÓN 2: Cálculo preciso del promedio ponderado
             for (HistorialCurso curso : historial.getCursos()) {
                 double sumaPonderada = 0;
                 double sumaPorcentajes = 0;
 
                 for (DetalleCalificacion detalle : curso.getCalificaciones()) {
-                    // Ponderación: (Calificación * Porcentaje)
                     sumaPonderada += (detalle.getCalificacion() * detalle.getPorcentaje());
                     sumaPorcentajes += detalle.getPorcentaje();
                 }
 
                 if (sumaPorcentajes > 0) {
-                    // Promedio = sumaPonderada / sumaPorcentajes
                     double promedio = sumaPonderada / sumaPorcentajes;
                     curso.setPromedio(Math.round(promedio * 100.0) / 100.0);
                 } else {

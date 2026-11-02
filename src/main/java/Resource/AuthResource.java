@@ -22,17 +22,19 @@ import servicio.AuthService;
  *
  * @author fernan
  */
-@Path("/login")
+@Path("login")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource {
-   private final AuthService authService;
+
+    private final AuthService authService;
 
     public AuthResource() {
         this.authService = new AuthService();
     }
+
     @POST
-    public Response iniciarSesion(LoginRequest request, @Context HttpServletRequest httpRequest) {
+    public Response iniciarSesion(LoginRequest request) {
 
         if (request == null || request.getUsername() == null || request.getContraseña() == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -57,11 +59,6 @@ public class AuthResource {
                     .build();
         }
 
-        // 1. Crear / obtener sesión HTTP y registrar al usuario
-        HttpSession session = httpRequest.getSession(true);
-        session.setAttribute("usuario", usuario);
-
-        // 2. Generar el token JWT para clientes REST
         String token = authService.generarToken(usuario);
 
         LoginResponse respuesta = new LoginResponse();

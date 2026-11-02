@@ -13,8 +13,7 @@ import modelo.iteracion4.ObligacionPago;
  * @author fernan
  */
 public class ObligacionPagoDAO {
-    
-    // Registrar una obligación
+
     public int registrar(ObligacionPago obligacion) {
         String sql = """
                 INSERT INTO obligacion_pago
@@ -23,9 +22,8 @@ public class ObligacionPagoDAO {
                 VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(
-                        sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(
+                sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
             ps.setInt(1, obligacion.getIdEstudiante());
             ps.setInt(2, obligacion.getIdAñoLectivo());
@@ -49,7 +47,6 @@ public class ObligacionPagoDAO {
         return -1;
     }
 
-    // Obtener todas las obligaciones
     public ArrayList<ObligacionPago> obtenerTodos() {
         ArrayList<ObligacionPago> obligaciones = new ArrayList<>();
         String sql = """
@@ -58,9 +55,7 @@ public class ObligacionPagoDAO {
                 ORDER BY id_obligacion DESC
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 obligaciones.add(mapearObligacion(rs));
@@ -71,7 +66,6 @@ public class ObligacionPagoDAO {
         return obligaciones;
     }
 
-    // Buscar obligación por ID
     public ObligacionPago buscarPorId(int idObligacion) {
         String sql = """
                 SELECT *
@@ -79,8 +73,7 @@ public class ObligacionPagoDAO {
                 WHERE id_obligacion = ?
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idObligacion);
             try (ResultSet rs = ps.executeQuery()) {
@@ -94,7 +87,6 @@ public class ObligacionPagoDAO {
         return null;
     }
 
-    // Obtener obligaciones de un estudiante
     public ArrayList<ObligacionPago> obtenerPorEstudiante(int idEstudiante) {
         ArrayList<ObligacionPago> obligaciones = new ArrayList<>();
         String sql = """
@@ -104,8 +96,7 @@ public class ObligacionPagoDAO {
                 ORDER BY fecha_vencimiento DESC
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
             try (ResultSet rs = ps.executeQuery()) {
@@ -119,8 +110,6 @@ public class ObligacionPagoDAO {
         return obligaciones;
     }
 
-    // ---> MÉTODOS MOVIDOS DESDE EL SERVICE <---
-
     public boolean estudianteActivo(int idEstudiante) {
         String sql = """
                 SELECT id_estudiante
@@ -129,8 +118,7 @@ public class ObligacionPagoDAO {
                 AND estado = 'ACTIVO'
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
@@ -149,8 +137,7 @@ public class ObligacionPagoDAO {
                 AND estado = 1
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idAñoLectivo);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
@@ -171,8 +158,7 @@ public class ObligacionPagoDAO {
                 AND estado != 'ANULADA'
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idAñoLectivo);
             ps.setString(3, concepto);
@@ -181,11 +167,10 @@ public class ObligacionPagoDAO {
             }
         } catch (Exception e) {
             System.out.println("Error al verificar obligación: " + e.getMessage());
-            return true; 
+            return true;
         }
     }
-    
-    // Obtener todos los IDs de estudiantes activos en una sección específica
+
     public ArrayList<Integer> obtenerEstudiantesPorSeccion(int idSeccion) {
         ArrayList<Integer> estudiantes = new ArrayList<>();
         String sql = """
@@ -195,11 +180,10 @@ public class ObligacionPagoDAO {
                 AND estado = 'ACTIVA'
                 """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
-            
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+
             ps.setInt(1, idSeccion);
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     estudiantes.add(rs.getInt("id_estudiante"));
@@ -211,7 +195,6 @@ public class ObligacionPagoDAO {
         return estudiantes;
     }
 
-    // Convertir resultado SQL a objeto
     private ObligacionPago mapearObligacion(ResultSet rs) throws SQLException {
         ObligacionPago obligacion = new ObligacionPago();
         obligacion.setIdObligacion(rs.getInt("id_obligacion"));

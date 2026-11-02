@@ -1,9 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { UsuarioAdminService, UsuarioAdmin } from '../../../services/usuario-admin.service';
-import { ChangeDetectorRef } from '@angular/core';
-import { NgZone } from '@angular/core';
+
 @Component({
   selector: 'app-usuarios-admin',
   standalone: true,
@@ -16,16 +15,20 @@ export class UsuariosAdminComponent implements OnInit {
   modoEdicion: boolean = false;
   idUsuarioSeleccionado: number | null = null;
   
+  paginaActual: number = 1;
+  limite: number = 10;
+  totalPaginas: number = 1;
+  totalRegistros: number = 0;
+
   successMessage: string = '';
   errorMessage: string = '';
   cargando: boolean = false;
-  procesando: boolean = false; // Indica si hay una petición en curso
+  procesando: boolean = false;
 
   constructor(
     private fb: FormBuilder,
     private usuarioAdminService: UsuarioAdminService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone // Inyección
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -58,22 +61,30 @@ export class UsuariosAdminComponent implements OnInit {
 
   cargarUsuarios(): void {
     this.cargando = true;
-    this.usuarioAdminService.obtenerUsuarios().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.usuarios = (data || []).filter(u => u.rol === 'SUPER_ADMIN' || u.rol === 'ADMIN');
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+    this.cdr.detectChanges(); 
+
+    this.usuarioAdminService.obtenerUsuarios(this.paginaActual, this.limite).subscribe({
+      next: (resp) => {
+        this.usuarios = resp.contenido || [];
+        this.paginaActual = resp.paginaActual || 1;
+        this.totalPaginas = resp.totalPaginas || 1;
+        this.totalRegistros = resp.totalRegistros || 0;
+        this.cargando = false;
+        this.cdr.detectChanges(); 
       },
-      error: () => {
-        this.ngZone.run(() => {
-          this.errorMessage = 'No se pudo conectar con el servidor.';
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoError(err);
+        this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarUsuarios();
+    }
   }
 
   guardarUsuario(): void {
@@ -85,45 +96,37 @@ export class UsuariosAdminComponent implements OnInit {
       return;
     }
 
-    this.procesando = true; // Activa estado de carga en el botón
+    this.procesando = true;
+    this.cdr.detectChanges();
+
     const datos: UsuarioAdmin = this.usuarioForm.value;
 
     if (this.modoEdicion && this.idUsuarioSeleccionado) {
       this.usuarioAdminService.actualizarUsuario(this.idUsuarioSeleccionado, datos).subscribe({
         next: () => {
-          this.ngZone.run(() => {
-            this.successMessage = 'Usuario actualizado exitosamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarUsuarios();
-            this.cdr.detectChanges();
-          });
+          this.successMessage = 'Usuario actualizado exitosamente.';
+          this.procesando = false;
+          this.resetForm();
+          this.cargarUsuarios();
         },
         error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoError(err);
-            this.procesando = false;
-            this.cdr.detectChanges(); // Renderiza el mensaje de error de Java AL INSTANTE
-          });
+          this.errorMessage = this.obtenerTextoError(err);
+          this.procesando = false;
+          this.cdr.detectChanges();
         }
       });
     } else {
       this.usuarioAdminService.registrarUsuario(datos).subscribe({
         next: () => {
-          this.ngZone.run(() => {
-            this.successMessage = 'Usuario registrado exitosamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarUsuarios();
-            this.cdr.detectChanges();
-          });
+          this.successMessage = 'Usuario registrado exitosamente.';
+          this.procesando = false;
+          this.resetForm();
+          this.cargarUsuarios();
         },
         error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoError(err);
-            this.procesando = false;
-            this.cdr.detectChanges(); // Renderiza "El username ya está registrado" AL INSTANTE
-          });
+          this.errorMessage = this.obtenerTextoError(err);
+          this.procesando = false;
+          this.cdr.detectChanges();
         }
       });
     }
@@ -134,21 +137,16 @@ export class UsuariosAdminComponent implements OnInit {
 
     this.limpiarMensajes();
     const nuevoEstado = !usuario.estado;
-
     usuario.estado = nuevoEstado;
 
     this.usuarioAdminService.cambiarEstado(usuario.idUsuario, nuevoEstado).subscribe({
       next: () => {
-        this.ngZone.run(() => {
-          this.cdr.detectChanges();
-        });
+        this.cdr.detectChanges();
       },
       error: (err) => {
-        this.ngZone.run(() => {
-          usuario.estado = !nuevoEstado;
-          this.errorMessage = this.obtenerTextoError(err);
-          this.cdr.detectChanges();
-        });
+        usuario.estado = !nuevoEstado;
+        this.errorMessage = this.obtenerTextoError(err);
+        this.cdr.detectChanges();
       }
     });
   }
@@ -181,6 +179,25 @@ export class UsuariosAdminComponent implements OnInit {
   cancelarEdicion(): void {
     this.limpiarMensajes();
     this.resetForm();
+  }
+
+  obtenerClaseRol(rol: string): string {
+    switch (rol) {
+      case 'SUPER_ADMIN':
+        return 'bg-danger text-white';
+      case 'ADMIN':
+        return 'bg-warning text-dark';
+      case 'SECRETARIA':
+        return 'bg-info text-dark';
+      case 'MAESTRO':
+        return 'bg-primary text-white';
+      case 'BIBLIOTECARIO':
+        return 'bg-success text-white';
+      case 'ESTUDIANTE':
+        return 'bg-dark text-white';
+      default:
+        return 'bg-secondary text-white';
+    }
   }
 
   private resetForm(): void {

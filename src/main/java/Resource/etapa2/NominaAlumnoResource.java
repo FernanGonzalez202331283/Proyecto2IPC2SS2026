@@ -1,5 +1,6 @@
 package Resource.etapa2;
 
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
@@ -8,6 +9,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion2.NominaAlumno;
 import seguridad.JwtService;
@@ -22,7 +24,7 @@ import seguridad.iteracion2.NominaAlumnoService;
 public class NominaAlumnoResource {
     
     private final NominaAlumnoService nominaAlumnoService = new NominaAlumnoService();
-    private final JwtService jwtService = new JwtService(); // Servicio para leer el Token
+    private final JwtService jwtService = new JwtService();
 
     private Response validarAcceso(String authHeader, String mensajePermiso) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -49,10 +51,9 @@ public class NominaAlumnoResource {
                     .build();
         }
 
-        return null; // Si devuelve null, significa que todo está bien y tiene acceso
+        return null;
     }
 
-    // --- FORMATEADOR DE MENSAJES JSON ---
     private String jsonMensaje(String mensaje) {
         return """
                {
@@ -63,16 +64,16 @@ public class NominaAlumnoResource {
 
     @GET
     public Response obtenerNomina(
-            @HeaderParam("Authorization") String authHeader, // Recibimos el Token aquí
+            @HeaderParam("Authorization") String authHeader,
             @QueryParam("año") Integer año,
             @QueryParam("idGrado") Integer idGrado,
-            @QueryParam("idSeccion") Integer idSeccion) {
+            @QueryParam("idSeccion") Integer idSeccion,
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite) {
         
-        // 1. Validamos el token y los roles
         Response acceso = validarAcceso(authHeader, "No tienes permiso para consultar estas nóminas.");
         if (acceso != null) return acceso;
         
-        // 2. Si pasó la validación, consultamos la base de datos
         try {
             if (año == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -83,8 +84,9 @@ public class NominaAlumnoResource {
             int grado = (idGrado == null) ? 0 : idGrado;
             int seccion = (idSeccion == null) ? 0 : idSeccion;
             
-            ArrayList<NominaAlumno> nomina = nominaAlumnoService.obtenerNomina(año, grado, seccion);
-            return Response.ok(nomina).build();
+            RespuestaPaginada<NominaAlumno> resultado = nominaAlumnoService.obtenerNominaPaginada(año, grado, seccion, pagina, limite);
+            
+            return Response.ok(resultado).build();
             
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -96,4 +98,5 @@ public class NominaAlumnoResource {
                     .build();
         }
     }
+    
 }

@@ -9,6 +9,8 @@ import Dao.iteracion4.ObligacionPagoDAO;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
+import modelo.RespuestaPaginada;
 import modelo.iteracion2.Inscripcion;
 import modelo.iteracion4.ObligacionPago;
 
@@ -17,11 +19,24 @@ import modelo.iteracion4.ObligacionPago;
  * @author fernan
  */
 public class InscripcionService {
-
-    private final InscripcionDAO inscripcionDAO;
+private final InscripcionDAO inscripcionDAO;
 
     public InscripcionService() {
         this.inscripcionDAO = new InscripcionDAO();
+    }
+
+    public RespuestaPaginada<Inscripcion> obtenerInscripcionesPaginadas(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        List<Inscripcion> lista = inscripcionDAO.obtenerPaginados(limite, offset);
+        int totalRegistros = inscripcionDAO.contarTotal();
+
+        int totalPaginas = (int) Math.ceil((double) totalRegistros / limite);
+        if (totalPaginas == 0) totalPaginas = 1;
+
+        return new RespuestaPaginada<>(lista, pagina, totalPaginas, totalRegistros);
     }
 
     public String registrarInscripcion(Inscripcion inscripcion) {
@@ -38,18 +53,15 @@ public class InscripcionService {
             return "Debe seleccionar una sección válida.";
         }
 
-        // 1. Validar que el estudiante exista
         if (!inscripcionDAO.existeEstudiante(inscripcion.getIdEstudiante())) {
             return "El estudiante seleccionado no existe.";
         }
 
-        // 2. Validar que el estudiante esté en estado ACTIVO
         String estadoEstudiante = inscripcionDAO.obtenerEstadoEstudiante(inscripcion.getIdEstudiante());
         if (!"ACTIVO".equals(estadoEstudiante)) {
             return "El estudiante debe estar en estado ACTIVO para poder inscribirse.";
         }
 
-        // 3. Validar que la sección exista y esté activa
         if (!inscripcionDAO.existeSeccion(inscripcion.getIdSeccion())) {
             return "La sección seleccionada no existe.";
         }
@@ -58,13 +70,11 @@ public class InscripcionService {
             return "La sección seleccionada se encuentra inactiva.";
         }
 
-        // 4. Validar que el año lectivo asociado a la sección esté activo
         int idAñoLectivo = inscripcionDAO.obtenerAñoLectivoSeccion(inscripcion.getIdSeccion());
         if (idAñoLectivo <= 0 || !inscripcionDAO.añoLectivoActivo(idAñoLectivo)) {
             return "El ciclo escolar correspondiente a la sección está inactivo o no existe.";
         }
 
-        // 5. Validar capacidad de la sección
         int cantidadInscritos = inscripcionDAO.obtenerCantidadInscritos(inscripcion.getIdSeccion());
         int capacidadMaxima = inscripcionDAO.obtenerCapacidadSeccion(inscripcion.getIdSeccion());
 
@@ -72,12 +82,10 @@ public class InscripcionService {
             return "La sección ha alcanzado su capacidad máxima de estudiantes (" + capacidadMaxima + ").";
         }
 
-        // 6. Validar que el estudiante no tenga otra inscripción activa en el mismo ciclo escolar
         if (inscripcionDAO.existeInscripcionActivaEnAño(inscripcion.getIdEstudiante(), idAñoLectivo)) {
             return "El estudiante ya posee una inscripción activa para este ciclo escolar.";
         }
 
-        // Asignación de valores por defecto
         if (inscripcion.getFechaInscripcion() == null || inscripcion.getFechaInscripcion().trim().isEmpty()) {
             inscripcion.setFechaInscripcion(LocalDate.now().toString());
         }
@@ -87,9 +95,7 @@ public class InscripcionService {
         }
 
         if (inscripcionDAO.registrarInscripcion(inscripcion)) {
-            // Generar los 11 pagos (1 de inscripción + 10 meses) de manera automática
             generarObligacionesAutomaticas(inscripcion.getIdEstudiante(), idAñoLectivo);
-            
             return "Inscripción registrada correctamente.";
         }
 
@@ -135,6 +141,10 @@ public class InscripcionService {
             inscripcion.setFechaInscripcion(existente.getFechaInscripcion());
         }
 
+        if (inscripcion.getEstado() == null || inscripcion.getEstado().trim().isEmpty()) {
+            inscripcion.setEstado(existente.getEstado());
+        }
+
         if (inscripcionDAO.actualizar(inscripcion)) {
             return "Inscripción actualizada correctamente.";
         }
@@ -167,31 +177,24 @@ public class InscripcionService {
 
         return "No se pudo actualizar el estado de la inscripción.";
     }
-    
-    // Método privado para automatizar las deudas al inscribir
+
     private void generarObligacionesAutomaticas(int idEstudiante, int idAñoLectivo) {
-        
         ObligacionPagoDAO obligacionDAO = new ObligacionPagoDAO();
         int anioActual = LocalDate.now().getYear();
-        double cuotaFija = 350.00; // Monto por defecto de colegiatura/inscripción
-        
-        // 1. Crear deuda de Inscripción (vence en 15 días)
+        double cuotaFija = 350.00;
+
         ObligacionPago obligacionInscripcion = new ObligacionPago();
         obligacionInscripcion.setIdEstudiante(idEstudiante);
         obligacionInscripcion.setIdAñoLectivo(idAñoLectivo);
         obligacionInscripcion.setConcepto("INSCRIPCION");
         obligacionInscripcion.setDescripcion("Inscripción ciclo escolar " + anioActual);
         obligacionInscripcion.setMonto(cuotaFija);
-        
-        // Convertimos LocalDate a java.sql.Date para que sea compatible con el DAO
-        obligacionInscripcion.setFechaVencimiento(Date.valueOf(LocalDate.now().plusDays(15))); 
-        
-        // El DAO ya le pone "PENDIENTE" por defecto en la BD
+        obligacionInscripcion.setFechaVencimiento(Date.valueOf(LocalDate.now().plusDays(15)));
+
         obligacionDAO.registrar(obligacionInscripcion);
 
-        // 2. Crear las 10 deudas de Colegiatura (Febrero a Noviembre)
         String[] meses = {"", "", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre"};
-        
+
         for (int mes = 2; mes <= 11; mes++) {
             ObligacionPago colegiatura = new ObligacionPago();
             colegiatura.setIdEstudiante(idEstudiante);
@@ -199,11 +202,10 @@ public class InscripcionService {
             colegiatura.setConcepto("MES_DE_COLEGIATURA");
             colegiatura.setDescripcion("Mes de " + meses[mes] + " " + anioActual);
             colegiatura.setMonto(cuotaFija);
-            
-            // Vencimiento: el día 5 de cada mes
+
             LocalDate fechaVencimiento = LocalDate.of(anioActual, mes, 5);
             colegiatura.setFechaVencimiento(Date.valueOf(fechaVencimiento));
-            
+
             obligacionDAO.registrar(colegiatura);
         }
     }

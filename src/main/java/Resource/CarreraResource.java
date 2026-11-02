@@ -7,28 +7,30 @@ package Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
-import modelo.Carrera;
+import java.util.List;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
+import modelo.carrera.CarreraRequest;
+import modelo.carrera.CarreraResponse;
 import seguridad.JwtService;
 import servicio.CarreraService;
-
 
 /**
  *
  * @author fernan
  */
-
-@Path("/carreras")
+@Path("carreras")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class CarreraResource {
@@ -49,7 +51,8 @@ public class CarreraResource {
                     .build();
         }
 
-        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
+        String rol = usuario.getRol();
+        if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol) && !"SECRETARIA".equals(rol)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(jsonMensaje("No tiene permisos para gestionar carreras."))
                     .build();
@@ -81,14 +84,16 @@ public class CarreraResource {
                """.formatted(mensaje);
     }
 
-    @GET
-    public Response obtenerCarreras(@Context HttpServletRequest httpRequest) {
-        Response acceso = validarAcceso(httpRequest);
-        if (acceso != null) {
-            return acceso;
-        }
+   @GET
+    public Response obtenerCarreras(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context HttpServletRequest httpRequest) {
 
-        ArrayList<Carrera> carreras = carreraService.obtenerCarreras();
+        Response acceso = validarAcceso(httpRequest);
+        if (acceso != null) return acceso;
+
+        RespuestaPaginada<CarreraResponse> carreras = carreraService.obtenerCarrerasPaginadas(pagina, limite);
         return Response.ok(carreras).build();
     }
 
@@ -96,11 +101,9 @@ public class CarreraResource {
     @Path("/{id}")
     public Response buscarCarrera(@PathParam("id") int idCarrera, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-        if (acceso != null) {
-            return acceso;
-        }
+        if (acceso != null) return acceso;
 
-        Carrera carrera = carreraService.buscarCarrera(idCarrera);
+        CarreraResponse carrera = carreraService.buscarCarrera(idCarrera);
 
         if (carrera == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -112,19 +115,17 @@ public class CarreraResource {
     }
 
     @POST
-    public Response registrarCarrera(Carrera carrera, @Context HttpServletRequest httpRequest) {
+    public Response registrarCarrera(CarreraRequest carreraRequest, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-        if (acceso != null) {
-            return acceso;
-        }
+        if (acceso != null) return acceso;
 
-        if (carrera == null) {
+        if (carreraRequest == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(jsonMensaje("La carrera no puede ser nula."))
+                    .entity(jsonMensaje("La petición no puede ser nula."))
                     .build();
         }
 
-        String resultado = carreraService.registrarCarrera(carrera);
+        String resultado = carreraService.registrarCarrera(carreraRequest);
 
         if (!"Carrera registrada correctamente.".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -133,26 +134,23 @@ public class CarreraResource {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(carrera)
+                .entity(jsonMensaje(resultado))
                 .build();
     }
 
     @PUT
     @Path("/{id}")
-    public Response actualizarCarrera(@PathParam("id") int idCarrera, Carrera carrera, @Context HttpServletRequest httpRequest) {
+    public Response actualizarCarrera(@PathParam("id") int idCarrera, CarreraRequest carreraRequest, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-        if (acceso != null) {
-            return acceso;
-        }
+        if (acceso != null) return acceso;
 
-        if (carrera == null) {
+        if (carreraRequest == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(jsonMensaje("La carrera no puede ser nula."))
+                    .entity(jsonMensaje("La petición no puede ser nula."))
                     .build();
         }
 
-        carrera.setIdCarrera(idCarrera);
-        String resultado = carreraService.actualizarCarrera(carrera);
+        String resultado = carreraService.actualizarCarrera(idCarrera, carreraRequest);
 
         if ("La carrera no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -166,24 +164,22 @@ public class CarreraResource {
                     .build();
         }
 
-        return Response.ok(carrera).build();
+        return Response.ok(jsonMensaje(resultado)).build();
     }
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(@PathParam("id") int idCarrera, Carrera carrera, @Context HttpServletRequest httpRequest) {
+    public Response cambiarEstado(@PathParam("id") int idCarrera, CarreraRequest carreraRequest, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest);
-        if (acceso != null) {
-            return acceso;
-        }
+        if (acceso != null) return acceso;
 
-        if (carrera == null) {
+        if (carreraRequest == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(jsonMensaje("La carrera no puede ser nula."))
+                    .entity(jsonMensaje("La petición no puede ser nula."))
                     .build();
         }
 
-        String resultado = carreraService.cambiarEstado(idCarrera, carrera.isEstado());
+        String resultado = carreraService.cambiarEstado(idCarrera, carreraRequest.isEstado());
 
         if ("La carrera no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -198,5 +194,15 @@ public class CarreraResource {
         }
 
         return Response.ok(jsonMensaje(resultado)).build();
+    }
+
+    @GET
+    @Path("/activas")
+    public Response obtenerCarrerasActivas(@Context HttpServletRequest httpRequest) {
+        Response acceso = validarAcceso(httpRequest);
+        if (acceso != null) return acceso;
+
+        List<CarreraResponse> activas = carreraService.obtenerCarrerasActivas();
+        return Response.ok(activas).build();
     }
 }

@@ -9,7 +9,7 @@ export interface LoginResponse {
     idUsuario: number;
     username: string;
     idPersona: number;
-    rol: UserRole; // Cambiado de 'role' a 'rol' para coincidir con Java
+    rol: UserRole;
     estado: boolean;
     token: string;
 }

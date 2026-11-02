@@ -1,7 +1,8 @@
-import { Component, ChangeDetectorRef, NgZone, OnInit } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReporteRendimientoService, ReporteRendimiento } from '../../../../app/services/reporte-rendimiento';
 
 @Component({
@@ -11,32 +12,32 @@ import { ReporteRendimientoService, ReporteRendimiento } from '../../../../app/s
   templateUrl: './reporte-rendimiento.component.html'
 })
 export class ReporteRendimientoComponent implements OnInit {
-  filtroForm: FormGroup;
-  listaReporte: ReporteRendimiento[] = [];
-  
-  cargando: boolean = false;
-  descargandoPdf: boolean = false;
-  
-  errorMessage: string = '';
+  private fb = inject(FormBuilder);
+  private reporteService = inject(ReporteRendimientoService);
+  private cdr = inject(ChangeDetectorRef);
+  private location = inject(Location);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
-  constructor(
-    private fb: FormBuilder,
-    private reporteService: ReporteRendimientoService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone,
-    private location: Location
-  ) {
-    this.filtroForm = this.fb.group({
-      idAnioLectivo: [1, [Validators.required, Validators.min(1)]]
-    });
-  }
+  filtroForm: FormGroup = this.fb.group({
+    idAnioLectivo: [1, [Validators.required, Validators.min(1)]]
+  });
+
+  listaReporte: ReporteRendimiento[] = [];
+  cargando = false;
+  descargandoPdf = false;
+  errorMessage = '';
 
   ngOnInit(): void {
     this.consultar();
   }
 
   volver(): void {
-    this.location.back();
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/admin/dashboard']);
+    }
   }
 
   consultar(): void {
@@ -44,53 +45,52 @@ export class ReporteRendimientoComponent implements OnInit {
 
     this.cargando = true;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
     const { idAnioLectivo } = this.filtroForm.value;
 
-    this.reporteService.obtenerReporte(idAnioLectivo).subscribe({
-      next: (data: ReporteRendimiento[]) => {
-        this.ngZone.run(() => {
+    this.reporteService.obtenerReporte(idAnioLectivo)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: ReporteRendimiento[]) => {
           this.listaReporte = data || [];
           if (this.listaReporte.length === 0) {
             this.errorMessage = 'No se encontraron registros de rendimiento académico para este año.';
           }
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = err.error?.mensaje || 'Error al obtener el reporte de rendimiento.';
           this.listaReporte = [];
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   verReportePDF(): void {
     if (this.filtroForm.invalid) return;
 
     this.descargandoPdf = true;
+    this.cdr.markForCheck();
+
     const { idAnioLectivo } = this.filtroForm.value;
 
-    this.reporteService.obtenerPdfReporte(idAnioLectivo).subscribe({
-      next: (blobData: Blob) => {
-        this.ngZone.run(() => {
+    this.reporteService.obtenerPdfReporte(idAnioLectivo)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blobData: Blob) => {
           const fileURL = URL.createObjectURL(blobData);
           window.open(fileURL, '_blank');
           this.descargandoPdf = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: () => {
           this.errorMessage = 'Ocurrió un error al generar el PDF del reporte.';
           this.descargandoPdf = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 }

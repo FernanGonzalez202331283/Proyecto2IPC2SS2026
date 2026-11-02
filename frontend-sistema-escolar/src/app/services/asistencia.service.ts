@@ -8,8 +8,13 @@ export interface Asistencia {
   idInscripcion: number;
   idAsignacion: number;
   fecha: string;
-  estado: 'PRESENTE' | 'AUSENTE' | 'TARDE' | 'JUSTIFICADO';
+  estado: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADA';
   observacion?: string;
+}
+
+export interface RespuestaPaginadaAsistencia {
+  datos: Asistencia[];
+  total: number;
 }
 
 @Injectable({
@@ -35,11 +40,15 @@ export class AsistenciaService {
     });
   }
 
-  obtenerAsistencias(): Observable<Asistencia[]> {
-    return this.http.get<Asistencia[]>(`${this.restConstants.getApiURL()}/asistencias`, {
-      headers: this.getHeaders(),
-      withCredentials: true
-    });
+  obtenerAsistencias(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginadaAsistencia> {
+    const offset = (pagina - 1) * limite;
+    return this.http.get<RespuestaPaginadaAsistencia>(
+      `${this.restConstants.getApiURL()}/asistencias?limit=${limite}&offset=${offset}`, 
+      {
+        headers: this.getHeaders(),
+        withCredentials: true
+      }
+    );
   }
 
   actualizarAsistencia(id: number, asistencia: Asistencia): Observable<any> {

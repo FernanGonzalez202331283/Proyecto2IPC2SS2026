@@ -3,7 +3,7 @@
   <!-- Encabezado -->
   <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
     <div>
-      <h3 class="fw-bold mb-0"><i class="bi bi-mortarboard-fill me-2"></i>CU008: Gestión de Grados Operativos</h3>
+      <h3 class="fw-bold mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Gestión de Grados Académicos</h3>
     </div>
     <a routerLink="/admin/dashboard" class="btn btn-light btn-sm text-primary fw-semibold">
       <i class="bi bi-arrow-left-circle me-1"></i> Volver
@@ -31,36 +31,39 @@
     <div class="col-lg-5">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-dark text-white py-2">
-          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Grado' : 'Nuevo Grado Operativo' }}</h6>
+          <h6 class="mb-0 fw-bold">{{ modoEdicion ? 'Editar Grado' : 'Nuevo Grado' }}</h6>
         </div>
         <div class="card-body p-3">
           <form [formGroup]="gradoForm" (ngSubmit)="guardarGrado()">
 
             <div class="mb-3">
               <label class="form-label small fw-bold">Nivel Educativo *</label>
-              <select formControlName="nivel" class="form-select form-select-sm" [class.is-invalid]="esCampoInvalido('nivel')">
-                <option value="PREPRIMARIA">PREPRIMARIA</option>
-                <option value="PRIMARIA">PRIMARIA</option>
-                <option value="BASICO">BÁSICO</option>
-                <option value="DIVERSIFICADO">DIVERSIFICADO</option>
+              <select 
+                formControlName="nivel" 
+                class="form-select form-select-sm"
+                [class.is-invalid]="esCampoInvalido('nivel')">
+                <option value="" disabled>--- Seleccione un nivel ---</option>
+                @for (n of niveles; track n) {
+                  <option [value]="n">{{ n }}</option>
+                }
               </select>
-              <div class="invalid-feedback small">Seleccione un nivel.</div>
+              <div class="invalid-feedback small">El nivel educativo es obligatorio.</div>
             </div>
 
-            <!-- Sugerencias rápidas desde CU007 (Configuración Global) -->
-            @if (configuracionesFiltradas.length > 0 && !modoEdicion) {
-              <div class="mb-2">
-                <span class="small text-muted d-block mb-1"><i class="bi bi-magic me-1"></i>Plantillas sugeridas (CU007):</span>
-                <div class="d-flex flex-wrap gap-1">
-                  @for (c of configuracionesFiltradas; track c.idConfiguracion) {
-                    <button 
-                      type="button" 
-                      class="btn btn-sm btn-outline-info py-0 px-2 small"
-                      (click)="seleccionarPlantillaGrado(c.nombreGrado)">
-                      {{ c.nombreGrado }}
-                    </button>
+            <!-- Selector condicional de carrera para Diversificado -->
+            @if (esDiversificado) {
+              <div class="mb-3 alert alert-warning p-2 border-warning">
+                <label class="form-label small fw-bold text-dark">Carrera Asociada *</label>
+                <select 
+                  formControlName="idCarrera" 
+                  class="form-select form-select-sm"
+                  [class.is-invalid]="esCampoInvalido('idCarrera')">
+                  <option [ngValue]="null" disabled>--- Seleccione una carrera ---</option>
+                  @for (c of carrerasActivas; track c.idCarrera) {
+                    <option [ngValue]="c.idCarrera">{{ c.nombre }}</option>
                   }
-                </div>
+                </select>
+                <div class="invalid-feedback small">Debe seleccionar una carrera para el nivel Diversificado.</div>
               </div>
             }
 
@@ -71,17 +74,17 @@
                 formControlName="nombre" 
                 class="form-control form-control-sm"
                 [class.is-invalid]="esCampoInvalido('nombre')"
-                placeholder="Ej. Primero Primaria, Segundo Básico">
+                placeholder="Ej. Primero, Cuarto, Quinto">
               <div class="invalid-feedback small">El nombre del grado es obligatorio.</div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label small">Descripción (Opcional)</label>
+              <label class="form-label small">Descripción</label>
               <textarea 
                 formControlName="descripcion" 
                 rows="3" 
                 class="form-control form-control-sm" 
-                placeholder="Observaciones o notas adicionales sobre el grado..."></textarea>
+                placeholder="Descripción adicional del grado..."></textarea>
             </div>
 
             <div class="d-grid gap-2 mt-4">
@@ -100,12 +103,12 @@
       </div>
     </div>
 
-    <!-- Tabla de Grados Operativos -->
+    <!-- Tabla de Grados -->
     <div class="col-lg-7">
       <div class="card shadow-sm border-0">
-        <div  routerlink="admin/grados" class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-          <h6 class="mb-0 fw-bold text-secondary">Grados Institucionales Operativos</h6>
-          <span class="badge bg-primary">Total: {{ grados.length }}</span>
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-secondary">Grados Registrados</h6>
+          <span class="badge bg-primary">Total: {{ totalRegistros }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -115,7 +118,7 @@
                   <th>ID</th>
                   <th>Nivel</th>
                   <th>Grado</th>
-                  <th>Descripción</th>
+                  <th>Carrera</th>
                   <th class="text-center">Acciones</th>
                 </tr>
               </thead>
@@ -132,15 +135,17 @@
                   @for (g of grados; track g.idGrado || $index) {
                     <tr>
                       <td class="fw-bold">#{{ g.idGrado }}</td>
+                      <td><span class="badge bg-secondary">{{ g.nivel }}</span></td>
+                      <td class="fw-bold text-dark fs-6">{{ g.nombre }}</td>
                       <td>
-                        <span class="badge bg-secondary">
-                          {{ g.nivel }}
-                        </span>
+                        @if (g.nombreCarrera) {
+                          <span class="badge bg-info text-dark fw-bold">{{ g.nombreCarrera }}</span>
+                        } @else {
+                          <span class="text-muted">N/A</span>
+                        }
                       </td>
-                      <td class="fw-bold text-primary">{{ g.nombre }}</td>
-                      <td class="text-muted">{{ g.descripcion || 'Sin descripción' }}</td>
                       <td class="text-center">
-                        <button (click)="editarGrado(g)" class="btn btn-sm btn-outline-primary" title="Editar">
+                        <button (click)="editarGrado(g)" class="btn btn-outline-primary btn-sm" title="Editar">
                           <i class="bi bi-pencil-fill"></i>
                         </button>
                       </td>
@@ -151,6 +156,29 @@
             </table>
           </div>
         </div>
+
+        <!-- Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

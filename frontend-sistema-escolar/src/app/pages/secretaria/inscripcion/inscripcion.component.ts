@@ -1,6 +1,15 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { InscripcionService, Inscripcion } from '../../../services/inscripcion.service';
 import { EstudianteService, Estudiante } from '../../../services/estudiante.service';
 import { SeccionService, Seccion } from '../../../services/seccion.service';
@@ -9,10 +18,21 @@ import { GradoService, Grado } from '../../../services/grado.service';
 @Component({
   selector: 'app-inscripciones',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './inscripcion.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './inscripcion.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InscripcionesComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private inscripcionService = inject(InscripcionService);
+  private estudianteService = inject(EstudianteService);
+  private seccionService = inject(SeccionService);
+  private gradoService = inject(GradoService);
+  private location = inject(Location);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   inscripciones: Inscripcion[] = [];
   estudiantesActivos: Estudiante[] = [];
   gradosLista: Grado[] = [];
@@ -20,23 +40,18 @@ export class InscripcionesComponent implements OnInit {
   seccionesFiltradas: Seccion[] = [];
 
   inscripcionForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private inscripcionService: InscripcionService,
-    private estudianteService: EstudianteService,
-    private seccionService: SeccionService,
-    private gradoService: GradoService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
@@ -44,6 +59,14 @@ export class InscripcionesComponent implements OnInit {
     this.cargarEstudiantes();
     this.cargarGrados();
     this.cargarSecciones();
+  }
+
+  volverDashboard(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/secretaria/dashboard']);
+    }
   }
 
   private initForm(): void {
@@ -56,15 +79,13 @@ export class InscripcionesComponent implements OnInit {
       estado: ['ACTIVA', [Validators.required]]
     });
 
-    // Escucha en tiempo real cambios en la selección del Grado
-    this.inscripcionForm.get('idGradoAux')?.valueChanges.subscribe((idGrado) => {
-      this.ngZone.run(() => {
+    this.inscripcionForm.get('idGradoAux')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((idGrado) => {
         this.filtrarSeccionesPorGrado(idGrado);
-        // Si cambia el grado, limpiamos la sección elegida anteriormente
         this.inscripcionForm.patchValue({ idSeccion: null }, { emitEvent: false });
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       });
-    });
   }
 
   esCampoInvalido(controlName: string): boolean {
@@ -73,44 +94,41 @@ export class InscripcionesComponent implements OnInit {
   }
 
   cargarGrados(): void {
-    this.gradoService.obtenerGrados().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.gradosLista = data || [];
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        console.error('Error al obtener grados:', err);
-        this.ngZone.run(() => {
-          this.errorMessage = 'Error al cargar grados. Verifique los permisos en GradoResource.';
-          this.cdr.detectChanges();
-        });
-      }
-    });
+    this.gradoService.obtenerGrados(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: any) => {
+          this.gradosLista = Array.isArray(data) ? data : (data?.contenido || []);
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al obtener grados:', err);
+          this.errorMessage = 'Error al cargar grados.';
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   cargarSecciones(): void {
-    this.seccionService.obtenerSecciones().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.seccionesActivas = (data || []).filter(s => s.estado);
-          // Si ya había un grado seleccionado en el formulario, re-aplicar filtro
+    this.seccionService.obtenerSecciones(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: any) => {
+          const lista: Seccion[] = Array.isArray(data) ? data : (data?.contenido || []);
+          this.seccionesActivas = lista.filter(s => s.estado);
+          
           const idGradoActual = this.inscripcionForm.get('idGradoAux')?.value;
           if (idGradoActual) {
             this.filtrarSeccionesPorGrado(idGradoActual);
           }
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        console.error('Error al obtener secciones:', err);
-        this.ngZone.run(() => {
-          this.errorMessage = 'Error al cargar secciones. Verifique los permisos en SeccionResource.';
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al obtener secciones:', err);
+          this.errorMessage = 'Error al cargar secciones.';
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   private filtrarSeccionesPorGrado(idGrado: any): void {
@@ -124,34 +142,56 @@ export class InscripcionesComponent implements OnInit {
 
   cargarInscripciones(): void {
     this.cargando = true;
-    this.inscripcionService.obtenerInscripciones().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.inscripciones = data || [];
+    this.cdr.markForCheck();
+
+    this.inscripcionService.obtenerInscripciones(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          if (resp && Array.isArray(resp.contenido)) {
+            this.inscripciones = resp.contenido;
+            this.paginaActual = resp.paginaActual || 1;
+            this.totalPaginas = resp.totalPaginas || 1;
+            this.totalRegistros = resp.totalRegistros || 0;
+          } else if (Array.isArray(resp)) {
+            this.inscripciones = resp;
+            this.totalRegistros = resp.length;
+            this.totalPaginas = 1;
+          } else {
+            this.inscripciones = [];
+            this.totalRegistros = 0;
+            this.totalPaginas = 1;
+          }
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.inscripciones = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarInscripciones();
+    }
   }
 
   cargarEstudiantes(): void {
-    this.estudianteService.obtenerEstudiantes().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.estudiantesActivos = (data || []).filter(e => e.estado === 'ACTIVO');
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => console.error('Error al obtener estudiantes:', err)
-    });
+    this.estudianteService.obtenerEstudiantes(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: any) => {
+          const lista: Estudiante[] = Array.isArray(data) ? data : (data?.contenido || []);
+          this.estudiantesActivos = lista.filter(e => e.estado === 'ACTIVO');
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al obtener estudiantes:', err)
+      });
   }
 
   guardarInscripcion(): void {
@@ -160,10 +200,12 @@ export class InscripcionesComponent implements OnInit {
     if (this.inscripcionForm.invalid) {
       this.inscripcionForm.markAllAsTouched();
       this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
+    this.cdr.markForCheck();
     const formVal = this.inscripcionForm.value;
 
     const datos: Inscripcion = {
@@ -173,47 +215,30 @@ export class InscripcionesComponent implements OnInit {
       estado: formVal.estado
     };
 
+    let operacion$;
+
     if (this.modoEdicion && this.idSeleccionado) {
       datos.idInscripcion = this.idSeleccionado;
-
-      this.inscripcionService.actualizarInscripcion(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Inscripción actualizada correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarInscripciones();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+      operacion$ = this.inscripcionService.actualizarInscripcion(this.idSeleccionado, datos);
     } else {
-      this.inscripcionService.registrarInscripcion(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Inscripción registrada correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarInscripciones();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+      operacion$ = this.inscripcionService.registrarInscripcion(datos);
     }
+
+    operacion$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        const mensajeDefault = this.modoEdicion ? 'Inscripción actualizada correctamente.' : 'Inscripción registrada correctamente.';
+        this.successMessage = this.obtenerTextoRespuesta(res) || mensajeDefault;
+        this.procesando = false;
+        this.resetForm();
+        this.cargarInscripciones();
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoRespuesta(err);
+        this.procesando = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   editarInscripcion(i: Inscripcion): void {
@@ -228,13 +253,16 @@ export class InscripcionesComponent implements OnInit {
       this.filtrarSeccionesPorGrado(idGrado);
     }
 
+    this.inscripcionForm.get('idGradoAux')?.setValue(idGrado, { emitEvent: false });
+
     this.inscripcionForm.patchValue({
       idEstudiante: i.idEstudiante,
-      idGradoAux: idGrado,
       idSeccion: i.idSeccion,
       fechaInscripcion: i.fechaInscripcion,
-      estado: i.estado
+      estado: i.estado || 'ACTIVA'
     });
+
+    this.cdr.markForCheck();
   }
 
   cambiarEstadoInscripcion(i: Inscripcion, nuevoEstado: string): void {
@@ -242,21 +270,20 @@ export class InscripcionesComponent implements OnInit {
 
     this.limpiarMensajes();
 
-    this.inscripcionService.cambiarEstado(i.idInscripcion, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.inscripcionService.cambiarEstado(i.idInscripcion, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado de inscripción actualizado.';
           i.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cargarInscripciones();
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   cancelarEdicion(): void {
@@ -267,7 +294,7 @@ export class InscripcionesComponent implements OnInit {
   obtenerNombreEstudiante(idEstudiante: number): string {
     const est = this.estudiantesActivos.find(e => Number(e.idEstudiante) === Number(idEstudiante));
     if (!est || !est.persona) return `ID Estudiante: ${idEstudiante}`;
-    return `${est.codigoEstudiante} - ${est.persona.nombres} ${est.persona.apellidos}`;
+    return `${est.codigoEstudiante ? est.codigoEstudiante + ' - ' : ''}${est.persona.nombres} ${est.persona.apellidos}`;
   }
 
   obtenerNombreSeccion(idSeccion: number): string {
@@ -290,6 +317,7 @@ export class InscripcionesComponent implements OnInit {
       fechaInscripcion: fechaHoy,
       estado: 'ACTIVA'
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

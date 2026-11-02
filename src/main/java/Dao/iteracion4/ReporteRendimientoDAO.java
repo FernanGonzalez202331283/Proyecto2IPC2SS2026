@@ -16,7 +16,8 @@ import modelo.iteracion4.ReporteRendimiento;
  *
  * @author fernan
  */
-public class ReporteRendimientoDAO {    
+public class ReporteRendimientoDAO {
+
     public ArrayList<ReporteRendimiento> obtenerReporte(int idAnioLectivo) {
 
         ArrayList<ReporteRendimiento> lista = new ArrayList<>();
@@ -65,8 +66,7 @@ public class ReporteRendimientoDAO {
             ORDER BY p.apellidos, p.nombres, c.nombre
         """;
 
-        try (Connection conexion = Conexion.getInstance().getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+        try (Connection conexion = Conexion.getInstance().getConnection(); PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, idAnioLectivo);
 

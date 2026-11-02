@@ -17,14 +17,14 @@ import modelo.iteracion3.Nota;
  * @author fernan
  */
 public class NotaDAO {
+
     public boolean registrar(Nota nota) {
 
         String sql = "INSERT INTO nota "
                 + "(id_actividad, id_inscripcion, calificacion) "
                 + "VALUES (?, ?, ?)";
 
-         try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, nota.getIdActividad());
             ps.setInt(2, nota.getIdInscripcion());
@@ -44,9 +44,7 @@ public class NotaDAO {
 
         String sql = "SELECT * FROM nota ORDER BY id_nota";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 notas.add(mapearNota(rs));
@@ -59,13 +57,11 @@ public class NotaDAO {
         return notas;
     }
 
-    // Buscar nota por ID
     public Nota buscarPorId(int idNota) {
 
         String sql = "SELECT * FROM nota WHERE id_nota = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idNota);
 
@@ -92,8 +88,7 @@ public class NotaDAO {
                 + "fecha_modificacion = NOW() "
                 + "WHERE id_nota = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, nota.getIdActividad());
             ps.setInt(2, nota.getIdInscripcion());
@@ -116,8 +111,7 @@ public class NotaDAO {
                 + "WHERE id_actividad = ? "
                 + "ORDER BY id_nota";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idActividad);
 
@@ -135,7 +129,6 @@ public class NotaDAO {
         return notas;
     }
 
-    // Consultar notas por inscripción
     public ArrayList<Nota> obtenerPorInscripcion(int idInscripcion) {
 
         ArrayList<Nota> notas = new ArrayList<>();
@@ -144,8 +137,7 @@ public class NotaDAO {
                 + "WHERE id_inscripcion = ? "
                 + "ORDER BY id_nota";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idInscripcion);
 
@@ -168,8 +160,7 @@ public class NotaDAO {
         String sql = "SELECT COUNT(*) FROM nota "
                 + "WHERE id_actividad = ? AND id_inscripcion = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idActividad);
             ps.setInt(2, idInscripcion);
@@ -191,24 +182,23 @@ public class NotaDAO {
     public boolean validarRelacion(int idActividad, int idInscripcion) {
 
         String sql = "SELECT COUNT(*) "
-            + "FROM actividad a "
-            + "INNER JOIN asignacion_docente ad "
-            + "ON a.id_asignacion = ad.id_asignacion "
-            + "INNER JOIN inscripcion i "
-            + "ON i.id_seccion = ad.id_seccion "
-            + "INNER JOIN seccion s "
-            + "ON i.id_seccion = s.id_seccion "
-            + "INNER JOIN año_lectivo al "
-            + "ON s.id_año_lectivo = al.id_año_lectivo "
-            + "WHERE a.id_actividad = ? "
-            + "AND i.id_inscripcion = ? "
-            + "AND a.estado = 1 "
-            + "AND ad.estado = 1 "
-            + "AND i.estado = 'ACTIVA' "
-            + "AND al.estado = 1";
+                + "FROM actividad a "
+                + "INNER JOIN asignacion_docente ad "
+                + "ON a.id_asignacion = ad.id_asignacion "
+                + "INNER JOIN inscripcion i "
+                + "ON i.id_seccion = ad.id_seccion "
+                + "INNER JOIN seccion s "
+                + "ON i.id_seccion = s.id_seccion "
+                + "INNER JOIN año_lectivo al "
+                + "ON s.id_año_lectivo = al.id_año_lectivo "
+                + "WHERE a.id_actividad = ? "
+                + "AND i.id_inscripcion = ? "
+                + "AND a.estado = 1 "
+                + "AND ad.estado = 1 "
+                + "AND i.estado = 'ACTIVA' "
+                + "AND al.estado = 1";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idActividad);
             ps.setInt(2, idInscripcion);
@@ -232,8 +222,7 @@ public class NotaDAO {
         String sql = "SELECT * FROM nota "
                 + "WHERE id_actividad = ? AND id_inscripcion = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idActividad);
             ps.setInt(2, idInscripcion);

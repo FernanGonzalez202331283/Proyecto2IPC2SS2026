@@ -7,16 +7,19 @@ package Resource.etapa2;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion2.Inscripcion;
 import seguridad.JwtService;
@@ -100,12 +103,16 @@ public class InscripcionResource {
     }
 
     @GET
-    public Response obtenerTodos(@Context HttpServletRequest request) {
+    public Response obtenerTodos(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context HttpServletRequest request) {
+
         Response acceso = validarAcceso(request, "No tiene permisos para consultar inscripciones.");
         if (acceso != null) return acceso;
 
-        ArrayList<Inscripcion> inscripciones = inscripcionService.obtenerTodos();
-        return Response.ok(inscripciones).build();
+        RespuestaPaginada<Inscripcion> respuesta = inscripcionService.obtenerInscripcionesPaginadas(pagina, limite);
+        return Response.ok(respuesta).build();
     }
 
     @GET
@@ -157,17 +164,17 @@ public class InscripcionResource {
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(@PathParam("id") int id, Inscripcion inscripcion, @Context HttpServletRequest request) {
+    public Response cambiarEstado(@PathParam("id") int id, EstadoRequest datos, @Context HttpServletRequest request) {
         Response acceso = validarAcceso(request, "No tiene permisos para cambiar el estado de inscripciones.");
         if (acceso != null) return acceso;
 
-        if (inscripcion == null || inscripcion.getEstado() == null) {
+        if (datos == null || datos.getEstado() == null || datos.getEstado().trim().isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(jsonMensaje("Debe proporcionar el estado de la inscripción."))
                     .build();
         }
 
-        String resultado = inscripcionService.cambiarEstado(id, inscripcion.getEstado());
+        String resultado = inscripcionService.cambiarEstado(id, datos.getEstado());
 
         if (resultado.toLowerCase().contains("correctamente")) {
             return Response.ok(jsonMensaje(resultado)).build();
@@ -182,5 +189,14 @@ public class InscripcionResource {
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(jsonMensaje(resultado))
                 .build();
+    }
+
+    public static class EstadoRequest {
+        private String estado;
+
+        public EstadoRequest() {}
+
+        public String getEstado() { return estado; }
+        public void setEstado(String estado) { this.estado = estado; }
     }
 }

@@ -18,7 +18,8 @@ import modelo.iteracion2.EstudianteEncargado;
  * @author fernan
  */
 public class EstudianteEncargadoDAO {
-     public boolean registrarRelacion(EstudianteEncargado relacion) {
+
+    public boolean registrarRelacion(EstudianteEncargado relacion) {
 
         String sql = """
                      INSERT INTO estudiante_encargado
@@ -26,8 +27,7 @@ public class EstudianteEncargadoDAO {
                      VALUES (?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, relacion.getIdEstudiante());
             ps.setInt(2, relacion.getIdEncargado());
@@ -43,7 +43,6 @@ public class EstudianteEncargadoDAO {
         }
     }
 
-    // Obtener encargados relacionados con un estudiante
     public ArrayList<EstudianteEncargado> obtenerPorEstudiante(int idEstudiante) {
 
         ArrayList<EstudianteEncargado> relaciones = new ArrayList<>();
@@ -67,8 +66,7 @@ public class EstudianteEncargadoDAO {
                      ORDER BY ee.responsable_principal DESC
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
 
@@ -117,8 +115,7 @@ public class EstudianteEncargadoDAO {
                      AND id_encargado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idEncargado);
@@ -145,8 +142,7 @@ public class EstudianteEncargadoDAO {
                      AND id_encargado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idEncargado);
@@ -158,7 +154,7 @@ public class EstudianteEncargadoDAO {
             return false;
         }
     }
-    
+
     public boolean registrarRelacion(
             Connection connection,
             EstudianteEncargado relacion) throws SQLException {

@@ -28,39 +28,46 @@ import servicio.iteracion4.PagoService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class PagoResource {
-    
+
     private final PagoService pagoService = new PagoService();
-    private final JwtService jwtService = new JwtService(); // 1. Instanciamos el servicio JWT
+    private final JwtService jwtService = new JwtService();
+
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request, String authHeader) {
+        if (request != null) {
+            HttpSession session = request.getSession(false);
+            if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+                return (Usuario) session.getAttribute("usuario");
+            }
+        }
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
 
     @POST
     public Response registrar(
-            @HeaderParam("Authorization") String authHeader, // 2. Recibimos el token en el Header
+            @HeaderParam("Authorization") String authHeader,
+            @Context HttpServletRequest request,
             Pago pago) {
 
-        // 3. Validar el token JWT en lugar de usar HttpSession
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
-                    .build();
-        }
-
-        String token = authHeader.substring(7);
-        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
+        Usuario usuario = obtenerUsuarioSesion(request, authHeader);
 
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Token inválido o expirado."))
+                    .entity(jsonMensaje("Debe iniciar sesión para registrar pagos."))
                     .build();
         }
 
-        // 4. Registrar mediante el Service con los datos del usuario extraídos del token
         int resultado = pagoService.registrar(
                 pago,
                 usuario.getIdUsuario(),
                 usuario.getRol()
         );
 
-        // 5. Interpretar el resultado
         if (resultado == PagoService.DATOS_INVALIDOS) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(jsonMensaje("Los datos proporcionados no son válidos."))
@@ -69,7 +76,7 @@ public class PagoResource {
 
         if (resultado == PagoService.SIN_PERMISO) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity(jsonMensaje("Solo una SECRETARIA puede registrar pagos."))
+                    .entity(jsonMensaje("No tiene permisos para registrar pagos."))
                     .build();
         }
 
@@ -81,22 +88,21 @@ public class PagoResource {
 
         if (resultado == PagoDAO.OBLIGACION_NO_PAGABLE) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity(jsonMensaje("La obligación ya fue pagada o no puede pagarse."))
+                    .entity(jsonMensaje("La obligación ya fue pagada o no está disponible para cobro."))
                     .build();
         }
 
         if (resultado == PagoDAO.ERROR) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(jsonMensaje("Ocurrió un error al registrar el pago."))
+                    .entity(jsonMensaje("Ocurrió un error interno al registrar el pago."))
                     .build();
         }
-        
+
         return Response.status(Response.Status.CREATED)
                 .entity(pago)
                 .build();
     }
-    
-    // Método auxiliar para mantener el estándar de respuestas JSON de tus otros resources
+
     private String jsonMensaje(String mensaje) {
         return """
                {

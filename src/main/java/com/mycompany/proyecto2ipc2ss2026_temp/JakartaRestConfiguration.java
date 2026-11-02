@@ -4,6 +4,7 @@ import jakarta.ws.rs.ApplicationPath;
 import jakarta.ws.rs.core.Application;
 import java.util.HashSet;
 import java.util.Set;
+import seguridad.JwtAuthFilter;
 
 /**
  * Configures Jakarta RESTful Web Services for the application.
@@ -14,7 +15,9 @@ public class JakartaRestConfiguration extends Application {
    @Override
     public Set<Class<?>> getClasses() {
         Set<Class<?>> resources = new HashSet<>();
+        resources.add(JwtAuthFilter.class);
         resources.add(Resource.AuthResource.class);
+        resources.add(Resource.PersonaResource.class);
         resources.add(Resource.UsuarioResource.class);
         resources.add(Resource.RecuperarContraseñaResource.class);
         resources.add(Resource.AñoLectivoResource.class);

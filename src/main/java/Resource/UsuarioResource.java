@@ -5,47 +5,48 @@
 package Resource;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.List;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
+import modelo.usuario.UsuarioRequest;
+import modelo.usuario.UsuarioResponse;
 import seguridad.JwtService;
-import servicio.AuthService;
 import servicio.UsuarioService;
 
 /**
  *
  * @author fernan
  */
-@Path("/usuarios")
+@Path("usuarios")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class UsuarioResource {
+
     private final UsuarioService usuarioService;
+    private final JwtService jwtService = new JwtService();
 
     public UsuarioResource() {
         this.usuarioService = new UsuarioService();
     }
 
     @POST
-    public Response registrarUsuario(Usuario usuario, @Context HttpServletRequest request) {
+    public Response registrarUsuario(UsuarioRequest requestObj, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para crear usuarios");
-        if (errorAcceso != null) {
-            return errorAcceso;
-        }
+        if (errorAcceso != null) return errorAcceso;
 
         Usuario usuarioSesion = obtenerUsuarioSesion(request);
-        String resultado = usuarioService.registrarUsuario(usuario, usuarioSesion.getRol());
+        String resultado = usuarioService.registrarUsuario(requestObj, usuarioSesion.getRol());
 
         if (!"OK".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -54,30 +55,30 @@ public class UsuarioResource {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(usuario)
+                .entity(jsonMensaje("Usuario registrado correctamente"))
                 .build();
     }
 
     @GET
-    public Response obtenerUsuarios(@Context HttpServletRequest request) {
-        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar usuarios");
-        if (errorAcceso != null) {
-            return errorAcceso;
-        }
+    public Response obtenerUsuarios(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context HttpServletRequest request) {
 
-        List<Usuario> usuarios = usuarioService.obtenerUsuarios();
-        return Response.ok(usuarios).build();
+        Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar usuarios");
+        if (errorAcceso != null) return errorAcceso;
+
+        RespuestaPaginada<UsuarioResponse> respuesta = usuarioService.obtenerUsuariosPaginados(pagina, limite);
+        return Response.ok(respuesta).build();
     }
 
     @GET
     @Path("/{id}")
     public Response buscarUsuario(@PathParam("id") int idUsuario, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar usuarios");
-        if (errorAcceso != null) {
-            return errorAcceso;
-        }
+        if (errorAcceso != null) return errorAcceso;
 
-        Usuario usuario = usuarioService.buscarUsuario(idUsuario);
+        UsuarioResponse usuario = usuarioService.buscarUsuario(idUsuario);
         if (usuario == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje("El usuario no existe"))
@@ -89,25 +90,20 @@ public class UsuarioResource {
 
     @PUT
     @Path("/{id}")
-    public Response actualizarUsuario(@PathParam("id") int idUsuario, Usuario usuario, @Context HttpServletRequest request) {
+    public Response actualizarUsuario(@PathParam("id") int idUsuario, UsuarioRequest requestObj, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para actualizar usuarios");
-        if (errorAcceso != null) {
-            return errorAcceso;
-        }
+        if (errorAcceso != null) return errorAcceso;
 
         Usuario usuarioSesion = obtenerUsuarioSesion(request);
         String rolSesion = usuarioSesion.getRol();
 
-        usuario.setIdUsuario(idUsuario);
-        Usuario usuarioActual = usuarioService.buscarUsuario(idUsuario);
-
+        UsuarioResponse usuarioActual = usuarioService.buscarUsuario(idUsuario);
         if (usuarioActual == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje("El usuario no existe"))
                     .build();
         }
 
-        // Reglas de jerarquía para el rol ADMIN
         if ("ADMIN".equals(rolSesion)) {
             if ("SUPER_ADMIN".equals(usuarioActual.getRol())) {
                 return Response.status(Response.Status.FORBIDDEN)
@@ -119,14 +115,14 @@ public class UsuarioResource {
                         .entity(jsonMensaje("Un ADMIN no puede modificar otro ADMIN"))
                         .build();
             }
-            if ("SUPER_ADMIN".equals(usuario.getRol())) {
+            if (requestObj != null && "SUPER_ADMIN".equals(requestObj.getRol())) {
                 return Response.status(Response.Status.FORBIDDEN)
                         .entity(jsonMensaje("Un ADMIN no puede asignar el rol SUPER_ADMIN"))
                         .build();
             }
         }
 
-        String resultado = usuarioService.actualizarUsuario(usuario);
+        String resultado = usuarioService.actualizarUsuario(idUsuario, requestObj);
 
         if (!"OK".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -134,28 +130,25 @@ public class UsuarioResource {
                     .build();
         }
 
-        return Response.ok(usuario).build();
+        return Response.ok(jsonMensaje("Usuario actualizado correctamente")).build();
     }
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstadoUsuario(@PathParam("id") int idUsuario, Usuario usuario, @Context HttpServletRequest request) {
+    public Response cambiarEstadoUsuario(@PathParam("id") int idUsuario, UsuarioRequest requestObj, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para cambiar el estado de usuarios");
-        if (errorAcceso != null) {
-            return errorAcceso;
-        }
+        if (errorAcceso != null) return errorAcceso;
 
         Usuario usuarioSesion = obtenerUsuarioSesion(request);
         String rolSesion = usuarioSesion.getRol();
 
-        Usuario usuarioActual = usuarioService.buscarUsuario(idUsuario);
+        UsuarioResponse usuarioActual = usuarioService.buscarUsuario(idUsuario);
         if (usuarioActual == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje("El usuario no existe"))
                     .build();
         }
 
-        // Reglas de jerarquía para el rol ADMIN
         if ("ADMIN".equals(rolSesion)) {
             if ("SUPER_ADMIN".equals(usuarioActual.getRol())) {
                 return Response.status(Response.Status.FORBIDDEN)
@@ -169,7 +162,7 @@ public class UsuarioResource {
             }
         }
 
-        String resultado = usuarioService.cambiarEstadoUsuario(idUsuario, usuario.isEstado());
+        String resultado = usuarioService.cambiarEstadoUsuario(idUsuario, requestObj);
 
         if (!"OK".equals(resultado)) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -180,7 +173,6 @@ public class UsuarioResource {
         return Response.ok(jsonMensaje("Estado del usuario actualizado correctamente")).build();
     }
 
-    // Centralización de la validación de sesión y rol con respuesta inmediata de error
     private Response validarAcceso(HttpServletRequest request, String mensajePermisos) {
         Usuario usuario = obtenerUsuarioSesion(request);
 
@@ -199,27 +191,16 @@ public class UsuarioResource {
 
         return null;
     }
-    
-    private final JwtService jwtService = new JwtService();
-    // Obtención segura de usuario (por Sesión HTTP o por Token JWT)
+
     private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
-    // 1. Intentar por la sesión HTTP tradicional (JSESSIONID)
-    HttpSession session = request.getSession(false);
-    if (session != null && session.getAttribute("usuario") instanceof Usuario) {
-        return (Usuario) session.getAttribute("usuario");
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+        return null;
     }
 
-    // 2. Si no hay sesión, extraer y validar desde el Token JWT de la cabecera Authorization
-    String authHeader = request.getHeader("Authorization");
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-        String token = authHeader.substring(7);
-        return jwtService.obtenerUsuarioDesdeToken(token);
-    }
-
-    return null;
-}
-
-    // Generador de respuestas JSON homogéneas
     private String jsonMensaje(String mensaje) {
         return """
                {

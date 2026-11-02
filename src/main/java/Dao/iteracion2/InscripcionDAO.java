@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 import modelo.iteracion2.Inscripcion;
 
 /**
@@ -18,22 +19,22 @@ import modelo.iteracion2.Inscripcion;
  * @author fernan
  */
 public class InscripcionDAO {
-    
-    private final EstudianteEncargadoDAO estudianteEncargadoDAO = new EstudianteEncargadoDAO();
-     public boolean registrarInscripcion(Inscripcion inscripcion) {
+private final EstudianteEncargadoDAO estudianteEncargadoDAO = new EstudianteEncargadoDAO();
+
+    public boolean registrarInscripcion(Inscripcion inscripcion) {
         String sql = """
                      INSERT INTO inscripcion
                      (id_estudiante, id_seccion, fecha_inscripcion, estado)
                      VALUES (?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, inscripcion.getIdEstudiante());
             ps.setInt(2, inscripcion.getIdSeccion());
             ps.setDate(3, Date.valueOf(inscripcion.getFechaInscripcion()));
-            if (inscripcion.getEstado() == null|| inscripcion.getEstado().trim().isEmpty()) {
+            if (inscripcion.getEstado() == null || inscripcion.getEstado().trim().isEmpty()) {
                 ps.setString(4, "ACTIVA");
             } else {
                 ps.setString(4, inscripcion.getEstado());
@@ -46,7 +47,6 @@ public class InscripcionDAO {
     }
 
     public Inscripcion buscarPorId(int idInscripcion) {
-
         String sql = """
                      SELECT
                         id_inscripcion,
@@ -58,24 +58,19 @@ public class InscripcionDAO {
                      WHERE id_inscripcion = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idInscripcion);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 if (rs.next()) {
-
                     Inscripcion inscripcion = mapearInscripcion(rs);
-
-                    // Recuperar los encargados del estudiante
                     inscripcion.setEncargados(
                             estudianteEncargadoDAO.obtenerPorEstudiante(
                                     inscripcion.getIdEstudiante()
                             )
                     );
-
                     return inscripcion;
                 }
             }
@@ -88,9 +83,7 @@ public class InscripcionDAO {
     }
 
     public ArrayList<Inscripcion> obtenerTodos() {
-
         ArrayList<Inscripcion> inscripciones = new ArrayList<>();
-
         String sql = """
                      SELECT
                         id_inscripcion,
@@ -99,24 +92,20 @@ public class InscripcionDAO {
                         fecha_inscripcion,
                         estado
                      FROM inscripcion
-                     ORDER BY id_inscripcion
+                     ORDER BY id_inscripcion DESC
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-
                 Inscripcion inscripcion = mapearInscripcion(rs);
-
-                // Recuperar los encargados del estudiante
                 inscripcion.setEncargados(
                         estudianteEncargadoDAO.obtenerPorEstudiante(
                                 inscripcion.getIdEstudiante()
                         )
                 );
-
                 inscripciones.add(inscripcion);
             }
 
@@ -127,20 +116,74 @@ public class InscripcionDAO {
         return inscripciones;
     }
 
+    public List<Inscripcion> obtenerPaginados(int limite, int offset) {
+        List<Inscripcion> inscripciones = new ArrayList<>();
+        String sql = """
+                     SELECT
+                        id_inscripcion,
+                        id_estudiante,
+                        id_seccion,
+                        fecha_inscripcion,
+                        estado
+                     FROM inscripcion
+                     ORDER BY id_inscripcion DESC
+                     LIMIT ? OFFSET ?
+                     """;
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Inscripcion inscripcion = mapearInscripcion(rs);
+                    inscripcion.setEncargados(
+                            estudianteEncargadoDAO.obtenerPorEstudiante(
+                                    inscripcion.getIdEstudiante()
+                            )
+                    );
+                    inscripciones.add(inscripcion);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al obtener inscripciones paginadas: " + e.getMessage());
+        }
+        return inscripciones;
+    }
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM inscripcion";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al contar inscripciones: " + e.getMessage());
+        }
+        return 0;
+    }
+
     public boolean actualizar(Inscripcion inscripcion) {
         String sql = """
                      UPDATE inscripcion
                      SET id_estudiante = ?,
                          id_seccion = ?,
-                         fecha_inscripcion = ?
+                         fecha_inscripcion = ?,
+                         estado = ?
                      WHERE id_inscripcion = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, inscripcion.getIdEstudiante());
             ps.setInt(2, inscripcion.getIdSeccion());
             ps.setDate(3, Date.valueOf(inscripcion.getFechaInscripcion()));
-            ps.setInt(4, inscripcion.getIdInscripcion());
+            ps.setString(4, inscripcion.getEstado());
+            ps.setInt(5, inscripcion.getIdInscripcion());
             return ps.executeUpdate() > 0;
         } catch (SQLException | IllegalArgumentException e) {
             System.out.println("Error al actualizar inscripción: " + e.getMessage());
@@ -155,7 +198,7 @@ public class InscripcionDAO {
                      WHERE id_inscripcion = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, estado);
             ps.setInt(2, idInscripcion);
@@ -174,7 +217,7 @@ public class InscripcionDAO {
                      AND id_seccion = ?
                      AND estado = 'ACTIVA'
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idSeccion);
@@ -198,7 +241,7 @@ public class InscripcionDAO {
                      AND s.id_año_lectivo = ?
                      AND i.estado = 'ACTIVA'
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idAñoLectivo);
@@ -208,14 +251,12 @@ public class InscripcionDAO {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error al verificar inscripción por año lectivo: "
-                    + e.getMessage());
+            System.out.println("Error al verificar inscripción por año lectivo: " + e.getMessage());
         }
         return false;
     }
 
-    public boolean existeInscripcionActivaEnAño(
-        int idEstudiante, int idAñoLectivo, int idInscripcion) {
+    public boolean existeInscripcionActivaEnAño(int idEstudiante, int idAñoLectivo, int idInscripcion) {
         String sql = """
                      SELECT COUNT(*)
                      FROM inscripcion i
@@ -225,7 +266,7 @@ public class InscripcionDAO {
                      AND i.estado = 'ACTIVA'
                      AND i.id_inscripcion <> ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             ps.setInt(2, idAñoLectivo);
@@ -248,7 +289,7 @@ public class InscripcionDAO {
                      WHERE id_seccion = ?
                      AND estado = 'ACTIVA'
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idSeccion);
             try (ResultSet rs = ps.executeQuery()) {
@@ -268,7 +309,7 @@ public class InscripcionDAO {
                      FROM estudiante
                      WHERE id_estudiante = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             try (ResultSet rs = ps.executeQuery()) {
@@ -288,7 +329,7 @@ public class InscripcionDAO {
                      FROM estudiante
                      WHERE id_estudiante = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idEstudiante);
             try (ResultSet rs = ps.executeQuery()) {
@@ -308,7 +349,7 @@ public class InscripcionDAO {
                      FROM seccion
                      WHERE id_seccion = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idSeccion);
             try (ResultSet rs = ps.executeQuery()) {
@@ -328,7 +369,7 @@ public class InscripcionDAO {
                      FROM seccion
                      WHERE id_seccion = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idSeccion);
             try (ResultSet rs = ps.executeQuery()) {
@@ -348,7 +389,7 @@ public class InscripcionDAO {
                      FROM seccion
                      WHERE id_seccion = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idSeccion);
             try (ResultSet rs = ps.executeQuery()) {
@@ -368,7 +409,7 @@ public class InscripcionDAO {
                      FROM año_lectivo
                      WHERE id_año_lectivo = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idAñoLectivo);
             try (ResultSet rs = ps.executeQuery()) {
@@ -388,7 +429,7 @@ public class InscripcionDAO {
                      FROM seccion
                      WHERE id_seccion = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, idSeccion);
             try (ResultSet rs = ps.executeQuery()) {
@@ -401,11 +442,8 @@ public class InscripcionDAO {
         }
         return 0;
     }
-    
-    public boolean registrarInscripcion(
-        Connection connection,
-        Inscripcion inscripcion) throws SQLException {
 
+    public boolean registrarInscripcion(Connection connection, Inscripcion inscripcion) throws SQLException {
         String sql = """
                      INSERT INTO inscripcion
                      (id_estudiante, id_seccion, fecha_inscripcion, estado)
@@ -413,26 +451,20 @@ public class InscripcionDAO {
                      """;
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-
             ps.setInt(1, inscripcion.getIdEstudiante());
             ps.setInt(2, inscripcion.getIdSeccion());
-
             ps.setDate(3, Date.valueOf(inscripcion.getFechaInscripcion()));
 
-            if (inscripcion.getEstado() == null
-                    || inscripcion.getEstado().trim().isEmpty()) {
-
+            if (inscripcion.getEstado() == null || inscripcion.getEstado().trim().isEmpty()) {
                 ps.setString(4, "ACTIVA");
-
             } else {
-
                 ps.setString(4, inscripcion.getEstado());
             }
 
             return ps.executeUpdate() > 0;
         }
     }
-    
+
     private Inscripcion mapearInscripcion(ResultSet rs) throws SQLException {
         Inscripcion inscripcion = new Inscripcion();
         inscripcion.setIdInscripcion(rs.getInt("id_inscripcion"));

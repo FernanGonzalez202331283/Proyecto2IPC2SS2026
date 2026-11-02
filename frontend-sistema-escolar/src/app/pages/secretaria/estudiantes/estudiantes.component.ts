@@ -1,46 +1,58 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Location } from '@angular/common'; // 1. Importar Location
-import { EstudianteService, Estudiante } from '../../../services/estudiante.service';
 import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EstudianteService, Estudiante } from '../../../services/estudiante.service';
+
 @Component({
   selector: 'app-estudiantes',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './estudiantes.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './estudiantes.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EstudiantesComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private estudianteService = inject(EstudianteService);
+  private router = inject(Router);
+  private location = inject(Location);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   estudiantes: Estudiante[] = [];
   estudianteForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
   idPersonaSeleccionada: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  // Variables de Paginación
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private estudianteService: EstudianteService,
-    private router: Router,
-    private location: Location, // 2. Inyectar Location
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
     this.cargarEstudiantes();
   }
 
-  // Método seguro que regresa a la página previa o redirige según el rol si no hay historial
   volverDashboard(): void {
     if (window.history.length > 1) {
       this.location.back();
     } else {
-      // Respaldo dinámico en caso de haber ingresado directamente por URL
       const rawUser = localStorage.getItem('usuario') || sessionStorage.getItem('usuario') || localStorage.getItem('user');
       let rol = '';
 
@@ -99,22 +111,38 @@ export class EstudiantesComponent implements OnInit {
 
   cargarEstudiantes(): void {
     this.cargando = true;
-    this.estudianteService.obtenerEstudiantes().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.estudiantes = data || [];
+    this.cdr.markForCheck();
+
+    this.estudianteService.obtenerEstudiantes(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) 
+            ? resp 
+            : (resp?.contenido || resp?.lista || resp?.datos || []);
+
+          this.estudiantes = lista;
+          this.paginaActual = resp?.paginaActual || 1;
+          this.totalPaginas = resp?.totalPaginas || 1;
+          this.totalRegistros = resp?.totalRegistros || this.estudiantes.length;
+
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.estudiantes = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarEstudiantes();
+    }
   }
 
   guardarEstudiante(): void {
@@ -123,10 +151,12 @@ export class EstudiantesComponent implements OnInit {
     if (this.estudianteForm.invalid) {
       this.estudianteForm.markAllAsTouched();
       this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
+    this.cdr.markForCheck();
     const formVal = this.estudianteForm.value;
 
     const datos: Estudiante = {
@@ -158,43 +188,39 @@ export class EstudiantesComponent implements OnInit {
         datos.persona.idPersona = this.idPersonaSeleccionada;
       }
 
-      this.estudianteService.actualizarEstudiante(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
+      this.estudianteService.actualizarEstudiante(this.idSeleccionado, datos)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
             this.successMessage = this.obtenerTextoRespuesta(res) || 'Expediente actualizado correctamente.';
             this.procesando = false;
             this.resetForm();
             this.cargarEstudiantes();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
             this.errorMessage = this.obtenerTextoRespuesta(err);
             this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+            this.cdr.markForCheck();
+          }
+        });
     } else {
-      this.estudianteService.registrarEstudiante(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
+      this.estudianteService.registrarEstudiante(datos)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
             this.successMessage = this.obtenerTextoRespuesta(res) || 'Estudiante y encargado registrados correctamente.';
             this.procesando = false;
             this.resetForm();
             this.cargarEstudiantes();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
             this.errorMessage = this.obtenerTextoRespuesta(err);
             this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+            this.cdr.markForCheck();
+          }
+        });
     }
   }
 
@@ -203,21 +229,19 @@ export class EstudiantesComponent implements OnInit {
 
     this.limpiarMensajes();
 
-    this.estudianteService.cambiarEstado(e.idEstudiante, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.estudianteService.cambiarEstado(e.idEstudiante, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado actualizado.';
           e.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   editarEstudiante(e: Estudiante): void {
@@ -251,6 +275,8 @@ export class EstudiantesComponent implements OnInit {
         responsablePrincipal: primerEncargado?.responsablePrincipal ?? true
       }
     });
+
+    this.cdr.markForCheck();
   }
 
   cancelarEdicion(): void {
@@ -285,6 +311,7 @@ export class EstudiantesComponent implements OnInit {
         responsablePrincipal: true
       }
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

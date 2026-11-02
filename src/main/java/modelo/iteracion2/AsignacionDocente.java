@@ -4,8 +4,8 @@
  */
 package modelo.iteracion2;
 
-import modelo.Curso;
-import modelo.Seccion;
+import modelo.curso.Curso;
+import modelo.seccion.Seccion;
 
 /**
  *
@@ -19,11 +19,9 @@ public class AsignacionDocente {
     private Seccion seccion;
     private boolean estado;
 
-    // Constructor vacío
     public AsignacionDocente() {
     }
 
-    // Constructor con parámetros
     public AsignacionDocente(int idAsignacion, Empleado empleado,
             Curso curso, Seccion seccion, boolean estado) {
 

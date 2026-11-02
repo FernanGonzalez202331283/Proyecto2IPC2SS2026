@@ -10,7 +10,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import modelo.Persona;
+import java.util.ArrayList;
+import java.util.List;
+import modelo.Persona.Persona;
 import modelo.Usuario;
 import modelo.UsuarioOperativo;
 import modelo.iteracion2.Empleado;
@@ -30,7 +32,7 @@ public class UsuarioOperativoDAO {
 
         try {
             connection = Conexion.getInstance().getConnection();
-            connection.setAutoCommit(false); 
+            connection.setAutoCommit(false);
 
             Persona persona = dto.getPersona();
             Empleado empleado = dto.getEmpleado();
@@ -101,10 +103,10 @@ public class UsuarioOperativoDAO {
                 String passwordCodificada = Util.ContraseñaUtil.codificar(usuario.getContraseña());
 
                 String sqlUsuario = """
-                                    INSERT INTO usuario
-                                    (username, contraseña, id_persona, rol, estado)
-                                    VALUES (?, ?, ?, ?, ?)
-                                    """;
+                    INSERT INTO usuario
+                    (username, contraseña, id_persona, rol, estado, debe_cambiar_clave)
+                    VALUES (?, ?, ?, ?, ?, true)
+                    """;
 
                 String sqlHistorial = """
                                       INSERT INTO historial_contraseña (id_usuario, contraseña)
@@ -115,7 +117,7 @@ public class UsuarioOperativoDAO {
 
                 try (PreparedStatement psUsuario = connection.prepareStatement(sqlUsuario, Statement.RETURN_GENERATED_KEYS)) {
                     psUsuario.setString(1, usuario.getUsername());
-                    psUsuario.setString(2, passwordCodificada); 
+                    psUsuario.setString(2, passwordCodificada);
                     psUsuario.setInt(3, idPersonaGenerado);
                     psUsuario.setString(4, usuario.getRol());
                     psUsuario.setBoolean(5, true);
@@ -133,7 +135,7 @@ public class UsuarioOperativoDAO {
                         if (idUsuarioGenerado > 0) {
                             try (PreparedStatement psHistorial = connection.prepareStatement(sqlHistorial)) {
                                 psHistorial.setInt(1, idUsuarioGenerado);
-                                psHistorial.setString(2, passwordCodificada); 
+                                psHistorial.setString(2, passwordCodificada);
                                 psHistorial.executeUpdate();
                             }
                         }
@@ -179,5 +181,75 @@ public class UsuarioOperativoDAO {
                 System.err.println("Error al cerrar conexión: " + e.getMessage());
             }
         }
+    }
+
+    public List<UsuarioOperativo> obtenerOperativosPaginados(int limite, int offset) {
+        String sql = """
+                     SELECT u.id_usuario, u.username, u.rol, u.estado, u.fecha_creacion, u.debe_cambiar_clave,
+                            p.id_persona, p.nombres, p.apellidos, p.dpi, p.telefono, p.correo, p.direccion
+                     FROM usuario u
+                     INNER JOIN persona p ON u.id_persona = p.id_persona
+                     WHERE u.rol IN ('SECRETARIA', 'MAESTRO', 'BIBLIOTECARIO', 'PERSONAL')
+                     ORDER BY u.id_usuario DESC
+                     LIMIT ? OFFSET ?
+                     """;
+
+        List<UsuarioOperativo> lista = new ArrayList<>();
+
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    UsuarioOperativo dto = new UsuarioOperativo();
+
+                    Usuario u = new Usuario();
+                    u.setIdUsuario(rs.getInt("id_usuario"));
+                    u.setUsername(rs.getString("username"));
+                    u.setRol(rs.getString("rol"));
+                    u.setEstado(rs.getBoolean("estado"));
+                    u.setFechaCreacion(rs.getString("fecha_creacion"));
+                    u.setDebeCambiarClave(rs.getBoolean("debe_cambiar_clave"));
+
+                    Persona p = new Persona();
+                    p.setIdPersona(rs.getInt("id_persona"));
+                    p.setNombres(rs.getString("nombres"));
+                    p.setApellidos(rs.getString("apellidos"));
+                    p.setDpi(rs.getString("dpi"));
+                    p.setTelefono(rs.getString("telefono"));
+                    p.setCorreo(rs.getString("correo"));
+                    p.setDireccion(rs.getString("direccion"));
+
+                    dto.setUsuario(u);
+                    dto.setPersona(p);
+
+                    lista.add(dto);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al obtener usuarios operativos paginados: " + e.getMessage());
+        }
+
+        return lista;
+    }
+
+    public int contarOperativos() {
+        String sql = """
+                     SELECT COUNT(*) 
+                     FROM usuario 
+                     WHERE rol IN ('SECRETARIA', 'MAESTRO', 'BIBLIOTECARIO', 'PERSONAL')
+                     """;
+
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al contar usuarios operativos: " + e.getMessage());
+        }
+        return 0;
     }
 }

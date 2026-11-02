@@ -6,6 +6,7 @@ package seguridad.iteracion2;
 
 import Dao.iteracion2.NominaAlumnoDAO;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.iteracion2.NominaAlumno;
 
 /**
@@ -13,25 +14,27 @@ import modelo.iteracion2.NominaAlumno;
  * @author fernan
  */
 public class NominaAlumnoService {
-    private final NominaAlumnoDAO nominaAlumnoDAO = new NominaAlumnoDAO();
+   private final NominaAlumnoDAO nominaAlumnoDAO = new NominaAlumnoDAO();
     
-    public ArrayList<NominaAlumno> obtenerNomina(int año, int idGrado, int idSeccion){
-               if (año <= 0) {
+    public RespuestaPaginada<NominaAlumno> obtenerNominaPaginada(int año, int idGrado, int idSeccion, int pagina, int limite) {
+        if (año <= 0) {
             throw new IllegalArgumentException("Debe proporcionar un año lectivo válido");
         }
-
-        if (idGrado < 0) {
-            throw new IllegalArgumentException("El identificador del grado no es válido");
-        }
-
-        if (idSeccion < 0) {
-            throw new IllegalArgumentException("El identificador de la sección no es válido");
-        }
-
+        if (idGrado < 0) throw new IllegalArgumentException("El identificador del grado no es válido");
+        if (idSeccion < 0) throw new IllegalArgumentException("El identificador de la sección no es válido");
         if (idSeccion > 0 && idGrado <= 0) {
             throw new IllegalArgumentException("Debe proporcionar un grado para consultar una sección");
         }
+        
+        if (pagina <= 0) pagina = 1;
+        if (limite <= 0) limite = 10;
 
-        return nominaAlumnoDAO.obtenerNomina(año, idGrado, idSeccion);
+        int offset = (pagina - 1) * limite;
+
+        ArrayList<NominaAlumno> datos = nominaAlumnoDAO.obtenerNominaPaginada(año, idGrado, idSeccion, limite, offset);
+        
+        int totalRegistros = nominaAlumnoDAO.contarNomina(año, idGrado, idSeccion);
+
+        return new RespuestaPaginada<>(datos, pagina, limite, totalRegistros);
     }
 }

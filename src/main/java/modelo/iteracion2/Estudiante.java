@@ -5,7 +5,7 @@
 package modelo.iteracion2;
 
 import java.util.ArrayList;
-import modelo.Persona;
+import modelo.Persona.Persona;
 
 /**
  *

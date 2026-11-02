@@ -20,7 +20,7 @@ import modelo.iteracion4.Pago;
  * @author fernan
  */
 public class PagoDAO {
-    public static final int OBLIGACION_NO_ENCONTRADA = -1;
+public static final int OBLIGACION_NO_ENCONTRADA = -1;
     public static final int OBLIGACION_NO_PAGABLE = -2;
     public static final int ERROR = -3;
 
@@ -60,7 +60,6 @@ public class PagoDAO {
                 String estado;
                 BigDecimal monto;
 
-                // 1. Buscar la obligación y bloquear fila
                 try (PreparedStatement ps = connection.prepareStatement(sqlObligacion)) {
                     ps.setInt(1, pago.getIdObligacion());
                     try (ResultSet rs = ps.executeQuery()) {
@@ -74,7 +73,6 @@ public class PagoDAO {
                     }
                 }
 
-                // 2. Validar que la obligación sea pagable
                 if (!"PENDIENTE".equals(estado) && !"VENCIDA".equals(estado)) {
                     connection.rollback();
                     return OBLIGACION_NO_PAGABLE;
@@ -87,7 +85,6 @@ public class PagoDAO {
 
                 int idPago;
 
-                // 3. Registrar el Pago
                 try (PreparedStatement ps = connection.prepareStatement(
                         sqlPago, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
@@ -109,7 +106,6 @@ public class PagoDAO {
                     }
                 }
 
-                // 4. Insertar automáticante el Comprobante de Pago
                 int año = fechaPago.toLocalDateTime().getYear();
                 String numeroComprobante = "REC-" + año + "-" + String.format("%04d", idPago);
 
@@ -120,7 +116,6 @@ public class PagoDAO {
                     psComp.executeUpdate();
                 }
 
-                // 5. Actualizar el estado de la obligación
                 try (PreparedStatement ps = connection.prepareStatement(sqlActualizar)) {
                     ps.setInt(1, pago.getIdObligacion());
                     int filas = ps.executeUpdate();
@@ -130,7 +125,6 @@ public class PagoDAO {
                     }
                 }
 
-                // Confirmar transacción atómica completa
                 connection.commit();
 
                 pago.setIdPago(idPago);
@@ -152,4 +146,5 @@ public class PagoDAO {
             return ERROR;
         }
     }
+    
 }

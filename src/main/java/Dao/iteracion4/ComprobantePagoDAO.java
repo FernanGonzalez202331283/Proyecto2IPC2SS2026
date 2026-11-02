@@ -25,7 +25,6 @@ public class ComprobantePagoDAO {
     public static final int COMPROBANTE_EXISTENTE = -3;
     public static final int ERROR = -4;
 
-    // Registrar comprobante en la base de datos
     public int registrar(ComprobantePago comprobante) {
 
         String sqlPago = "SELECT estado, fecha_pago FROM pago WHERE id_pago = ? FOR UPDATE";
@@ -40,7 +39,6 @@ public class ComprobantePagoDAO {
                 String estadoPago;
                 Timestamp fechaPago;
 
-                // 1. Verificar existencia del pago
                 try (PreparedStatement ps = connection.prepareStatement(sqlPago)) {
                     ps.setInt(1, comprobante.getIdPago());
                     try (ResultSet rs = ps.executeQuery()) {
@@ -53,13 +51,11 @@ public class ComprobantePagoDAO {
                     }
                 }
 
-                // 2. Verificar estado del pago
                 if (!"REGISTRADO".equals(estadoPago)) {
                     connection.rollback();
                     return PAGO_NO_REGISTRADO;
                 }
 
-                // 3. Verificar si ya existe comprobante emitido
                 try (PreparedStatement ps = connection.prepareStatement(sqlExistente)) {
                     ps.setInt(1, comprobante.getIdPago());
                     try (ResultSet rs = ps.executeQuery()) {
@@ -70,12 +66,10 @@ public class ComprobantePagoDAO {
                     }
                 }
 
-                // 4. Generar número correlativo de comprobante
                 int anio = fechaPago.toLocalDateTime().getYear();
                 String numeroComprobante = "REC-" + anio + "-" + String.format("%04d", comprobante.getIdPago());
                 Timestamp fechaEmision = new Timestamp(System.currentTimeMillis());
 
-                // 5. Insertar comprobante
                 int idComprobante;
                 try (PreparedStatement ps = connection.prepareStatement(sqlInsertar, PreparedStatement.RETURN_GENERATED_KEYS)) {
                     ps.setInt(1, comprobante.getIdPago());
@@ -95,7 +89,6 @@ public class ComprobantePagoDAO {
                     }
                 }
 
-                // Confirmar la transacción
                 connection.commit();
 
                 comprobante.setIdComprobante(idComprobante);
@@ -117,29 +110,27 @@ public class ComprobantePagoDAO {
         }
     }
 
-    // Consulta SQL pura para alimentar los parámetros de JasperReports
     public Map<String, Object> obtenerDatosParaReporte(int idBusqueda) {
         Map<String, Object> parametros = new HashMap<>();
 
         String sql = "SELECT "
-                   + "  COALESCE(c.numero_comprobante, CONCAT('REC-2026-', LPAD(o.id_obligacion, 4, '0'))) AS numero_comprobante, "
-                   + "  COALESCE(c.fecha_emision, p.fecha_pago, NOW()) AS fecha_emision, "
-                   + "  o.concepto, "
-                   + "  o.monto, "
-                   + "  o.descripcion, "
-                   + "  e.codigo_estudiante, "
-                   + "  CONCAT(per.nombres, ' ', per.apellidos) AS nombre_estudiante "
-                   + "FROM obligacion_pago o "
-                   + "INNER JOIN estudiante e ON o.id_estudiante = e.id_estudiante "
-                   + "INNER JOIN persona per ON e.id_persona = per.id_persona "
-                   + "LEFT JOIN pago p ON p.id_obligacion = o.id_obligacion "
-                   + "LEFT JOIN comprobante_pago c ON c.id_pago = p.id_pago "
-                   + "WHERE o.id_obligacion = ? OR p.id_pago = ? "
-                   + "ORDER BY o.id_obligacion DESC "
-                   + "LIMIT 1";
+                + "  COALESCE(c.numero_comprobante, CONCAT('REC-2026-', LPAD(o.id_obligacion, 4, '0'))) AS numero_comprobante, "
+                + "  COALESCE(c.fecha_emision, p.fecha_pago, NOW()) AS fecha_emision, "
+                + "  o.concepto, "
+                + "  o.monto, "
+                + "  o.descripcion, "
+                + "  e.codigo_estudiante, "
+                + "  CONCAT(per.nombres, ' ', per.apellidos) AS nombre_estudiante "
+                + "FROM obligacion_pago o "
+                + "INNER JOIN estudiante e ON o.id_estudiante = e.id_estudiante "
+                + "INNER JOIN persona per ON e.id_persona = per.id_persona "
+                + "LEFT JOIN pago p ON p.id_obligacion = o.id_obligacion "
+                + "LEFT JOIN comprobante_pago c ON c.id_pago = p.id_pago "
+                + "WHERE o.id_obligacion = ? OR p.id_pago = ? "
+                + "ORDER BY o.id_obligacion DESC "
+                + "LIMIT 1";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idBusqueda);
             ps.setInt(2, idBusqueda);
@@ -158,7 +149,6 @@ public class ComprobantePagoDAO {
                     parametros.put("CONCEPTO", conceptoStr != null ? conceptoStr.replace("_", " ") : "PAGO");
                     parametros.put("DESCRIPCION", rs.getString("descripcion"));
 
-                    // Convertir explícitamente a Double para JasperReports
                     double monto = rs.getDouble("monto");
                     parametros.put("MONTO", monto);
                     parametros.put("SECRETARIA_NOMBRE", "Secretaría General");
@@ -172,14 +162,11 @@ public class ComprobantePagoDAO {
         return parametros;
     }
 
-    // Obtener todos los comprobantes
     public ArrayList<ComprobantePago> obtenerTodos() {
         ArrayList<ComprobantePago> comprobantes = new ArrayList<>();
         String sql = "SELECT id_comprobante, id_pago, numero_comprobante, fecha_emision, tipo FROM comprobante_pago ORDER BY id_comprobante DESC";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 comprobantes.add(mapearComprobante(rs));
@@ -192,12 +179,10 @@ public class ComprobantePagoDAO {
         return comprobantes;
     }
 
-    // Buscar comprobante por ID
     public ComprobantePago buscarPorId(int idComprobante) {
         String sql = "SELECT id_comprobante, id_pago, numero_comprobante, fecha_emision, tipo FROM comprobante_pago WHERE id_comprobante = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idComprobante);
 
@@ -214,12 +199,10 @@ public class ComprobantePagoDAO {
         return null;
     }
 
-    // Buscar comprobante por ID de pago
     public ComprobantePago buscarPorPago(int idPago) {
         String sql = "SELECT id_comprobante, id_pago, numero_comprobante, fecha_emision, tipo FROM comprobante_pago WHERE id_pago = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPago);
 

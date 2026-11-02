@@ -16,8 +16,9 @@ import servicio.SeguridadService;
  *
  * @author fernan
  */
-@Path("/admin")
+@Path("admin")
 public class AdminResource {
+
     private final SeguridadService seguridadService;
 
     public AdminResource() {
@@ -54,14 +55,12 @@ public class AdminResource {
                                    "rol": "%s"
                                }
                                """.formatted(
-                                       usuario.getUsername(),
-                                       usuario.getRol()
-                               );
+                usuario.getUsername(),
+                usuario.getRol()
+        );
 
         return Response.ok(respuestaJson).build();
     }
-
-    // Método auxiliar privado para generar respuestas JSON estándar de error
     private String jsonMensaje(String mensaje) {
         return """
                {

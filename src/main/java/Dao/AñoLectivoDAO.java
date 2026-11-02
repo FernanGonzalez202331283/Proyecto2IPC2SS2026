@@ -12,17 +12,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import modelo.AñoLectivo;
+import modelo.añoLectivo.AñoLectivo;
 
 public class AñoLectivoDAO {
-
-    public boolean insertar(AñoLectivo añoLectivo) {
+public boolean insertar(AñoLectivo añoLectivo) {
         String sql = """
                      INSERT INTO año_lectivo (año, fecha_inicio, fecha_fin, estado)
                      VALUES (?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, añoLectivo.getAnio());
@@ -45,7 +44,7 @@ public class AñoLectivoDAO {
                      WHERE id_año_lectivo = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idAñoLectivo);
@@ -71,8 +70,8 @@ public class AñoLectivoDAO {
 
         List<AñoLectivo> añosLectivos = new ArrayList<>();
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
@@ -86,6 +85,48 @@ public class AñoLectivoDAO {
         return añosLectivos;
     }
 
+    public List<AñoLectivo> obtenerPaginados(int limite, int offset) {
+        String sql = """
+                     SELECT id_año_lectivo, año, fecha_inicio, fecha_fin, estado
+                     FROM año_lectivo
+                     LIMIT ? OFFSET ?
+                     """;
+
+        List<AñoLectivo> añosLectivos = new ArrayList<>();
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    añosLectivos.add(mapResultSetToAñoLectivo(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error al obtener años lectivos paginados: " + e.getMessage());
+        }
+
+        return añosLectivos;
+    }
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM año_lectivo";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al contar años lectivos: " + e.getMessage());
+        }
+        return 0;
+    }
+
     public boolean actualizar(AñoLectivo añoLectivo) {
         String sql = """
                      UPDATE año_lectivo
@@ -93,7 +134,7 @@ public class AñoLectivoDAO {
                      WHERE id_año_lectivo = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, añoLectivo.getAnio());
@@ -116,7 +157,7 @@ public class AñoLectivoDAO {
                      WHERE id_año_lectivo = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
@@ -138,7 +179,7 @@ public class AñoLectivoDAO {
                      LIMIT 1
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, año);

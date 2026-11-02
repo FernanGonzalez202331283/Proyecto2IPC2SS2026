@@ -18,7 +18,7 @@ import jakarta.ws.rs.core.Response;
  *
  * @author fernan
  */
-@Path("/logout")
+@Path("logout")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class LogoutResource {

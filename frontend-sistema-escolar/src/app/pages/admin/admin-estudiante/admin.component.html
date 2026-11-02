@@ -1,0 +1,131 @@
+<div class="container my-4">
+
+  <!-- Encabezado -->
+  <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-people-fill me-2"></i>Gestión de Estudiantes</h3>
+      <small class="text-light opacity-75">Control de estado (Activo, Inactivo, Graduado) y listado general</small>
+    </div>
+    <a routerLink="/admin/dashboard" class="btn btn-outline-light btn-sm fw-semibold">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver
+    </a>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Tarjeta Principal de Listado -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-list-task me-2"></i>Estudiantes Registrados</h6>
+      <span class="badge bg-dark">Total: {{ totalRegistros }}</span>
+    </div>
+
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-dark">
+            <tr>
+              <th>Código</th>
+              <th>Estudiante</th>
+              <th>DPI</th>
+              <th>Teléfono</th>
+              <th>Correo</th>
+              <th>Estado Actual</th>
+              <th class="text-center">Cambiar Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cargando) {
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                  Cargando estudiantes...
+                </td>
+              </tr>
+            } @else if (estudiantes.length === 0) {
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">No se encontraron estudiantes registrados.</td>
+              </tr>
+            } @else {
+              @for (e of estudiantes; track e.idEstudiante || $index) {
+                <tr>
+                  <td class="fw-bold"><span class="badge bg-light text-dark border">{{ e.codigoEstudiante }}</span></td>
+                  <td>
+                    <span class="fw-bold text-dark">{{ e.persona?.nombres }} {{ e.persona?.apellidos }}</span>
+                    @if (e.informacionMedica) {
+                      <br><small class="text-muted"><i class="bi bi-heart-pulse text-danger me-1"></i>{{ e.informacionMedica }}</small>
+                    }
+                  </td>
+                  <td>{{ e.persona?.dpi }}</td>
+                  <td>{{ e.persona?.telefono || 'N/A' }}</td>
+                  <td>{{ e.persona?.correo || 'N/A' }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="obtenerBadgeClass(e.estado)">
+                      {{ e.estado }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group btn-group-sm">
+                      @for (est of estadosDisponibles; track est) {
+                        <button 
+                          type="button" 
+                          class="btn"
+                          [class.btn-success]="est === 'ACTIVO' && e.estado === 'ACTIVO'"
+                          [class.btn-outline-success]="est === 'ACTIVO' && e.estado !== 'ACTIVO'"
+                          [class.btn-secondary]="est === 'INACTIVO' && e.estado === 'INACTIVO'"
+                          [class.btn-outline-secondary]="est === 'INACTIVO' && e.estado !== 'INACTIVO'"
+                          [class.btn-primary]="est === 'GRADUADO' && e.estado === 'GRADUADO'"
+                          [class.btn-outline-primary]="est === 'GRADUADO' && e.estado !== 'GRADUADO'"
+                          [disabled]="e.estado === est || procesandoId === e.idEstudiante"
+                          (click)="cambiarEstado(e, est)">
+                          {{ est }}
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Paginación -->
+    @if (totalPaginas > 1) {
+      <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+        <button 
+          type="button"
+          class="btn btn-outline-secondary btn-sm" 
+          [disabled]="paginaActual === 1 || cargando" 
+          (click)="cambiarPagina(paginaActual - 1)">
+          <i class="bi bi-chevron-left me-1"></i> Anterior
+        </button>
+        <span class="small fw-semibold text-muted">
+          Página {{ paginaActual }} de {{ totalPaginas }}
+        </span>
+        <button 
+          type="button"
+          class="btn btn-outline-secondary btn-sm" 
+          [disabled]="paginaActual === totalPaginas || cargando" 
+          (click)="cambiarPagina(paginaActual + 1)">
+          Siguiente <i class="bi bi-chevron-right ms-1"></i>
+        </button>
+      </div>
+    }
+  </div>
+
+</div>

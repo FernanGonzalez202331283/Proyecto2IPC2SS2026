@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants'; 
@@ -48,15 +48,12 @@ export interface Expediente {
   providedIn: 'root'
 })
 export class ExpedienteService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/expedientes`;
   private httpOptions = { withCredentials: true };
 
-  constructor(private http: HttpClient) {}
-
   consultarExpediente(idEstudiante: number): Observable<Expediente> {
-    return this.http.get<Expediente>(
-      `${this.restConstants.getApiURL()}/expedientes/${idEstudiante}`,
-      this.httpOptions
-    );
+    return this.http.get<Expediente>(`${this.baseUrl}/${idEstudiante}`, this.httpOptions);
   }
 }

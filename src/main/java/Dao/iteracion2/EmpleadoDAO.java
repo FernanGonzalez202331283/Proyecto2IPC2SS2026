@@ -10,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import modelo.Persona;
+import modelo.Persona.Persona;
 import modelo.iteracion2.Empleado;
 
 /**
@@ -18,8 +18,6 @@ import modelo.iteracion2.Empleado;
  * @author fernan
  */
 public class EmpleadoDAO {
-    
-    // Registrar empleado
     public boolean registrar(Empleado empleado) {
 
         Connection connection = null;
@@ -28,8 +26,6 @@ public class EmpleadoDAO {
 
             connection = Conexion.getInstance().getConnection();
             connection.setAutoCommit(false);
-
-            // Registrar persona
             String sqlPersona = """
                                 INSERT INTO persona
                                 (nombres, apellidos, dpi, telefono, correo, direccion, estado)
@@ -49,20 +45,17 @@ public class EmpleadoDAO {
                 ps.executeUpdate();
             }
 
-            // Obtener ID de persona
             int idPersona = 0;
 
             String sqlId = "SELECT LAST_INSERT_ID()";
 
-            try (PreparedStatement psId = connection.prepareStatement(sqlId);
-                 ResultSet rs = psId.executeQuery()) {
+            try (PreparedStatement psId = connection.prepareStatement(sqlId); ResultSet rs = psId.executeQuery()) {
 
                 if (rs.next()) {
                     idPersona = rs.getInt(1);
                 }
             }
 
-            // Registrar empleado
             String sqlEmpleado = """
                                  INSERT INTO empleado
                                  (id_persona, puesto, fecha_contratacion, salario, estado)
@@ -111,7 +104,6 @@ public class EmpleadoDAO {
         }
     }
 
-    // Consultar empleado por ID
     public Empleado buscarPorId(int idEmpleado) {
 
         String sql = """
@@ -132,8 +124,7 @@ public class EmpleadoDAO {
                      WHERE e.id_empleado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEmpleado);
 
@@ -151,7 +142,6 @@ public class EmpleadoDAO {
         return null;
     }
 
-    // Consultar todos los empleados
     public ArrayList<Empleado> obtenerTodos() {
 
         ArrayList<Empleado> empleados = new ArrayList<>();
@@ -174,9 +164,7 @@ public class EmpleadoDAO {
                      ORDER BY e.id_empleado
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 empleados.add(mapearEmpleado(rs));
@@ -189,7 +177,6 @@ public class EmpleadoDAO {
         return empleados;
     }
 
-    // Actualizar empleado
     public boolean actualizar(Empleado empleado) {
 
         Connection connection = null;
@@ -199,7 +186,6 @@ public class EmpleadoDAO {
             connection = Conexion.getInstance().getConnection();
             connection.setAutoCommit(false);
 
-            // Actualizar información personal
             String sqlPersona = """
                                 UPDATE persona
                                 SET nombres = ?,
@@ -224,7 +210,6 @@ public class EmpleadoDAO {
                 ps.executeUpdate();
             }
 
-            // Actualizar información laboral
             String sqlEmpleado = """
                                  UPDATE empleado
                                  SET puesto = ?,
@@ -274,7 +259,6 @@ public class EmpleadoDAO {
         }
     }
 
-    // Cambiar estado del empleado
     public boolean cambiarEstado(int idEmpleado, boolean estado) {
 
         String sql = """
@@ -283,8 +267,7 @@ public class EmpleadoDAO {
                      WHERE id_empleado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
             ps.setInt(2, idEmpleado);
@@ -297,10 +280,8 @@ public class EmpleadoDAO {
         }
     }
 
-    // Registrar empleado utilizando una conexión existente
     public int registrar(Connection connection, Empleado empleado) throws SQLException {
 
-        // Registrar persona
         String sqlPersona = """
                             INSERT INTO persona
                             (nombres, apellidos, dpi, telefono, correo, direccion, estado)
@@ -320,20 +301,17 @@ public class EmpleadoDAO {
             ps.executeUpdate();
         }
 
-        // Obtener ID de persona
         int idPersona = 0;
 
         String sqlId = "SELECT LAST_INSERT_ID()";
 
-        try (PreparedStatement psId = connection.prepareStatement(sqlId);
-             ResultSet rs = psId.executeQuery()) {
+        try (PreparedStatement psId = connection.prepareStatement(sqlId); ResultSet rs = psId.executeQuery()) {
 
             if (rs.next()) {
                 idPersona = rs.getInt(1);
             }
         }
 
-        // Registrar empleado
         String sqlEmpleado = """
                              INSERT INTO empleado
                              (id_persona, puesto, fecha_contratacion, salario, estado)
@@ -351,11 +329,9 @@ public class EmpleadoDAO {
             ps.executeUpdate();
         }
 
-        // Retornar ID del empleado
         String sqlEmpleadoId = "SELECT LAST_INSERT_ID()";
 
-        try (PreparedStatement psId = connection.prepareStatement(sqlEmpleadoId);
-             ResultSet rs = psId.executeQuery()) {
+        try (PreparedStatement psId = connection.prepareStatement(sqlEmpleadoId); ResultSet rs = psId.executeQuery()) {
 
             if (rs.next()) {
                 return rs.getInt(1);
@@ -365,7 +341,6 @@ public class EmpleadoDAO {
         return 0;
     }
 
-    // Buscar empleado utilizando una conexión existente
     public Empleado buscarPorId(Connection connection, int idEmpleado)
             throws SQLException {
 
@@ -401,8 +376,7 @@ public class EmpleadoDAO {
 
         return null;
     }
-    
-    // Consultar empleado por ID de persona
+
     public Empleado buscarPorIdPersona(int idPersona) {
 
         String sql = """
@@ -423,8 +397,7 @@ public class EmpleadoDAO {
                      WHERE p.id_persona = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPersona);
 
@@ -442,7 +415,6 @@ public class EmpleadoDAO {
         return null;
     }
 
-    // Mapear empleado
     private Empleado mapearEmpleado(ResultSet rs) throws SQLException {
 
         Persona persona = new Persona();

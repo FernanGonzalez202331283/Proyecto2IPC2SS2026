@@ -1,6 +1,6 @@
 <div class="container my-4">
   
-  <!-- Encabezado -->
+  <!-- Encabezado con Navegación Dinámica -->
   <div class="p-3 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
     <div>
       <h3 class="fw-bold mb-0"><i class="bi bi-people-fill me-2"></i>CU005: Gestión de Usuarios Operativos</h3>
@@ -29,7 +29,7 @@
 
   <div class="row g-4">
 
-    <!-- Formulario Integrado (5 columnas) -->
+    <!-- Formulario Integrado -->
     <div class="col-lg-5">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-dark text-white py-2">
@@ -98,7 +98,7 @@
               </div>
             </div>
 
-            <!-- Datos Laborales (Solo en Creación) -->
+            <!-- Datos Laborales (Solo Creación) -->
             @if (!modoEdicion) {
               <span class="fw-bold text-secondary small d-block border-bottom pb-1 mb-2">
                 <i class="bi bi-briefcase-fill me-1"></i>Información Contratación
@@ -187,12 +187,12 @@
       </div>
     </div>
 
-    <!-- Tabla de Usuarios Operativos (7 columnas) -->
+    <!-- Tabla Paginada de Usuarios Operativos -->
     <div class="col-lg-7">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-bold text-secondary">Personal Operativo Registrado</h6>
-          <span class="badge bg-primary">Total: {{ usuarios.length }}</span>
+          <span class="badge bg-primary">Total: {{ totalRegistros }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -216,37 +216,38 @@
                     <td colspan="5" class="text-center py-3 text-muted">Sin usuarios operativos registrados.</td>
                   </tr>
                 } @else {
-                  @for (u of usuarios; track u.idUsuario) {
+                  @for (u of usuarios; track u.idUsuario || u.usuario?.idUsuario || $index) {
                     <tr>
-                      <td class="fw-bold text-secondary">#{{ u.idUsuario }}</td>
+                      <td class="fw-bold text-secondary">#{{ u.idUsuario || u.usuario?.idUsuario }}</td>
                       <td>
-                        <div class="fw-bold text-dark">{{ u.username }}</div>
+                        <div class="fw-bold text-dark">{{ u.username || u.usuario?.username }}</div>
                         @if (u.persona) {
                           <small class="text-muted">{{ u.persona.nombres }} {{ u.persona.apellidos }}</small>
                         }
                       </td>
                       <td>
                         <span class="badge bg-info text-dark">
-                          {{ u.rol === 'PERSONAL' ? 'MANTENIMIENTO' : u.rol }}
+                          {{ (u.rol || u.usuario?.rol) === 'PERSONAL' ? 'MANTENIMIENTO' : (u.rol || u.usuario?.rol) }}
                         </span>
                       </td>
                       <td>
-                        <span class="badge" [class.bg-success]="u.estado" [class.bg-secondary]="!u.estado">
-                          {{ u.estado ? 'Activo' : 'Inactivo' }}
+                        <span class="badge" [class.bg-success]="u.estado ?? u.usuario?.estado" [class.bg-secondary]="!(u.estado ?? u.usuario?.estado)">
+                          {{ (u.estado ?? u.usuario?.estado) ? 'Activo' : 'Inactivo' }}
                         </span>
                       </td>
                       <td class="text-center">
                         <div class="btn-group btn-group-sm">
-                          <button (click)="editarUsuario(u)" class="btn btn-outline-primary" title="Editar">
+                          <button type="button" (click)="editarUsuario(u)" class="btn btn-outline-primary" title="Editar">
                             <i class="bi bi-pencil-fill"></i>
                           </button>
                           <button 
+                            type="button"
                             (click)="toggleEstado(u)" 
                             class="btn" 
-                            [class.btn-outline-danger]="u.estado" 
-                            [class.btn-outline-success]="!u.estado"
-                            title="{{ u.estado ? 'Desactivar' : 'Activar' }}">
-                            <i class="bi" [class.bi-person-x-fill]="u.estado" [class.bi-person-check-fill]="!u.estado"></i>
+                            [class.btn-outline-danger]="u.estado ?? u.usuario?.estado" 
+                            [class.btn-outline-success]="!(u.estado ?? u.usuario?.estado)"
+                            title="{{ (u.estado ?? u.usuario?.estado) ? 'Desactivar' : 'Activar' }}">
+                            <i class="bi" [class.bi-person-x-fill]="u.estado ?? u.usuario?.estado" [class.bi-person-check-fill]="!(u.estado ?? u.usuario?.estado)"></i>
                           </button>
                         </div>
                       </td>
@@ -257,6 +258,29 @@
             </table>
           </div>
         </div>
+
+        <!-- Controles de Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

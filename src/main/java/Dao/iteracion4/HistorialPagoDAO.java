@@ -17,7 +17,7 @@ import modelo.iteracion4.HistorialPago;
  * @author fernan
  */
 public class HistorialPagoDAO {
-    
+
     public ArrayList<HistorialPago> obtenerHistorial(int idEstudiante) {
 
         ArrayList<HistorialPago> historial = new ArrayList<>();
@@ -48,8 +48,7 @@ public class HistorialPagoDAO {
                 ORDER BY p.fecha_pago DESC
                      """;
 
-        try (Connection conexion = Conexion.getInstance().getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+        try (Connection conexion = Conexion.getInstance().getConnection(); PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
 

@@ -1,7 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
-import { MultaService, Multa } from '../../../services/multa.service';
+import { MultaService, Multa, RespuestaPaginada } from '../../../services/multa.service';
 import { CommonModule } from '@angular/common';
-
+import { Location } from '@angular/common';
+import { Router } from '@angular/router';
 @Component({
   selector: 'app-multa',
   standalone: true,
@@ -14,22 +15,33 @@ export class MultaComponent implements OnInit {
   successMessage: string = '';
   errorMessage: string = '';
 
+  paginaActual: number = 1;
+  limite: number = 10;
+  totalPaginas: number = 0;
+  totalRegistros: number = 0;
+
   constructor(
     private multaService: MultaService,
     private cdr: ChangeDetectorRef,
+    private location: Location,
+    private router: Router,
     private ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
-    this.cargarMultas();
+    this.cargarMultas(1);
   }
 
-  cargarMultas(): void {
+  cargarMultas(pagina: number = 1): void {
     this.cargando = true;
-    this.multaService.obtenerTodas().subscribe({
-      next: (data) => {
+    this.paginaActual = pagina;
+
+    this.multaService.obtenerTodas(this.paginaActual, this.limite).subscribe({
+      next: (res: RespuestaPaginada<Multa>) => {
         this.ngZone.run(() => {
-          this.multas = data || [];
+          this.multas = res.contenido || [];
+          this.totalRegistros = res.totalRegistros || 0;
+          this.totalPaginas = res.totalPaginas || 0;
           this.cargando = false;
           this.cdr.detectChanges();
         });
@@ -44,6 +56,12 @@ export class MultaComponent implements OnInit {
     });
   }
 
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+      this.cargarMultas(nuevaPagina);
+    }
+  }
+
   pagarMulta(idMulta: number): void {
     this.errorMessage = '';
     this.successMessage = '';
@@ -52,7 +70,7 @@ export class MultaComponent implements OnInit {
       next: (res) => {
         this.ngZone.run(() => {
           this.successMessage = res?.mensaje || 'Multa marcada como PAGADA.';
-          this.cargarMultas();
+          this.cargarMultas(this.paginaActual);
         });
       },
       error: (err) => {
@@ -62,5 +80,12 @@ export class MultaComponent implements OnInit {
         });
       }
     });
+  }
+  volverDashboard(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/']);
+    }
   }
 }

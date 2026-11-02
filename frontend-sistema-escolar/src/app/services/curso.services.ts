@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -10,35 +10,42 @@ export interface Curso {
   estado: boolean;
 }
 
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class CursoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/cursos`;
 
-  private httpOptions = {
-    withCredentials: true
-  };
+  obtenerCursos(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Curso>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
 
-  constructor(private http: HttpClient) {}
-
-  obtenerCursos(): Observable<Curso[]> {
-    return this.http.get<Curso[]>(`${this.restConstants.getApiURL()}/cursos`, this.httpOptions);
+    return this.http.get<RespuestaPaginada<Curso>>(this.baseUrl, { params });
   }
 
   buscarPorId(id: number): Observable<Curso> {
-    return this.http.get<Curso>(`${this.restConstants.getApiURL()}/cursos/${id}`, this.httpOptions);
+    return this.http.get<Curso>(`${this.baseUrl}/${id}`);
   }
 
   registrarCurso(curso: Curso): Observable<any> {
-    return this.http.post(`${this.restConstants.getApiURL()}/cursos`, curso, this.httpOptions);
+    return this.http.post(this.baseUrl, curso);
   }
 
   actualizarCurso(id: number, curso: Curso): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/cursos/${id}`, curso, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}`, curso);
   }
 
   cambiarEstado(id: number, estado: boolean): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/cursos/${id}/estado`, { estado }, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}/estado`, { estado });
   }
 }

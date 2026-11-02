@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 import { EstudianteEncargado } from './estudiante.service';
@@ -13,32 +13,46 @@ export interface Inscripcion {
   encargados?: EstudianteEncargado[];
 }
 
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class InscripcionService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/inscripciones`;
   private httpOptions = { withCredentials: true };
 
-  constructor(private http: HttpClient) {}
+  obtenerInscripciones(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Inscripcion>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
 
-  obtenerInscripciones(): Observable<Inscripcion[]> {
-    return this.http.get<Inscripcion[]>(`${this.restConstants.getApiURL()}/inscripciones`, this.httpOptions);
+    return this.http.get<RespuestaPaginada<Inscripcion>>(this.baseUrl, {
+      ...this.httpOptions,
+      params
+    });
   }
 
   buscarPorId(id: number): Observable<Inscripcion> {
-    return this.http.get<Inscripcion>(`${this.restConstants.getApiURL()}/inscripciones/${id}`, this.httpOptions);
+    return this.http.get<Inscripcion>(`${this.baseUrl}/${id}`, this.httpOptions);
   }
 
   registrarInscripcion(inscripcion: Inscripcion): Observable<any> {
-    return this.http.post(`${this.restConstants.getApiURL()}/inscripciones`, inscripcion, this.httpOptions);
+    return this.http.post(this.baseUrl, inscripcion, this.httpOptions);
   }
 
   actualizarInscripcion(id: number, inscripcion: Inscripcion): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/inscripciones/${id}`, inscripcion, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}`, inscripcion, this.httpOptions);
   }
 
   cambiarEstado(id: number, estado: string): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/inscripciones/${id}/estado`, { estado }, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}/estado`, { estado }, this.httpOptions);
   }
 }

@@ -12,8 +12,10 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import modelo.Usuario;
@@ -27,7 +29,7 @@ import servicio.etapa3.NotaService;
  *
  * @author fernan
  */
-@Path("/notas")
+@Path("notas")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class NotaResource {
@@ -39,19 +41,26 @@ public class NotaResource {
     private final NotaDAO notaDAO = new NotaDAO();
     private final JwtService jwtService = new JwtService();
 
-    private Response validarAcceso(String authHeader, String mensajePermiso) {
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
+
+    private Usuario extraerUsuarioDeHeader(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
-                    .build();
+            return null;
         }
+        String token = authHeader.substring(7).trim();
+        return jwtService.obtenerUsuarioDesdeToken(token);
+    }
 
-        String token = authHeader.substring(7);
-        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-
+    private Response validarAcceso(Usuario usuario, String mensajePermiso) {
         if (usuario == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Token inválido o expirado."))
+                    .entity(jsonMensaje("Token inválido, expirado o no proporcionado."))
                     .build();
         }
 
@@ -65,27 +74,24 @@ public class NotaResource {
         return null;
     }
 
-    private Empleado obtenerEmpleadoMaestro(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
-        String token = authHeader.substring(7);
-        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-        if (usuario == null || !"MAESTRO".equals(usuario.getRol())) return null;
-        return empleadoDAO.buscarPorIdPersona(usuario.getIdPersona());
-    }
+    private boolean puedeGestionarActividad(Usuario usuario, int idActividad) {
+        if (usuario == null) {
+            return false;
+        }
 
-    private boolean puedeGestionarActividad(String authHeader, int idActividad) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
-        String token = authHeader.substring(7);
-        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-        if (usuario == null) return false;
-
-        if ("SUPER_ADMIN".equals(usuario.getRol())) return true;
+        if ("SUPER_ADMIN".equals(usuario.getRol())) {
+            return true;
+        }
 
         Empleado empleado = empleadoDAO.buscarPorIdPersona(usuario.getIdPersona());
-        if (empleado == null) return false;
+        if (empleado == null) {
+            return false;
+        }
 
         Actividad actividad = actividadDAO.buscarPorId(idActividad);
-        if (actividad == null) return false;
+        if (actividad == null) {
+            return false;
+        }
 
         return asistenciaDAO.asignacionPerteneceEmpleado(
                 actividad.getIdAsignacion(),
@@ -93,20 +99,14 @@ public class NotaResource {
         );
     }
 
-    private String jsonMensaje(String mensaje) {
-        return """
-               {
-                   "mensaje": "%s"
-               }
-               """.formatted(mensaje);
-    }
-
     @POST
     public Response registrar(
             @HeaderParam("Authorization") String authHeader,
             Nota nota) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para registrar notas.");
+        Usuario usuario = extraerUsuarioDeHeader(authHeader);
+        
+        Response acceso = validarAcceso(usuario, "No tiene permisos para registrar notas.");
         if (acceso != null) return acceso;
 
         if (nota == null) {
@@ -115,7 +115,7 @@ public class NotaResource {
                     .build();
         }
 
-        if (!puedeGestionarActividad(authHeader, nota.getIdActividad())) {
+        if (!puedeGestionarActividad(usuario, nota.getIdActividad())) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(jsonMensaje("No tiene permisos para registrar notas en esta actividad."))
                     .build();
@@ -134,14 +134,15 @@ public class NotaResource {
                 .build();
     }
 
-    // --- NUEVO ENDPOINT PARA GUARDAR LIBRETA COMPLETA EN LOTE ---
     @POST
     @Path("/masivo")
     public Response registrarMasivo(
             @HeaderParam("Authorization") String authHeader,
             List<Nota> listaNotas) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para registrar notas.");
+        Usuario usuario = extraerUsuarioDeHeader(authHeader);
+        
+        Response acceso = validarAcceso(usuario, "No tiene permisos para registrar notas.");
         if (acceso != null) return acceso;
 
         if (listaNotas == null || listaNotas.isEmpty()) {
@@ -152,7 +153,7 @@ public class NotaResource {
 
         int procesadas = 0;
         for (Nota nota : listaNotas) {
-            if (puedeGestionarActividad(authHeader, nota.getIdActividad())) {
+            if (puedeGestionarActividad(usuario, nota.getIdActividad())) {
                 if (notaDAO.existeNota(nota.getIdActividad(), nota.getIdInscripcion())) {
                     Nota existente = notaDAO.buscarPorActividadEInscripcion(nota.getIdActividad(), nota.getIdInscripcion());
                     nota.setIdNota(existente.getIdNota());
@@ -173,10 +174,12 @@ public class NotaResource {
             @HeaderParam("Authorization") String authHeader,
             @PathParam("idActividad") int idActividad) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar notas.");
+        Usuario usuario = extraerUsuarioDeHeader(authHeader);
+        
+        Response acceso = validarAcceso(usuario, "No tiene permisos para consultar notas.");
         if (acceso != null) return acceso;
 
-        if (!puedeGestionarActividad(authHeader, idActividad)) {
+        if (!puedeGestionarActividad(usuario, idActividad)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(jsonMensaje("No tiene permisos para consultar las notas de esta actividad."))
                     .build();
@@ -198,7 +201,9 @@ public class NotaResource {
             @HeaderParam("Authorization") String authHeader,
             @PathParam("idInscripcion") int idInscripcion) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar notas.");
+        Usuario usuario = extraerUsuarioDeHeader(authHeader);
+        
+        Response acceso = validarAcceso(usuario, "No tiene permisos para consultar notas.");
         if (acceso != null) return acceso;
 
         if (idInscripcion <= 0) {
@@ -218,7 +223,9 @@ public class NotaResource {
             @PathParam("id") int id,
             Nota nota) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para actualizar notas.");
+        Usuario usuario = extraerUsuarioDeHeader(authHeader);
+        
+        Response acceso = validarAcceso(usuario, "No tiene permisos para actualizar notas.");
         if (acceso != null) return acceso;
 
         if (nota == null) {
@@ -234,8 +241,8 @@ public class NotaResource {
                     .build();
         }
 
-        if (!puedeGestionarActividad(authHeader, existente.getIdActividad())
-                || !puedeGestionarActividad(authHeader, nota.getIdActividad())) {
+        if (!puedeGestionarActividad(usuario, existente.getIdActividad())
+                || !puedeGestionarActividad(usuario, nota.getIdActividad())) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(jsonMensaje("No tiene permisos para actualizar esta nota."))
                     .build();

@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -37,25 +37,38 @@ export interface Estudiante {
   idPersona?: number;
   codigoEstudiante: string;
   informacionMedica?: string;
-  estado: string;
+  estado: string; 
   persona: Persona;
   encargados?: EstudianteEncargado[];
+}
+
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class EstudianteService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
 
   private httpOptions = {
     withCredentials: true
   };
 
-  constructor(private http: HttpClient) {}
+  obtenerEstudiantes(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Estudiante>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
 
-  obtenerEstudiantes(): Observable<Estudiante[]> {
-    return this.http.get<Estudiante[]>(`${this.restConstants.getApiURL()}/estudiantes`, this.httpOptions);
+    return this.http.get<RespuestaPaginada<Estudiante>>(
+      `${this.restConstants.getApiURL()}/estudiantes`,
+      { ...this.httpOptions, params }
+    );
   }
 
   buscarPorId(id: number): Observable<Estudiante> {

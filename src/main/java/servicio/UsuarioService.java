@@ -4,20 +4,24 @@
  */
 package servicio;
 
+import modelo.RespuestaPaginada;
 import Dao.PersonaDAO;
 import Dao.UsuarioDAO;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
-import modelo.Persona;
+import java.util.stream.Collectors;
+import modelo.Persona.Persona;
 import modelo.Usuario;
+import modelo.usuario.UsuarioRequest;
+import modelo.usuario.UsuarioResponse;
 
 /**
  *
  * @author fernan
  */
 public class UsuarioService {
-  private final UsuarioDAO usuarioDAO;
+ private final UsuarioDAO usuarioDAO;
     private final PersonaDAO personaDAO;
 
     public UsuarioService() {
@@ -25,88 +29,92 @@ public class UsuarioService {
         this.personaDAO = new PersonaDAO();
     }
 
-    public Usuario buscarUsuario(int idUsuario) {
-        return usuarioDAO.buscarPorId(idUsuario);
+    public UsuarioResponse buscarUsuario(int idUsuario) {
+        if (idUsuario <= 0) return null;
+        Usuario usuario = usuarioDAO.buscarPorId(idUsuario);
+        return usuario != null ? mapToResponse(usuario) : null;
     }
 
-    public List<Usuario> obtenerUsuarios() {
-        return usuarioDAO.obtenerTodos();
+    public RespuestaPaginada<UsuarioResponse> obtenerUsuariosPaginados(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        List<Usuario> listaEntities = usuarioDAO.obtenerPaginados(limite, offset);
+        int totalRegistros = usuarioDAO.contarTotalUsuarios();
+
+        List<UsuarioResponse> listaResponses = listaEntities.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new RespuestaPaginada<>(listaResponses, pagina, limite, totalRegistros);
     }
 
-    public String registrarUsuario(Usuario usuario, String rolSesion) {
-        String errorValidacion = validarDatosBasicos(usuario);
-        if (errorValidacion != null) {
-            return errorValidacion;
-        }
+    public String registrarUsuario(UsuarioRequest request, String rolSesion) {
+        if (request == null) return "Los datos del usuario son obligatorios";
 
-        // Permisos según el rol de la sesión activa
-        if ("SUPER_ADMIN".equals(usuario.getRol()) && !"SUPER_ADMIN".equals(rolSesion)) {
+        String errorValidacion = validarDatosBasicos(request, true);
+        if (errorValidacion != null) return errorValidacion;
+
+        if ("SUPER_ADMIN".equals(request.getRol()) && !"SUPER_ADMIN".equals(rolSesion)) {
             return "No tiene permisos para crear un SUPER_ADMIN";
         }
 
-        if ("ADMIN".equals(usuario.getRol()) && !"SUPER_ADMIN".equals(rolSesion)) {
+        if ("ADMIN".equals(request.getRol()) && !"SUPER_ADMIN".equals(rolSesion)) {
             return "No tiene permisos para crear un ADMIN";
         }
 
-        // Verificar duplicidad de username
-        Usuario existente = usuarioDAO.buscarPorUsername(usuario.getUsername());
+        Usuario existente = usuarioDAO.buscarPorUsername(request.getUsername().trim());
         if (existente != null) {
             return "El username ya está registrado";
         }
 
-        // 1. Registro en cascada de la Persona si viene el objeto anidado
-        if (usuario.getPersona() != null) {
-            Persona persona = usuario.getPersona();
+        int idPersonaFinal = 0;
+        if (request.getPersona() != null) {
+            Persona persona = request.getPersona();
             String errorPersona = validarPersona(persona);
-            if (errorPersona != null) {
-                return errorPersona;
-            }
+            if (errorPersona != null) return errorPersona;
 
             persona.setEstado(true);
-            int idPersonaGenerado = personaDAO.insertarObteniendoId(persona);
-
-            if (idPersonaGenerado <= 0) {
+            idPersonaFinal = personaDAO.insertarObteniendoId(persona);
+            if (idPersonaFinal <= 0) {
                 return "No se pudieron registrar los datos personales";
             }
-
-            usuario.setIdPersona(idPersonaGenerado);
-        } else if (usuario.getIdPersona() <= 0) {
+        } else if (request.getIdPersona() != null && request.getIdPersona() > 0) {
+            idPersonaFinal = request.getIdPersona();
+        } else {
             return "Debe asignar una persona válida al usuario";
         }
 
-        // 2. Codificar contraseña a Base64 antes de guardar
-        String contraseñaBase64 = codificarBase64(usuario.getContraseña());
-        usuario.setContraseña(contraseñaBase64);
+        Usuario nuevoUsuario = new Usuario();
+        nuevoUsuario.setUsername(request.getUsername().trim());
+        nuevoUsuario.setContraseña(codificarBase64(request.getContraseña()));
+        nuevoUsuario.setRol(request.getRol().trim());
+        nuevoUsuario.setEstado(request.getEstado() != null ? request.getEstado() : true);
+        nuevoUsuario.setIdPersona(idPersonaFinal);
+        nuevoUsuario.setDebeCambiarClave(true);
 
-        // 3. Insertar la cuenta de Usuario
-        boolean registrado = usuarioDAO.insertar(usuario);
+        boolean registrado = usuarioDAO.insertar(nuevoUsuario);
         return registrado ? "OK" : "No se pudo registrar el usuario";
     }
 
-    public String actualizarUsuario(Usuario usuario) {
-        if (usuario == null) {
-            return "Los datos del usuario son obligatorios";
+    public String actualizarUsuario(int idUsuario, UsuarioRequest request) {
+        if (request == null) return "Los datos del usuario son obligatorios";
+        if (idUsuario <= 0) return "El ID de usuario no es válido";
+
+        Usuario actual = usuarioDAO.buscarPorId(idUsuario);
+        if (actual == null) return "El usuario no existe";
+
+        String errorValidacion = validarDatosBasicos(request, false);
+        if (errorValidacion != null) return errorValidacion;
+
+        if (request.getPersona() != null && request.getPersona().getIdPersona() > 0) {
+            personaDAO.actualizar(request.getPersona());
         }
 
-        Usuario actual = usuarioDAO.buscarPorId(usuario.getIdUsuario());
-        if (actual == null) {
-            return "El usuario no existe";
-        }
-
-        String errorValidacion = validarDatosBasicos(usuario);
-        if (errorValidacion != null) {
-            return errorValidacion;
-        }
-
-        // Si se enviaron datos de persona para actualizar
-        if (usuario.getPersona() != null && usuario.getPersona().getIdPersona() > 0) {
-            personaDAO.actualizar(usuario.getPersona());
-        }
-
-        // Protección para el último SUPER_ADMIN activo
         if ("SUPER_ADMIN".equals(actual.getRol()) && actual.isEstado()) {
-            boolean dejaDeSerSuperAdmin = !"SUPER_ADMIN".equals(usuario.getRol());
-            boolean seDesactiva = !usuario.isEstado();
+            boolean dejaDeSerSuperAdmin = !"SUPER_ADMIN".equals(request.getRol());
+            boolean seDesactiva = request.getEstado() != null && !request.getEstado();
 
             if (dejaDeSerSuperAdmin || seDesactiva) {
                 int cantidadSuperAdmin = usuarioDAO.contarSuperAdmin();
@@ -116,60 +124,55 @@ public class UsuarioService {
             }
         }
 
-        // Verificar que el nuevo username no esté ocupado por otro usuario
-        Usuario usuarioExistente = usuarioDAO.buscarPorUsername(usuario.getUsername());
-        if (usuarioExistente != null && usuarioExistente.getIdUsuario() != usuario.getIdUsuario()) {
+        Usuario usuarioExistente = usuarioDAO.buscarPorUsername(request.getUsername().trim());
+        if (usuarioExistente != null && usuarioExistente.getIdUsuario() != idUsuario) {
             return "El username ya está registrado";
         }
 
-        // Codificar la nueva contraseña en Base64 si fue modificada
-        if (usuario.getContraseña() != null 
-                && !usuario.getContraseña().trim().isEmpty() 
-                && !usuario.getContraseña().equals(actual.getContraseña())) {
-            usuario.setContraseña(codificarBase64(usuario.getContraseña()));
-        } else {
-            usuario.setContraseña(actual.getContraseña());
+        actual.setUsername(request.getUsername().trim());
+        actual.setRol(request.getRol().trim());
+        if (request.getEstado() != null) actual.setEstado(request.getEstado());
+
+        if (request.getContraseña() != null && !request.getContraseña().trim().isEmpty()) {
+            actual.setContraseña(codificarBase64(request.getContraseña()));
         }
 
-        boolean actualizado = usuarioDAO.actualizar(usuario);
+        boolean actualizado = usuarioDAO.actualizar(actual);
         return actualizado ? "OK" : "No se pudo actualizar el usuario";
     }
 
-    public String cambiarEstadoUsuario(int idUsuario, boolean estado) {
-        Usuario usuario = usuarioDAO.buscarPorId(idUsuario);
-        if (usuario == null) {
-            return "El usuario no existe";
-        }
+    public String cambiarEstadoUsuario(int idUsuario, UsuarioRequest request) {
+        if (idUsuario <= 0) return "El ID de usuario no es válido";
 
-        if ("SUPER_ADMIN".equals(usuario.getRol()) && usuario.isEstado() && !estado) {
+        Usuario usuario = usuarioDAO.buscarPorId(idUsuario);
+        if (usuario == null) return "El usuario no existe";
+
+        boolean nuevoEstado = request != null && request.getEstado() != null ? request.getEstado() : !usuario.isEstado();
+
+        if ("SUPER_ADMIN".equals(usuario.getRol()) && usuario.isEstado() && !nuevoEstado) {
             int cantidadSuperAdmin = usuarioDAO.contarSuperAdmin();
             if (cantidadSuperAdmin <= 1) {
                 return "No se puede desactivar el último SUPER_ADMIN";
             }
         }
 
-        boolean actualizado = usuarioDAO.actualizarEstado(idUsuario, estado);
+        boolean actualizado = usuarioDAO.actualizarEstado(idUsuario, nuevoEstado);
         return actualizado ? "OK" : "No se pudo cambiar el estado del usuario";
     }
 
-    // Validación de campos obligatorios del usuario
-    private String validarDatosBasicos(Usuario usuario) {
-        if (usuario == null) {
-            return "Los datos del usuario son obligatorios";
-        }
-        if (usuario.getUsername() == null || usuario.getUsername().trim().isEmpty()) {
+    private String validarDatosBasicos(UsuarioRequest request, boolean contraseñaObligatoria) {
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
             return "El username es obligatorio";
         }
-        if (usuario.getContraseña() == null || usuario.getContraseña().trim().isEmpty()) {
+        if (contraseñaObligatoria && (request.getContraseña() == null || request.getContraseña().trim().isEmpty())) {
             return "La contraseña es obligatoria";
         }
-        if (usuario.getRol() == null || usuario.getRol().trim().isEmpty()) {
+        if (request.getRol() == null || request.getRol().trim().isEmpty()) {
             return "El rol es obligatorio";
         }
         return null;
     }
 
-    // Validación interna de datos personales
     private String validarPersona(Persona persona) {
         if (persona.getNombres() == null || persona.getNombres().trim().isEmpty()) {
             return "Los nombres de la persona son obligatorios";
@@ -187,6 +190,19 @@ public class UsuarioService {
             }
         }
         return null;
+    }
+
+    private UsuarioResponse mapToResponse(Usuario usuario) {
+        UsuarioResponse response = new UsuarioResponse();
+        response.setIdUsuario(usuario.getIdUsuario());
+        response.setUsername(usuario.getUsername());
+        response.setIdPersona(usuario.getIdPersona());
+        response.setRol(usuario.getRol());
+        response.setEstado(usuario.isEstado());
+        response.setFechaCreacion(usuario.getFechaCreacion());
+        response.setDebeCambiarClave(usuario.isDebeCambiarClave());
+        response.setPersona(usuario.getPersona());
+        return response;
     }
 
     private String codificarBase64(String texto) {

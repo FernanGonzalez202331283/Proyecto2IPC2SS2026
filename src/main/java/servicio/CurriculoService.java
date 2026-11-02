@@ -9,157 +9,105 @@ import Dao.CurriculoDAO;
 import Dao.CursoDAO;
 import Dao.GradoDAO;
 import java.util.ArrayList;
-import modelo.Curriculo;
+import java.util.List;
+import java.util.stream.Collectors;
+import modelo.curriculo.Curriculo;
+import modelo.RespuestaPaginada;
+import modelo.curriculo.CurriculoRequest;
+import modelo.curriculo.CurriculoResponse;
 
 public class CurriculoService {
-    private final CurriculoDAO curriculoDAO; 
+   private final CurriculoDAO curriculoDAO; 
     private final GradoDAO gradoDAO; 
     private final CursoDAO cursoDAO;
     private final AñoLectivoDAO añolectivoDAO;
-    
+
     public CurriculoService() {
         this.curriculoDAO = new CurriculoDAO();
         this.gradoDAO = new GradoDAO();
         this.cursoDAO = new CursoDAO();
         this.añolectivoDAO = new AñoLectivoDAO();
     }
-    
-    public String registrarCurriculo(Curriculo curriculo) {
-        if (curriculo == null) {
-            return "El currículo no puede ser nulo.";
-        }
+
+    public RespuestaPaginada<CurriculoResponse> obtenerCurriculosPaginados(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        List<Curriculo> lista = curriculoDAO.obtenerPaginados(limite, offset);
         
-        if (curriculo.getIdGrado() <= 0) {
-            return "El ID del grado no es válido.";
+        List<CurriculoResponse> listaResponse = lista.stream()
+                .map(CurriculoResponse::new)
+                .collect(Collectors.toList());
+                
+        int totalRegistros = curriculoDAO.contarTotal();
+        int totalPaginas = (int) Math.ceil((double) totalRegistros / limite);
+        if (totalPaginas == 0) totalPaginas = 1;
+
+        return new RespuestaPaginada<>(listaResponse, pagina, totalPaginas, totalRegistros);
+    }
+
+    public String registrarCurriculo(CurriculoRequest request) {
+        if (request == null) return "La petición no puede ser nula.";
+        if (request.getIdGrado() <= 0) return "El ID del grado no es válido.";
+        if (request.getIdCurso() <= 0) return "El ID del curso no es válido.";
+        if (request.getIdAnioLectivo() <= 0) return "El ID del año lectivo no es válido.";
+
+        if (gradoDAO.buscarPorId(request.getIdGrado()) == null) return "El grado especificado no existe.";
+        if (cursoDAO.buscarPorId(request.getIdCurso()) == null) return "El curso especificado no existe.";
+        if (añolectivoDAO.buscarPorId(request.getIdAnioLectivo()) == null) return "El año lectivo especificado no existe."; 
+
+        if (curriculoDAO.existeAsignacion(request.getIdGrado(), request.getIdCurso(), request.getIdAnioLectivo(), 0)) {
+            return "Este curso ya fue asignado a este grado en el ciclo escolar seleccionado.";
         }
 
-        if (curriculo.getIdCurso() <= 0) {
-            return "El ID del curso no es válido.";
-        }
-        
-        if (curriculo.getIdAnioLectivo() <= 0) {
-            return "El ID del año lectivo no es válido.";
-        }
-        
-        if (gradoDAO.buscarPorId(curriculo.getIdGrado()) == null) {
-            return "El grado especificado no existe.";
-        }
-
-        if (cursoDAO.buscarPorId(curriculo.getIdCurso()) == null) {
-            return "El curso especificado no existe.";
-        }
-        
-        if (añolectivoDAO.buscarPorId(curriculo.getIdAnioLectivo()) == null) {
-            return "El año lectivo especificado no existe."; 
-        }
-        
-        ArrayList<Curriculo> curriculos = curriculoDAO.obtenerTodos();
-        
-        // Validación corregida: evalúa la combinación completa (Grado + Curso + Año Lectivo)
-        for (Curriculo existente : curriculos) {
-            if (existente.getIdGrado() == curriculo.getIdGrado() 
-                    && existente.getIdCurso() == curriculo.getIdCurso()
-                    && existente.getIdAnioLectivo() == curriculo.getIdAnioLectivo()) {
-                return "Este curso ya fue asignado a este grado en el ciclo escolar seleccionado.";
-            }
-        }
-        
-        if (curriculo.getDescripcion() != null) {
-            curriculo.setDescripcion(curriculo.getDescripcion().trim());
-        }
-        
+        Curriculo curriculo = new Curriculo();
+        curriculo.setIdGrado(request.getIdGrado());
+        curriculo.setIdCurso(request.getIdCurso());
+        curriculo.setIdAnioLectivo(request.getIdAnioLectivo());
+        curriculo.setDescripcion(request.getDescripcion() != null ? request.getDescripcion().trim() : null);
         curriculo.setEstado(true);
-        
-        boolean resultado = curriculoDAO.insertar(curriculo);
-        
-        if (resultado) {
-            return "Currículo registrado correctamente.";
-        }
-        return "No se pudo registrar el currículo.";   
-    }
-    
-    public Curriculo buscarCurriculo(int idCurriculo) {
-        if (idCurriculo <= 0) {
-            return null;
-        }
-        return curriculoDAO.buscarPorId(idCurriculo);
+
+        return curriculoDAO.insertar(curriculo) ? "Currículo registrado correctamente." : "No se pudo registrar el currículo.";   
     }
 
-    public ArrayList<Curriculo> obtenerCurriculos() {
-        return curriculoDAO.obtenerTodos();
+    public CurriculoResponse buscarCurriculo(int idCurriculo) {
+        if (idCurriculo <= 0) return null;
+        Curriculo c = curriculoDAO.buscarPorId(idCurriculo);
+        return (c != null) ? new CurriculoResponse(c) : null;
     }
 
-    public String actualizarCurriculo(Curriculo curriculo) {
-        if (curriculo == null) {
-            return "El currículo no puede ser nulo.";
-        }
+    public String actualizarCurriculo(int idCurriculo, CurriculoRequest request) {
+        if (request == null) return "La petición no puede ser nula.";
+        if (idCurriculo <= 0) return "El ID del currículo no es válido.";
 
-        if (curriculo.getIdCurriculo() <= 0) {
-            return "El ID del currículo no es válido.";
-        }
+        Curriculo existente = curriculoDAO.buscarPorId(idCurriculo);
+        if (existente == null) return "El currículo no existe.";
 
-        Curriculo existente = curriculoDAO.buscarPorId(curriculo.getIdCurriculo());
-        if (existente == null) {
-            return "El currículo no existe.";
-        }
-
-        if (curriculo.getIdGrado() <= 0 || curriculo.getIdCurso() <= 0 || curriculo.getIdAnioLectivo() <= 0) {
+        if (request.getIdGrado() <= 0 || request.getIdCurso() <= 0 || request.getIdAnioLectivo() <= 0) {
             return "Los identificadores de grado, curso o año lectivo no son válidos.";
         }
 
-        if (gradoDAO.buscarPorId(curriculo.getIdGrado()) == null) {
-            return "El grado no existe.";
+        if (gradoDAO.buscarPorId(request.getIdGrado()) == null) return "El grado no existe.";
+        if (cursoDAO.buscarPorId(request.getIdCurso()) == null) return "El curso no existe.";
+        if (añolectivoDAO.buscarPorId(request.getIdAnioLectivo()) == null) return "El año lectivo no existe.";
+
+        if (curriculoDAO.existeAsignacion(request.getIdGrado(), request.getIdCurso(), request.getIdAnioLectivo(), idCurriculo)) {
+            return "Ya existe otra asignación de este curso para el mismo grado y año lectivo.";
         }
 
-        if (cursoDAO.buscarPorId(curriculo.getIdCurso()) == null) {
-            return "El curso no existe.";
-        }
+        existente.setIdGrado(request.getIdGrado());
+        existente.setIdCurso(request.getIdCurso());
+        existente.setIdAnioLectivo(request.getIdAnioLectivo());
+        existente.setDescripcion(request.getDescripcion() != null ? request.getDescripcion().trim() : null);
 
-        if (añolectivoDAO.buscarPorId(curriculo.getIdAnioLectivo()) == null) {
-            return "El año lectivo no existe.";
-        }
-
-        ArrayList<Curriculo> curriculos = curriculoDAO.obtenerTodos();
-
-        for (Curriculo otro : curriculos) {
-            if (otro.getIdCurriculo() != curriculo.getIdCurriculo()
-                    && otro.getIdGrado() == curriculo.getIdGrado()
-                    && otro.getIdCurso() == curriculo.getIdCurso()
-                    && otro.getIdAnioLectivo() == curriculo.getIdAnioLectivo()) {
-                return "Ya existe otra asignación de este curso para el mismo grado y año lectivo.";
-            }
-        }
-
-        if (curriculo.getDescripcion() != null) {
-            curriculo.setDescripcion(curriculo.getDescripcion().trim());
-        }
-
-        curriculo.setEstado(existente.isEstado());
-
-        boolean resultado = curriculoDAO.actualizar(curriculo);
-
-        if (resultado) {
-            return "Currículo actualizado correctamente.";
-        }
-
-        return "No se pudo actualizar el currículo.";
+        return curriculoDAO.actualizar(existente) ? "Currículo actualizado correctamente." : "No se pudo actualizar el currículo.";
     }
 
     public String cambiarEstado(int idCurriculo, boolean estado) {
-        if (idCurriculo <= 0) {
-            return "El ID del currículo no es válido.";
-        }
+        if (idCurriculo <= 0) return "El ID del currículo no es válido.";
+        if (curriculoDAO.buscarPorId(idCurriculo) == null) return "El currículo no existe.";
 
-        Curriculo existente = curriculoDAO.buscarPorId(idCurriculo);
-        if (existente == null) {
-            return "El currículo no existe.";
-        }
-
-        boolean resultado = curriculoDAO.actualizarEstado(idCurriculo, estado);
-        if (resultado) {
-            return "Estado del currículo actualizado correctamente.";
-        }
-
-        return "No se pudo actualizar el estado del currículo.";
-    } 
+        return curriculoDAO.actualizarEstado(idCurriculo, estado) ? "Estado del currículo actualizado correctamente." : "No se pudo actualizar el estado del currículo.";
+    }
 }

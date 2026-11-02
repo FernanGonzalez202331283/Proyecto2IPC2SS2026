@@ -8,7 +8,9 @@ import Dao.PersonaDAO;
 import Dao.UsuarioDAO;
 import Dao.UsuarioOperativoDAO;
 import java.time.LocalDate;
-import modelo.Persona;
+import java.util.List;
+import modelo.Persona.Persona;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.UsuarioOperativo;
 import modelo.iteracion2.Empleado;
@@ -26,6 +28,26 @@ public class UsuarioOperativoService {
         this.usuarioOperativoDAO = new UsuarioOperativoDAO();
         this.personaDAO = new PersonaDAO();
         this.usuarioDAO = new UsuarioDAO();
+    }
+
+    public RespuestaPaginada<UsuarioOperativo> obtenerOperativosPaginados(int pagina, int limite) {
+        if (pagina < 1) {
+            pagina = 1;
+        }
+        if (limite < 1) {
+            limite = 10;
+        }
+
+        int offset = (pagina - 1) * limite;
+        List<UsuarioOperativo> lista = usuarioOperativoDAO.obtenerOperativosPaginados(limite, offset);
+        int totalRegistros = usuarioOperativoDAO.contarOperativos();
+
+        int totalPaginas = (int) Math.ceil((double) totalRegistros / limite);
+        if (totalPaginas == 0) {
+            totalPaginas = 1;
+        }
+
+        return new RespuestaPaginada<>(lista, pagina, totalPaginas, totalRegistros);
     }
 
     public String registrar(UsuarioOperativo dto) {
@@ -78,7 +100,6 @@ public class UsuarioOperativoService {
             return "El salario debe ser mayor a cero.";
         }
 
-        // Validación de usuario si el flag está activo
         if (dto.isCrearCuentaUsuario()) {
             Usuario usuario = dto.getUsuario();
 

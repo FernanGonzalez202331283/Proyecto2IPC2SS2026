@@ -12,7 +12,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import modelo.Persona;
+import modelo.Persona.Persona;
+import modelo.PersonaSeleccionable;
 
 /**
  *
@@ -26,8 +27,7 @@ public class PersonaDAO {
                      VALUES (?, ?, ?, ?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, persona.getNombres());
             ps.setString(2, persona.getApellidos());
@@ -44,6 +44,41 @@ public class PersonaDAO {
             return false;
         }
     }
+    
+    public List<PersonaSeleccionable> obtenerPersonasActivasConRol() {
+        List<PersonaSeleccionable> lista = new ArrayList<>();
+        
+        String sql = """
+            SELECT DISTINCT p.id_persona, 
+                   TRIM(CONCAT(p.nombres, ' ', p.apellidos)) AS nombre_completo, 
+                   p.dpi,
+                   u.rol
+            FROM persona p
+            INNER JOIN usuario u ON p.id_persona = u.id_persona
+            WHERE p.estado = 1 
+              AND u.estado = 1
+              AND UPPER(u.rol) IN ('ESTUDIANTE', 'MAESTRO', 'BIBLIOTECARIO', 'ROLE_ESTUDIANTE', 'ROLE_MAESTRO', 'ROLE_BIBLIOTECARIO')
+            ORDER BY nombre_completo ASC
+            """;
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                PersonaSeleccionable dto = new PersonaSeleccionable();
+                dto.setIdPersona(rs.getInt("id_persona"));
+                dto.setNombreCompleto(rs.getString("nombre_completo"));
+                dto.setDpi(rs.getString("dpi"));
+                lista.add(dto);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al obtener personas activas filtradas por rol: " + e.getMessage());
+        }
+
+        return lista;
+    }
 
     public int insertarObteniendoId(Persona persona) {
         String sql = """
@@ -51,8 +86,7 @@ public class PersonaDAO {
                      VALUES (?, ?, ?, ?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, persona.getNombres());
             ps.setString(2, persona.getApellidos());
@@ -67,7 +101,7 @@ public class PersonaDAO {
             if (filasAfectadas > 0) {
                 try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
-                        return generatedKeys.getInt(1); // Retorna id_persona
+                        return generatedKeys.getInt(1); //retorna el id de la persona
                     }
                 }
             }
@@ -85,8 +119,7 @@ public class PersonaDAO {
                      WHERE id_persona = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPersona);
 
@@ -111,9 +144,7 @@ public class PersonaDAO {
 
         List<Persona> personas = new ArrayList<>();
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 personas.add(mapResultSetToPersona(rs));
@@ -133,8 +164,7 @@ public class PersonaDAO {
                      WHERE id_persona = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, persona.getNombres());
             ps.setString(2, persona.getApellidos());
@@ -159,8 +189,7 @@ public class PersonaDAO {
                      WHERE id_persona = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
             ps.setInt(2, idPersona);
@@ -180,8 +209,7 @@ public class PersonaDAO {
                      WHERE dpi = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, dpi);
 

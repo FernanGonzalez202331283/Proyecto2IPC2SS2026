@@ -5,7 +5,11 @@
 package Resource.iteracion4;
 
 import Dao.iteracion4.SolvenciaDAO;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -14,7 +18,9 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.InputStream;
 import java.util.Map;
+import modelo.Usuario;
 import modelo.iteracion4.Solvencia;
+import seguridad.JwtService;
 import servicio.iteracion4.SolvenciaService;
 
 /**
@@ -22,21 +28,72 @@ import servicio.iteracion4.SolvenciaService;
  * @author fernan
  */
 @Path("/solvencias")
+@Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class SolvenciaResource {
 
     private final SolvenciaDAO solvenciaDAO = new SolvenciaDAO();
     private final SolvenciaService solvenciaService = new SolvenciaService();
+    private final JwtService jwtService = new JwtService();
+
+    private Response validarAcceso(HttpServletRequest request, String authHeader) {
+        Usuario usuario = obtenerUsuarioSesion(request, authHeader);
+
+        if (usuario == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje("Debe iniciar sesión para consultar solvencias."))
+                    .build();
+        }
+
+        if (!"SUPER_ADMIN".equals(usuario.getRol()) 
+                && !"SECRETARIA".equals(usuario.getRol()) 
+                && !"ADMIN".equals(usuario.getRol())) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar o emitir solvencias."))
+                    .build();
+        }
+
+        return null;
+    }
+
+    private Usuario obtenerUsuarioSesion(HttpServletRequest request, String authHeader) {
+        if (request != null) {
+            HttpSession session = request.getSession(false);
+            if (session != null && session.getAttribute("usuario") instanceof Usuario) {
+                return (Usuario) session.getAttribute("usuario");
+            }
+        }
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return jwtService.obtenerUsuarioDesdeToken(token);
+        }
+
+        return null;
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
+    }
 
     @GET
     @Path("/estudiante/{idEstudiante}/anio-lectivo/{idAnioLectivo}")
     public Response generarSolvencia(
+            @HeaderParam("Authorization") String authHeader,
+            @Context HttpServletRequest request,
             @PathParam("idEstudiante") int idEstudiante,
             @PathParam("idAnioLectivo") int idAnioLectivo) {
 
+        Response acceso = validarAcceso(request, authHeader);
+        if (acceso != null) return acceso;
+
         if (idEstudiante <= 0 || idAnioLectivo <= 0) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"mensaje\": \"Los identificadores deben ser mayores que cero.\"}")
+                    .entity(jsonMensaje("Los identificadores deben ser mayores a cero."))
                     .build();
         }
 
@@ -44,7 +101,7 @@ public class SolvenciaResource {
 
         if (solvencia == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"mensaje\": \"No se encontró el estudiante u ocurrió un error al consultar.\"}")
+                    .entity(jsonMensaje("No se encontró el estudiante o el año lectivo especificado."))
                     .build();
         }
 
@@ -55,9 +112,14 @@ public class SolvenciaResource {
     @Path("/pdf/estudiante/{idEstudiante}/anio-lectivo/{idAnioLectivo}")
     @Produces("application/pdf")
     public Response descargarPdfSolvencia(
+            @HeaderParam("Authorization") String authHeader,
+            @Context HttpServletRequest request,
             @PathParam("idEstudiante") int idEstudiante,
             @PathParam("idAnioLectivo") int idAnioLectivo,
             @Context jakarta.servlet.ServletContext servletContext) {
+
+        Response acceso = validarAcceso(request, authHeader);
+        if (acceso != null) return acceso;
 
         if (idEstudiante <= 0 || idAnioLectivo <= 0) {
             return Response.status(Response.Status.BAD_REQUEST).build();
@@ -68,31 +130,28 @@ public class SolvenciaResource {
         if (solvencia == null || !"SOLVENTE".equals(solvencia.getEstado())) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .type(MediaType.APPLICATION_JSON)
-                    .entity("{\"mensaje\": \"No se puede generar PDF. " + 
-                            (solvencia != null ? solvencia.getMensaje() : "") + "\"}")
+                    .entity(jsonMensaje("No se puede emitir la constancia. " + 
+                            (solvencia != null ? solvencia.getMensaje() : "")))
                     .build();
         }
 
-        // Se especifica exactamente el archivo en WEB-INF/reports/
         String reportPath = "/WEB-INF/reports/Solvencia.jrxml";
 
         try (InputStream jrxmlInput = servletContext.getResourceAsStream(reportPath)) {
 
             if (jrxmlInput == null) {
-                System.err.println("ERROR: No se encontró la plantilla en " + reportPath);
                 return Response.status(Response.Status.NOT_FOUND)
                         .type(MediaType.APPLICATION_JSON)
-                        .entity("{\"mensaje\": \"No se encontró el archivo JRXML en el servidor.\"}")
+                        .entity(jsonMensaje("No se encontró la plantilla JRXML en el servidor."))
                         .build();
             }
 
             Map<String, Object> parameters = solvenciaDAO.obtenerDatosParaReporte(idEstudiante, idAnioLectivo);
 
             if (parameters.isEmpty()) {
-                System.err.println("ERROR: Map de parámetros vacío para estudiante " + idEstudiante);
                 return Response.status(Response.Status.NOT_FOUND)
                         .type(MediaType.APPLICATION_JSON)
-                        .entity("{\"mensaje\": \"No se encontraron los datos del estudiante para el reporte.\"}")
+                        .entity(jsonMensaje("No se encontraron datos completos del estudiante para generar el reporte."))
                         .build();
             }
 
@@ -108,11 +167,9 @@ public class SolvenciaResource {
                     .build();
 
         } catch (Exception e) {
-            System.err.println("Excepción al compilar Solvencia: " + e.getMessage());
-            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .type(MediaType.APPLICATION_JSON)
-                    .entity("{\"mensaje\": \"Error interno al compilar el PDF de solvencia: " + e.getMessage() + "\"}")
+                    .entity(jsonMensaje("Error interno al compilar el PDF de solvencia."))
                     .build();
         }
     }

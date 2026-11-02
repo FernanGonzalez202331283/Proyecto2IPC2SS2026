@@ -16,7 +16,7 @@ import modelo.iteracion4.Perfil;
  * @author fernan
  */
 public class PerfilDAO {
-    
+
     public Perfil obtenerPerfil(int idUsuario) {
 
         String sql = """
@@ -51,8 +51,7 @@ public class PerfilDAO {
             WHERE u.id_usuario = ?
         """;
 
-        try (Connection conexion = Conexion.getInstance().getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+        try (Connection conexion = Conexion.getInstance().getConnection(); PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, idUsuario);
 

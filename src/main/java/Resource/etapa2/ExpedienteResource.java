@@ -6,6 +6,7 @@ package Resource.etapa2;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -23,6 +24,7 @@ import seguridad.iteracion2.ExpedienteService;
  */
 @Path("expedientes")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class ExpedienteResource {
 
     private final ExpedienteService expedienteService;
@@ -75,7 +77,6 @@ public class ExpedienteResource {
                """.formatted(mensaje);
     }
 
-    // Consultar expediente por ID del estudiante
     @GET
     @Path("/{idEstudiante}")
     public Response consultarExpediente(@PathParam("idEstudiante") int idEstudiante, @Context HttpServletRequest httpRequest) {
@@ -97,5 +98,4 @@ public class ExpedienteResource {
                     .build();
         }
     }
-    
 }

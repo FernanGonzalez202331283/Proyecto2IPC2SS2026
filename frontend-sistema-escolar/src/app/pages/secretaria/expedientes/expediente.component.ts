@@ -1,19 +1,38 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { EstudianteService, Estudiante } from '../../../services/estudiante.service';
 import { ExpedienteService, Expediente } from '../../../services/expediente.service';
 import { SeccionService, Seccion } from '../../../services/seccion.service';
 import { GradoService, Grado } from '../../../services/grado.service';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-expediente',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './expediente.component.html'
+  templateUrl: './expediente.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExpedienteComponent implements OnInit {
+  private estudianteService = inject(EstudianteService);
+  private expedienteService = inject(ExpedienteService);
+  private seccionService = inject(SeccionService);
+  private gradoService = inject(GradoService);
+  private location = inject(Location);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   estudiantesLista: Estudiante[] = [];
   seccionesLista: Seccion[] = [];
   gradosLista: Grado[] = [];
@@ -21,18 +40,8 @@ export class ExpedienteComponent implements OnInit {
   idEstudianteSeleccionado: number | null = null;
   expediente: Expediente | null = null;
 
-  cargando: boolean = false;
-  errorMessage: string = '';
-
-  constructor(
-    private estudianteService: EstudianteService,
-    private expedienteService: ExpedienteService,
-    private seccionService: SeccionService,
-    private gradoService: GradoService,
-    private location: Location,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  cargando = false;
+  errorMessage = '';
 
   ngOnInit(): void {
     this.cargarEstudiantes();
@@ -41,29 +50,48 @@ export class ExpedienteComponent implements OnInit {
   }
 
   cargarEstudiantes(): void {
-    this.estudianteService.obtenerEstudiantes().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.estudiantesLista = data || [];
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => console.error('Error al obtener lista de estudiantes:', err)
-    });
+    this.estudianteService.obtenerEstudiantes(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: any) => {
+          this.estudiantesLista = Array.isArray(data) ? data : (data?.contenido || []);
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al obtener lista de estudiantes:', err);
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   cargarSecciones(): void {
-    this.seccionService.obtenerSecciones().subscribe({
-      next: (data) => { this.seccionesLista = data || []; },
-      error: (err) => console.error('Error al obtener secciones:', err)
-    });
+    this.seccionService.obtenerSecciones(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: any) => {
+          this.seccionesLista = Array.isArray(data) ? data : (data?.contenido || []);
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al obtener secciones:', err);
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   cargarGrados(): void {
-    this.gradoService.obtenerGrados().subscribe({
-      next: (data) => { this.gradosLista = data || []; },
-      error: (err) => console.error('Error al obtener grados:', err)
-    });
+    this.gradoService.obtenerGrados(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: any) => {
+          this.gradosLista = Array.isArray(data) ? data : (data?.contenido || []);
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error al obtener grados:', err);
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   consultarExpediente(): void {
@@ -72,17 +100,17 @@ export class ExpedienteComponent implements OnInit {
     this.errorMessage = '';
     this.expediente = null;
     this.cargando = true;
+    this.cdr.markForCheck();
 
-    this.expedienteService.consultarExpediente(Number(this.idEstudianteSeleccionado)).subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
+    this.expedienteService.consultarExpediente(Number(this.idEstudianteSeleccionado))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
           this.expediente = data;
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.cargando = false;
           if (err.status === 404) {
             this.errorMessage = err.error?.mensaje || 'No existe información registrada para el estudiante solicitado.';
@@ -91,10 +119,9 @@ export class ExpedienteComponent implements OnInit {
           } else {
             this.errorMessage = 'Error al consultar el expediente. Verifique la conexión con el servidor.';
           }
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   obtenerDetalleSeccion(idSeccion: number): string {
@@ -106,6 +133,10 @@ export class ExpedienteComponent implements OnInit {
   }
 
   volver(): void {
-    this.location.back();
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/secretaria/dashboard']);
+    }
   }
 }

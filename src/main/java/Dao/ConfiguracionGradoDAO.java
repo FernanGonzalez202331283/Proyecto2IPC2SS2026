@@ -11,21 +11,20 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import modelo.ConfiguracionGrado;
+import modelo.ConfiguracionGrados.ConfiguracionGrado;
 
 /**
  *
  * @author fernan
  */
 public class ConfiguracionGradoDAO {
-
     public boolean insertar(ConfiguracionGrado configuracion) {
         String sql = """
                      INSERT INTO configuracion_grado (nivel, nombre_grado, orden, estado)
                      VALUES (?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, configuracion.getNivel());
@@ -48,7 +47,7 @@ public class ConfiguracionGradoDAO {
                      WHERE id_configuracion = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idConfiguracion);
@@ -70,13 +69,13 @@ public class ConfiguracionGradoDAO {
         String sql = """
                      SELECT id_configuracion, nivel, nombre_grado, orden, estado
                      FROM configuracion_grado
-                     ORDER BY nivel, orden
+                     ORDER BY orden ASC, nivel ASC
                      """;
 
         List<ConfiguracionGrado> configuraciones = new ArrayList<>();
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
@@ -90,6 +89,49 @@ public class ConfiguracionGradoDAO {
         return configuraciones;
     }
 
+    public List<ConfiguracionGrado> obtenerPaginados(int limite, int offset) {
+        String sql = """
+                     SELECT id_configuracion, nivel, nombre_grado, orden, estado
+                     FROM configuracion_grado
+                     ORDER BY orden ASC, nivel ASC
+                     LIMIT ? OFFSET ?
+                     """;
+
+        List<ConfiguracionGrado> configuraciones = new ArrayList<>();
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    configuraciones.add(mapResultSetToConfiguracionGrado(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error al obtener configuraciones paginadas: " + e.getMessage());
+        }
+
+        return configuraciones;
+    }
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM configuracion_grado";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al contar configuraciones de grado: " + e.getMessage());
+        }
+        return 0;
+    }
+
     public boolean actualizar(ConfiguracionGrado configuracion) {
         String sql = """
                      UPDATE configuracion_grado
@@ -97,7 +139,7 @@ public class ConfiguracionGradoDAO {
                      WHERE id_configuracion = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, configuracion.getNivel());
@@ -120,7 +162,7 @@ public class ConfiguracionGradoDAO {
                      WHERE id_configuracion = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);

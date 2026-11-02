@@ -4,7 +4,7 @@
  */
 package modelo;
 
-import modelo.Persona;
+import modelo.Persona.Persona;
 import modelo.Usuario;
 import modelo.iteracion2.Empleado;
 
@@ -16,7 +16,7 @@ public class UsuarioOperativo {
     private Persona persona;
     private Empleado empleado;
     private Usuario usuario;
-    private boolean crearCuentaUsuario; // Flag que indica si se debe crear el registro en la tabla 'usuario'
+    private boolean crearCuentaUsuario; 
 
     public UsuarioOperativo() {
     }
@@ -58,5 +58,21 @@ public class UsuarioOperativo {
  
     public void setCrearCuentaUsuario(boolean crearCuentaUsuario) {
         this.crearCuentaUsuario = crearCuentaUsuario;
+    }
+    
+    public Integer getIdUsuario() {
+        return usuario != null ? usuario.getIdUsuario() : null;
+    }
+
+    public String getUsername() {
+        return usuario != null ? usuario.getUsername() : null;
+    }
+
+    public String getRol() {
+        return usuario != null ? usuario.getRol() : null;
+    }
+
+    public boolean isEstado() {
+        return usuario != null && usuario.isEstado();
     }
 }

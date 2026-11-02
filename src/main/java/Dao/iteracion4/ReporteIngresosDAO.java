@@ -16,6 +16,7 @@ import modelo.iteracion4.ReporteIngresos;
  * @author fernan
  */
 public class ReporteIngresosDAO {
+
     public ReporteIngresos obtenerReporte() {
 
         ReporteIngresos reporte = new ReporteIngresos();
@@ -31,9 +32,7 @@ public class ReporteIngresosDAO {
             WHERE estado = 'REGISTRADO' OR estado = 'PAGADO'
         """;
 
-        try (Connection conexion = Conexion.getInstance().getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conexion = Conexion.getInstance().getConnection(); PreparedStatement ps = conexion.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
                 reporte.setCantidadPagos(rs.getInt("cantidad_pagos"));

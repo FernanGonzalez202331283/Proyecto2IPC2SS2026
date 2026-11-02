@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
@@ -21,47 +21,41 @@ export interface ReporteRendimiento {
   providedIn: 'root'
 })
 export class ReporteRendimientoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/reportes/rendimiento`;
 
-  constructor(private http: HttpClient) {}
-
-  private getHeaders(): HttpHeaders {
+  private getHeaders(incluirContentType = true): HttpHeaders {
     const token = localStorage.getItem('token');
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+    let headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
     });
+
+    if (incluirContentType) {
+      headers = headers.set('Content-Type', 'application/json');
+    }
+
+    return headers;
   }
 
   obtenerReporte(idAnioLectivo: number): Observable<ReporteRendimiento[]> {
     const params = new HttpParams().set('anio', idAnioLectivo.toString());
 
-    return this.http.get<ReporteRendimiento[]>(
-      `${this.restConstants.getApiURL()}/reportes/rendimiento`,
-      {
-        headers: this.getHeaders(),
-        params,
-        withCredentials: true
-      }
-    );
+    return this.http.get<ReporteRendimiento[]>(this.baseUrl, {
+      headers: this.getHeaders(),
+      params,
+      withCredentials: true
+    });
   }
 
   obtenerPdfReporte(idAnioLectivo: number): Observable<Blob> {
-    const token = localStorage.getItem('token');
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
     const params = new HttpParams().set('anio', idAnioLectivo.toString());
 
-    return this.http.get(
-      `${this.restConstants.getApiURL()}/reportes/rendimiento/pdf`,
-      {
-        headers,
-        params,
-        responseType: 'blob',
-        withCredentials: true
-      }
-    );
+    return this.http.get(`${this.baseUrl}/pdf`, {
+      headers: this.getHeaders(false),
+      params,
+      responseType: 'blob',
+      withCredentials: true
+    });
   }
 }

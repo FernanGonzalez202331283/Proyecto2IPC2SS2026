@@ -17,7 +17,7 @@ import modelo.iteracion4.ReporteSolvencia;
  * @author fernan
  */
 public class ReporteSolvenciaDAO {
-    
+
     public ArrayList<ReporteSolvencia> obtenerReporte(int idAñoLectivo) {
 
         ArrayList<ReporteSolvencia> lista = new ArrayList<>();
@@ -56,8 +56,7 @@ public class ReporteSolvenciaDAO {
                 ORDER BY p.apellidos, p.nombres
                 """;
 
-        try (Connection conexion = Conexion.getInstance().getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+        try (Connection conexion = Conexion.getInstance().getConnection(); PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, idAñoLectivo);
 

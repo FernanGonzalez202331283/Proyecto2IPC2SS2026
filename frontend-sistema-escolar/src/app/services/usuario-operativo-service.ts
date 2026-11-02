@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
@@ -31,6 +31,7 @@ export interface UsuarioOperativo {
   estado?: boolean;
   fechaCreacion?: string;
   persona?: PersonaOperativo;
+  usuario?: any;
 }
 
 export interface UsuarioOperativoDTO {
@@ -40,32 +41,40 @@ export interface UsuarioOperativoDTO {
   crearCuentaUsuario: boolean;
 }
 
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class UsuarioOperativoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-  private httpOptions = { withCredentials: true };
+  private readonly baseUrl = this.restConstants.getApiURL();
 
-  constructor(private http: HttpClient) {}
-
-  obtenerUsuarios(): Observable<UsuarioOperativo[]> {
-    return this.http.get<UsuarioOperativo[]>(`${this.restConstants.getApiURL()}/usuarios`, this.httpOptions);
+  obtenerUsuarios(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<UsuarioOperativo>> {
+    return this.http.get<RespuestaPaginada<UsuarioOperativo>>(
+      `${this.baseUrl}/usuarios-operativos?pagina=${pagina}&limite=${limite}`
+    );
   }
 
   buscarPorId(id: number): Observable<UsuarioOperativo> {
-    return this.http.get<UsuarioOperativo>(`${this.restConstants.getApiURL()}/usuarios/${id}`, this.httpOptions);
+    return this.http.get<UsuarioOperativo>(`${this.baseUrl}/usuarios/${id}`);
   }
 
   registrarUsuarioOperativo(dto: UsuarioOperativoDTO): Observable<any> {
-    return this.http.post<any>(`${this.restConstants.getApiURL()}/usuarios-operativos`, dto, this.httpOptions);
+    return this.http.post<any>(`${this.baseUrl}/usuarios-operativos`, dto);
   }
 
   actualizarUsuario(id: number, usuario: UsuarioOperativo): Observable<any> {
-    return this.http.put<any>(`${this.restConstants.getApiURL()}/usuarios/${id}`, usuario, this.httpOptions);
+    return this.http.put<any>(`${this.baseUrl}/usuarios/${id}`, usuario);
   }
 
   cambiarEstado(id: number, estado: boolean): Observable<any> {
-    return this.http.put<any>(`${this.restConstants.getApiURL()}/usuarios/${id}/estado`, { estado }, this.httpOptions);
+    return this.http.put<any>(`${this.baseUrl}/usuarios/${id}/estado`, { estado });
   }
 }

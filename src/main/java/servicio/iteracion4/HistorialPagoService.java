@@ -22,7 +22,6 @@ public class HistorialPagoService {
 
     public ArrayList<HistorialPago> obtenerHistorial(int idEstudiante) {
 
-        // Validar el identificador del estudiante
         if (idEstudiante <= 0) {
             return null;
         }

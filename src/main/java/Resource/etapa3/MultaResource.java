@@ -4,19 +4,20 @@
  */
 package Resource.etapa3;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion3.Multa;
 import seguridad.JwtService;
@@ -32,62 +33,35 @@ import servicio.etapa3.MultaService;
 public class MultaResource {
 
     private final MultaService multaService = new MultaService();
-    private final JwtService jwtService = new JwtService();
-
-    private Response validarAcceso(String authHeader, String mensajePermiso) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
-                    .build();
-        }
-
-        String token = authHeader.substring(7);
-        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Token inválido o expirado."))
-                    .build();
-        }
-
-        String rol = usuario.getRol();
-        if (!"SUPER_ADMIN".equals(rol) && !"BIBLIOTECARIO".equals(rol)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(jsonMensaje(mensajePermiso))
-                    .build();
-        }
-
-        return null;
-    }
 
     private String jsonMensaje(String mensaje) {
-        return """
-               {
-                   "mensaje": "%s"
-               }
-               """.formatted(mensaje);
+        return "{\"mensaje\": \"%s\"}".formatted(mensaje);
     }
 
-    // Obtener todas las multas
     @GET
-    public Response obtenerTodos(@HeaderParam("Authorization") String authHeader) {
+    public Response obtenerTodos(
+            @Context SecurityContext sec,
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar multas.");
-        if (acceso != null) return acceso;
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar multas."))
+                    .build();
+        }
 
-        ArrayList<Multa> multas = multaService.obtenerTodos();
-        return Response.ok(multas).build();
+        RespuestaPaginada<Multa> resultado = multaService.obtenerTodosPaginado(pagina, limite);
+        return Response.ok(resultado).build();
     }
 
-    // Buscar multa por ID
     @GET
     @Path("/{id}")
-    public Response buscarPorId(
-            @HeaderParam("Authorization") String authHeader,
-            @PathParam("id") int id) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar multas.");
-        if (acceso != null) return acceso;
+    public Response buscarPorId(@Context SecurityContext sec, @PathParam("id") int id) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar multas."))
+                    .build();
+        }
 
         if (id <= 0) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -106,16 +80,14 @@ public class MultaResource {
         return Response.ok(multa).build();
     }
 
-    // Actualizar estado de una multa (PAGADA / ANULADA)
     @PUT
     @Path("/{id}/estado")
-    public Response actualizarEstado(
-            @HeaderParam("Authorization") String authHeader,
-            @PathParam("id") int id,
-            Multa multa) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para actualizar multas.");
-        if (acceso != null) return acceso;
+    public Response actualizarEstado(@Context SecurityContext sec, @PathParam("id") int id, Multa multa) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para actualizar multas."))
+                    .build();
+        }
 
         if (multa == null || multa.getEstado() == null) {
             return Response.status(Response.Status.BAD_REQUEST)

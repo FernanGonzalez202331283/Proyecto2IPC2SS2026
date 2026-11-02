@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth';
 import { PrestamoService, Prestamo } from '../../../services/prestamo.service';
-import { MultaService, Multa } from '../../../services/multa.service';
+import { MultaService, Multa, RespuestaPaginada } from '../../../services/multa.service';
 
 @Component({
   selector: 'app-estudiante-dashboard',
@@ -32,7 +32,7 @@ export class EstudianteDashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // 2. VERIFICAR SI DEBE CAMBIAR CONTRASEÑA
+    // 1. VERIFICAR SI DEBE CAMBIAR CONTRASEÑA
     this.verificarCambioPassword();
 
     const idPersona = this.authService.getIdPersona();
@@ -43,13 +43,11 @@ export class EstudianteDashboardComponent implements OnInit {
     }
   }
 
-  // 3. NUEVO MÉTODO PARA LEER EL USUARIO Y MOSTRAR LA ALERTA
   verificarCambioPassword(): void {
     const rawUser = localStorage.getItem('usuario') || sessionStorage.getItem('usuario');
     if (rawUser) {
       try {
         const parsed = JSON.parse(rawUser);
-        // Busca la propiedad en el JSON (ajusta "passwordCambiada" si tu backend lo llama diferente, por ej: "password_cambiada")
         const passCambiada = parsed.passwordCambiada ?? parsed.usuario?.passwordCambiada;
         
         if (passCambiada === false) {
@@ -61,7 +59,6 @@ export class EstudianteDashboardComponent implements OnInit {
     }
   }
 
-  // 4. NUEVO MÉTODO PARA OCULTAR LA ALERTA
   ocultarAlerta(): void {
     this.debeCambiarPassword = false;
   }
@@ -82,10 +79,13 @@ export class EstudianteDashboardComponent implements OnInit {
               .map((p) => p.idPrestamo)
               .filter((id): id is number => id !== undefined);
 
-            this.multaService.obtenerTodas().subscribe({
-              next: (multas) => {
+            // Se pasa limite=100 para garantizar que recupere todas las multas al buscar las del usuario
+            this.multaService.obtenerTodas(1, 100).subscribe({
+              next: (res: RespuestaPaginada<Multa> | any) => {
                 this.ngZone.run(() => {
-                  this.misMultas = (multas || []).filter((m) => idsPropios.includes(m.idPrestamo));
+                  // Si res tiene 'contenido', lo usa; si viene como array plano, lo asigna directo
+                  const listaMultas: Multa[] = res?.contenido ? res.contenido : (Array.isArray(res) ? res : []);
+                  this.misMultas = listaMultas.filter((m) => idsPropios.includes(m.idPrestamo));
                   this.cargandoMultas = false;
                   this.cdr.detectChanges();
                 });

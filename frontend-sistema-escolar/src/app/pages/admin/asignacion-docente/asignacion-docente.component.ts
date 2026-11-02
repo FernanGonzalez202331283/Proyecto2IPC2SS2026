@@ -1,7 +1,15 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { AsignacionDocenteService, AsignacionDocente } from '../../../services/asignacion-docente.service';
 import { EmpleadoService, Empleado } from '../../../services/empleado.service';
@@ -12,10 +20,22 @@ import { CursoService, Curso } from '../../../services/curso.services';
 @Component({
   selector: 'app-asignacion-docente',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './asignacion-docente.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './asignacion-docente.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AsignacionDocenteComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private asignacionService = inject(AsignacionDocenteService);
+  private empleadoService = inject(EmpleadoService);
+  private cursoService = inject(CursoService);
+  private seccionService = inject(SeccionService);
+  private gradoService = inject(GradoService);
+  private location = inject(Location);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   asignaciones: AsignacionDocente[] = [];
   maestrosLista: Empleado[] = [];
   cursosLista: Curso[] = [];
@@ -23,26 +43,18 @@ export class AsignacionDocenteComponent implements OnInit {
   gradosLista: Grado[] = [];
 
   asignacionForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private asignacionService: AsignacionDocenteService,
-    private empleadoService: EmpleadoService,
-    private cursoService: CursoService,
-    private seccionService: SeccionService,
-    private gradoService: GradoService,
-    private location: Location,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
@@ -64,51 +76,89 @@ export class AsignacionDocenteComponent implements OnInit {
   }
 
   cargarCatalogos(): void {
-    this.empleadoService.obtenerEmpleados().subscribe({
-      next: (data) => {
-        this.maestrosLista = (data || []).filter(e => e.estado !== false);
-      },
-      error: (err) => console.error('Error al cargar empleados:', err)
-    });
+    this.empleadoService.obtenerEmpleados(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) ? resp : (resp?.contenido || []);
+          this.maestrosLista = lista.filter((e: any) => e.estado !== false);
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al cargar empleados:', err)
+      });
 
-    this.cursoService.obtenerCursos().subscribe({
-      next: (data) => {
-        this.cursosLista = (data || []).filter(c => c.estado !== false);
-      },
-      error: (err) => console.error('Error al cargar cursos:', err)
-    });
+    this.cursoService.obtenerCursos(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) ? resp : (resp?.contenido || []);
+          this.cursosLista = lista.filter((c: any) => c.estado !== false);
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al cargar cursos:', err)
+      });
 
-    this.seccionService.obtenerSecciones().subscribe({
-      next: (data) => {
-        this.seccionesLista = (data || []).filter(s => s.estado !== false);
-      },
-      error: (err) => console.error('Error al cargar secciones:', err)
-    });
+    this.seccionService.obtenerSecciones(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) ? resp : (resp?.contenido || []);
+          this.seccionesLista = lista.filter((s: any) => s.estado !== false);
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al cargar secciones:', err)
+      });
 
-    this.gradoService.obtenerGrados().subscribe({
-      next: (data) => { this.gradosLista = data || []; },
-      error: (err) => console.error('Error al cargar grados:', err)
-    });
+    this.gradoService.obtenerGrados(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          this.gradosLista = Array.isArray(resp) ? resp : (resp?.contenido || []);
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al cargar grados:', err)
+      });
   }
 
   cargarAsignaciones(): void {
     this.cargando = true;
-    this.asignacionService.obtenerAsignaciones().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.asignaciones = data || [];
+    this.cdr.markForCheck();
+
+    this.asignacionService.obtenerAsignaciones(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          if (resp && Array.isArray(resp.contenido)) {
+            this.asignaciones = resp.contenido;
+            this.paginaActual = resp.paginaActual || 1;
+            this.totalPaginas = resp.totalPaginas || 1;
+            this.totalRegistros = resp.totalRegistros || 0;
+          } else if (Array.isArray(resp)) {
+            this.asignaciones = resp;
+            this.totalRegistros = resp.length;
+            this.totalPaginas = 1;
+          } else {
+            this.asignaciones = [];
+            this.totalRegistros = 0;
+            this.totalPaginas = 1;
+          }
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.asignaciones = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarAsignaciones();
+    }
   }
 
   guardarAsignacion(): void {
@@ -117,6 +167,7 @@ export class AsignacionDocenteComponent implements OnInit {
     if (this.asignacionForm.invalid) {
       this.asignacionForm.markAllAsTouched();
       this.errorMessage = 'Seleccione todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
@@ -124,7 +175,6 @@ export class AsignacionDocenteComponent implements OnInit {
     const idCursoNum = Number(formVal.idCurso);
     const idSeccionNum = Number(formVal.idSeccion);
 
-    // Validar localmente que el curso no esté ya asignado a esta sección
     const yaExiste = this.asignaciones.some(asig => 
       asig.estado &&
       asig.curso?.idCurso === idCursoNum &&
@@ -134,10 +184,12 @@ export class AsignacionDocenteComponent implements OnInit {
 
     if (yaExiste) {
       this.errorMessage = 'El curso seleccionado ya se encuentra asignado a esta sección.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
+    this.cdr.markForCheck();
 
     const payload: AsignacionDocente = {
       empleado: { idEmpleado: Number(formVal.idEmpleado) },
@@ -148,43 +200,39 @@ export class AsignacionDocenteComponent implements OnInit {
     if (this.modoEdicion && this.idSeleccionado) {
       payload.idAsignacion = this.idSeleccionado;
 
-      this.asignacionService.actualizarAsignacion(this.idSeleccionado, payload).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
+      this.asignacionService.actualizarAsignacion(this.idSeleccionado, payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
             this.successMessage = this.obtenerTextoRespuesta(res) || 'Asignación docente actualizada correctamente.';
             this.procesando = false;
             this.resetForm();
             this.cargarAsignaciones();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
             this.errorMessage = this.obtenerTextoRespuesta(err);
             this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+            this.cdr.markForCheck();
+          }
+        });
     } else {
-      this.asignacionService.registrarAsignacion(payload).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
+      this.asignacionService.registrarAsignacion(payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
             this.successMessage = this.obtenerTextoRespuesta(res) || 'Asignación docente registrada correctamente.';
             this.procesando = false;
             this.resetForm();
             this.cargarAsignaciones();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
             this.errorMessage = this.obtenerTextoRespuesta(err);
             this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
+            this.cdr.markForCheck();
+          }
+        });
     }
   }
 
@@ -198,6 +246,7 @@ export class AsignacionDocenteComponent implements OnInit {
       idCurso: item.curso?.idCurso || null,
       idSeccion: item.seccion?.idSeccion || null
     });
+    this.cdr.markForCheck();
   }
 
   cambiarEstadoAsignacion(item: AsignacionDocente, nuevoEstado: boolean): void {
@@ -205,26 +254,27 @@ export class AsignacionDocenteComponent implements OnInit {
 
     this.limpiarMensajes();
 
-    this.asignacionService.cambiarEstado(item.idAsignacion, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.asignacionService.cambiarEstado(item.idAsignacion, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado de asignación actualizado.';
           item.estado = nuevoEstado;
           this.cargarAsignaciones();
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   obtenerDetalleSeccion(sec?: Seccion | null): string {
     if (!sec) return 'Sin sección';
+    if (sec.nombreGrado) {
+      return `${sec.nombreGrado} - Sección ${sec.nombre || ''}`;
+    }
     const idGradoBusqueda = sec.idGrado;
     const grado = this.gradosLista.find(g => Number(g.idGrado) === Number(idGradoBusqueda));
     const nombreGrado = grado ? grado.nombre : '';
@@ -252,6 +302,7 @@ export class AsignacionDocenteComponent implements OnInit {
       idCurso: null,
       idSeccion: null
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

@@ -15,14 +15,14 @@ import { NgZone } from '@angular/core';
 export class LoginComponent implements OnInit {
   loginForm!: FormGroup;
   errorMessage: string = '';
-  procesando: boolean = false; // Controla que no se reenvíe el formulario antes de responder
+  procesando: boolean = false; 
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone // Garantiza la actualización instantánea de la interfaz
+    private ngZone: NgZone 
   ) {}
 
   ngOnInit(): void {

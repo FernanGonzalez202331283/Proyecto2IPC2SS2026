@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { RestConstants } from '../shared/rest-api/rest-constants'; // Ajusta la ruta a tus constantes
+import { RestConstants } from '../shared/rest-api/rest-constants';
 
 export interface ComprobantePago {
   idComprobante?: number;
@@ -15,9 +15,8 @@ export interface ComprobantePago {
   providedIn: 'root'
 })
 export class ComprobantePagoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-
-  constructor(private http: HttpClient) {}
 
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('token'); 
@@ -27,7 +26,6 @@ export class ComprobantePagoService {
     });
   }
 
-  // Registra la emisión del comprobante en BD
   emitirComprobante(idPago: number): Observable<ComprobantePago> {
     return this.http.post<ComprobantePago>(
       `${this.restConstants.getApiURL()}/comprobantes-pago`,
@@ -36,7 +34,6 @@ export class ComprobantePagoService {
     );
   }
 
-  // Obtiene el PDF en formato de Array de bytes / Blob para visualización/descarga
   obtenerPdfComprobante(idPago: number): Observable<Blob> {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders({
@@ -47,7 +44,7 @@ export class ComprobantePagoService {
       `${this.restConstants.getApiURL()}/comprobantes-pago/pdf/${idPago}`,
       {
         headers: headers,
-        responseType: 'blob', // Especificamos que la respuesta es un archivo PDF binario
+        responseType: 'blob',
         withCredentials: true
       }
     );

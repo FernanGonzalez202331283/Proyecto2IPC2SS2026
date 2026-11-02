@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
@@ -12,15 +12,15 @@ export interface Obligacion {
   monto: number;
   fechaVencimiento: string;
   estado: string;
+  idPago?: number; // Propiedad clave agregada para el botón del comprobante PDF
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class ObligacionService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-
-  constructor(private http: HttpClient) {}
 
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('token'); 
@@ -30,7 +30,6 @@ export class ObligacionService {
     });
   }
 
-  // Llama al endpoint de tu backend que trae las obligaciones de un estudiante
   obtenerPorEstudiante(idEstudiante: number): Observable<Obligacion[]> {
     return this.http.get<Obligacion[]>(`${this.restConstants.getApiURL()}/obligaciones/estudiante/${idEstudiante}`, {
       headers: this.getHeaders(),

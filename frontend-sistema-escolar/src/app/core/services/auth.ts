@@ -20,16 +20,13 @@ export class AuthService {
         localStorage.setItem('token', response.token);
         localStorage.setItem('role', response.rol);
 
-        // Decodificar el token para extraer los IDs
         const payload = this.decodeToken(response.token);
 
-        // Guardar idUsuario
         const idUser = response.idUsuario || (payload ? payload.idUsuario : null);
         if (idUser) {
           localStorage.setItem('idUsuario', idUser.toString());
         }
 
-        // Guardar idPersona
         const idPers = response.idPersona || (payload ? payload.idPersona : null);
         if (idPers) {
           localStorage.setItem('idPersona', idPers.toString());

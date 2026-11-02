@@ -9,6 +9,7 @@ import Dao.iteracion3.AsistenciaDAO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
@@ -16,10 +17,13 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import modelo.Usuario;
 import modelo.iteracion2.AsignacionDocente;
 import modelo.iteracion2.Empleado;
@@ -35,14 +39,13 @@ import servicio.etapa3.AsistenciaService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AsistenciaResource {
-    
+
     private final AsistenciaService asistenciaService = new AsistenciaService();
     private final AsistenciaDAO asistenciaDAO = new AsistenciaDAO();
     private final EmpleadoDAO empleadoDAO = new EmpleadoDAO();
     private final Dao.iteracion2.AsignacionDocenteDAO asignacionDAO = new Dao.iteracion2.AsignacionDocenteDAO();
     private final JwtService jwtService = new JwtService();
 
-    // --- VALIDACIÓN DE JWT Y ROLES ---
     private Response validarAcceso(String authHeader, String mensajePermiso) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return Response.status(Response.Status.UNAUTHORIZED)
@@ -70,11 +73,13 @@ public class AsistenciaResource {
     }
 
     private Empleado obtenerMaestroDesdeToken(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
-        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+
         String token = authHeader.substring(7);
         Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-        
+
         if (usuario == null || !"MAESTRO".equals(usuario.getRol())) {
             return null;
         }
@@ -82,11 +87,7 @@ public class AsistenciaResource {
     }
 
     private String jsonMensaje(String mensaje) {
-        return """
-               {
-                   "mensaje": "%s"
-               }
-               """.formatted(mensaje);
+        return "{\"mensaje\": \"" + mensaje + "\"}";
     }
 
     @POST
@@ -114,30 +115,38 @@ public class AsistenciaResource {
 
         String resultado = asistenciaService.registrar(asistencia);
         if ("Asistencia registrada correctamente.".equals(resultado)) {
-            return Response.status(Response.Status.CREATED)
-                    .entity(jsonMensaje(resultado))
-                    .build();
+            return Response.status(Response.Status.CREATED).entity(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(jsonMensaje(resultado))
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 
     @GET
-    public Response obtenerTodos(@HeaderParam("Authorization") String authHeader) {
+    public Response obtenerTodos(
+            @HeaderParam("Authorization") String authHeader,
+            @QueryParam("limit") @DefaultValue("10") int limit,
+            @QueryParam("offset") @DefaultValue("0") int offset) {
+        
         Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar asistencias.");
         if (acceso != null) return acceso;
 
         Empleado maestro = obtenerMaestroDesdeToken(authHeader);
         ArrayList<Asistencia> lista;
+        int total;
+
         if (maestro != null) {
-            lista = asistenciaDAO.obtenerPorEmpleado(maestro.getIdEmpleado());
+            lista = asistenciaDAO.obtenerPorEmpleado(maestro.getIdEmpleado(), limit, offset);
+            total = asistenciaDAO.contarPorEmpleado(maestro.getIdEmpleado());
         } else {
-            lista = asistenciaService.obtenerTodos();
+            lista = asistenciaService.obtenerTodos(limit, offset);
+            total = asistenciaService.contarTodos();
         }
 
-        return Response.ok(lista).build();
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("datos", lista);
+        respuesta.put("total", total);
+
+        return Response.ok(respuesta).build();
     }
 
     @GET
@@ -165,7 +174,7 @@ public class AsistenciaResource {
 
         return Response.ok(asistencia).build();
     }
-    
+
     @GET
     @Path("/mis-asignaciones")
     public Response obtenerMisAsignaciones(@HeaderParam("Authorization") String authHeader) {
@@ -179,7 +188,6 @@ public class AsistenciaResource {
                     .build();
         }
 
-        // Retorna las asignaciones asociadas a este maestro (con grado, sección y curso)
         ArrayList<AsignacionDocente> misAsignaciones = asignacionDAO.obtenerPorEmpleado(maestro.getIdEmpleado());
         return Response.ok(misAsignaciones).build();
     }
@@ -221,8 +229,6 @@ public class AsistenciaResource {
             return Response.ok(jsonMensaje(resultado)).build();
         }
 
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(jsonMensaje(resultado))
-                .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
     }
 }

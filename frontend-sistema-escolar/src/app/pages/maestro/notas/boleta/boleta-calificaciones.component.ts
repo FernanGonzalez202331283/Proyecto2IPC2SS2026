@@ -10,7 +10,7 @@ import { RestConstants } from '../../../../shared/rest-api/rest-constants';
 interface RenglonNotaCurso {
   idAsignacion: number;
   nombreCurso: string;
-  idActividadPrincipal: number; // Actividad principal o global del curso
+  idActividadPrincipal: number;
   idNota?: number;
   calificacion: number | null;
 }
@@ -19,7 +19,14 @@ interface RenglonNotaCurso {
   selector: 'app-boleta-calificaciones',
   standalone: true,
   imports: [FormsModule, RouterLink],
-  templateUrl: './boleta-calificaciones.component.html'
+  templateUrl: './boleta-calificaciones.component.html',
+  styles: [`
+    .btn-regresar {
+      display: inline-flex !important;
+      align-items: center;
+      white-space: nowrap;
+    }
+  `]
 })
 export class BoletaCalificacionesComponent implements OnInit {
   idInscripcion!: number;
@@ -36,6 +43,7 @@ export class BoletaCalificacionesComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private notaService: NotaService,
     private actividadService: ActividadService,
     private http: HttpClient,
@@ -52,96 +60,82 @@ export class BoletaCalificacionesComponent implements OnInit {
     this.route.queryParams.subscribe(queryParams => {
       this.idAsignacionRef = Number(queryParams['idAsignacionRef']);
       if (this.idInscripcion && this.idAsignacionRef) {
-        this.cargarBoletaPorCursos();
+        this.cargarCursoSeleccionado();
       }
     });
   }
 
-  cargarBoletaPorCursos(): void {
+  cargarCursoSeleccionado(): void {
     this.cargando = true;
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
 
-    // 1. Obtener todas las asignaciones del docente para identificar los cursos del grado
     this.http.get<any[]>(`${this.restConstants.getApiURL()}/asistencias/mis-asignaciones`, { headers, withCredentials: true })
       .subscribe({
         next: (misAsignaciones) => {
-          const asigRef = misAsignaciones.find(a => a.idAsignacion === this.idAsignacionRef);
-          const idSeccionTarget = asigRef?.seccion?.idSeccion || asigRef?.idSeccion;
+          // Filtrar únicamente el curso/asignación seleccionada por referencia
+          const asigSeleccionada = misAsignaciones.find(a => a.idAsignacion === this.idAsignacionRef);
 
-          // Asignaciones/Cursos pertenecientes a la misma sección
-          const asignacionesCursos = misAsignaciones.filter(a => {
-            const idSec = a.seccion?.idSeccion || a.idSeccion;
-            return idSec === idSeccionTarget;
-          });
+          if (!asigSeleccionada) {
+            this.errorMessage = 'No se encontró el curso seleccionado.';
+            this.cargando = false;
+            this.cdr.detectChanges();
+            return;
+          }
 
-          // 2. Obtener las notas actuales del estudiante
           this.notaService.obtenerPorEstudiante(this.idInscripcion).subscribe({
             next: (notasAlumno) => {
-              this.construirBoletaCursos(asignacionesCursos, notasAlumno || []);
+              this.construirFilaCurso(asigSeleccionada, notasAlumno || []);
             },
             error: () => {
-              this.construirBoletaCursos(asignacionesCursos, []);
+              this.construirFilaCurso(asigSeleccionada, []);
             }
           });
         },
         error: () => {
+          this.errorMessage = 'Error al cargar los datos del curso.';
           this.cargando = false;
+          this.cdr.detectChanges();
         }
       });
   }
 
-  private construirBoletaCursos(asignacionesCursos: any[], notasAlumno: Nota[]): void {
-    const mapaNotas = new Map<number, Nota>();
-    notasAlumno.forEach(n => mapaNotas.set(n.idActividad, n));
-
-    let pendientes = asignacionesCursos.length;
+  private construirFilaCurso(asig: any, notasAlumno: Nota[]): void {
     this.boletaCursos = [];
 
-    if (pendientes === 0) {
-      this.ngZone.run(() => {
-        this.cargando = false;
-        this.cdr.detectChanges();
-      });
-      return;
-    }
+    this.actividadService.obtenerPorAsignacion(asig.idAsignacion).subscribe({
+      next: (actividades) => {
+        const actPrincipal = (actividades || []).find(a => a.estado) || actividades[0];
 
-    asignacionesCursos.forEach(asig => {
-      // Obtenemos la actividad de la asignación para asociar la nota
-      this.actividadService.obtenerPorAsignacion(asig.idAsignacion).subscribe({
-        next: (actividades) => {
-          const actPrincipal = (actividades || []).find(a => a.estado) || actividades[0];
+        if (actPrincipal) {
+          const mapaNotas = new Map<number, Nota>();
+          notasAlumno.forEach(n => mapaNotas.set(n.idActividad, n));
 
-          if (actPrincipal) {
-            const notaExistente = mapaNotas.get(actPrincipal.idActividad!);
-            
-            this.boletaCursos.push({
-              idAsignacion: asig.idAsignacion,
-              nombreCurso: asig.curso?.nombre || 'Curso',
-              idActividadPrincipal: actPrincipal.idActividad!,
-              idNota: notaExistente?.idNota,
-              calificacion: notaExistente ? notaExistente.calificacion : null
-            });
-          }
+          const notaExistente = mapaNotas.get(actPrincipal.idActividad!);
 
-          pendientes--;
-          if (pendientes === 0) {
-            this.ngZone.run(() => {
-              this.cargando = false;
-              this.cdr.detectChanges();
-            });
-          }
-        },
-        error: () => {
-          pendientes--;
-          if (pendientes === 0) {
-            this.ngZone.run(() => {
-              this.cargando = false;
-              this.cdr.detectChanges();
-            });
-          }
+          this.boletaCursos.push({
+            idAsignacion: asig.idAsignacion,
+            nombreCurso: asig.curso?.nombre || 'Curso Seleccionado',
+            idActividadPrincipal: actPrincipal.idActividad!,
+            idNota: notaExistente?.idNota,
+            calificacion: notaExistente ? notaExistente.calificacion : null
+          });
+        } else {
+          this.errorMessage = 'No hay una actividad o zona configurada para este curso todavía.';
         }
-      });
+
+        this.ngZone.run(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        });
+      },
+      error: () => {
+        this.errorMessage = 'Error al cargar actividades del curso.';
+        this.ngZone.run(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        });
+      }
     });
   }
 
@@ -156,7 +150,7 @@ export class BoletaCalificacionesComponent implements OnInit {
       }));
 
     if (payload.length === 0) {
-      this.errorMessage = 'Debe ingresar al menos una calificación válida de curso.';
+      this.errorMessage = 'Debe ingresar una calificación válida entre 0 y 100.';
       return;
     }
 
@@ -164,14 +158,14 @@ export class BoletaCalificacionesComponent implements OnInit {
     this.notaService.guardarMasivo(payload).subscribe({
       next: (res) => {
         this.ngZone.run(() => {
-          this.successMessage = res?.mensaje || 'Notas finales por curso guardadas correctamente.';
+          this.successMessage = res?.mensaje || 'Calificación guardada correctamente.';
           this.guardando = false;
-          this.cargarBoletaPorCursos();
+          this.cargarCursoSeleccionado();
         });
       },
       error: (err) => {
         this.ngZone.run(() => {
-          this.errorMessage = err?.error?.mensaje || 'Error al guardar calificaciones de la boleta.';
+          this.errorMessage = err?.error?.mensaje || 'Error al guardar la calificación.';
           this.guardando = false;
           this.cdr.detectChanges();
         });
@@ -180,6 +174,10 @@ export class BoletaCalificacionesComponent implements OnInit {
   }
 
   volver(): void {
-    this.location.back();
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/maestro/dashboard']);
+    }
   }
 }

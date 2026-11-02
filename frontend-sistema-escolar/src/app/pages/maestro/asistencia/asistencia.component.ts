@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AsistenciaService, Asistencia } from '../../../services/asistencia.service';
-import { NominaService, NominaAlumno } from '../../../services/nomina.service';
+import { NominaService, NominaAlumno, RespuestaPaginada } from '../../../services/nomina.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { RestConstants } from '../../../shared/rest-api/rest-constants';
 
@@ -21,6 +21,11 @@ export class AsistenciaComponent implements OnInit {
   cargando: boolean = false;
   successMessage: string = '';
   errorMessage: string = '';
+
+  paginaActual: number = 1;
+  limite: number = 10;
+  totalPaginas: number = 0;
+  totalRegistros: number = 0;
 
   private restConstants = new RestConstants();
 
@@ -67,7 +72,11 @@ export class AsistenciaComponent implements OnInit {
       });
   }
 
-  cargarAlumnos(): void {
+  buscarNuevosAlumnos(): void {
+    this.cargarAlumnos(1);
+  }
+
+  cargarAlumnos(pagina: number): void {
     this.errorMessage = '';
     this.successMessage = '';
 
@@ -78,19 +87,21 @@ export class AsistenciaComponent implements OnInit {
     }
 
     this.cargando = true;
+    this.paginaActual = pagina;
     const formVal = this.asistenciaForm.value;
 
-    // Buscamos el objeto AsignacionDocente mapeado
     const asigSeleccionada = this.misAsignaciones.find(a => a.idAsignacion === Number(formVal.idAsignacion));
     
-    // Extraemos los IDs desde la propiedad "seccion" del objeto Java
     const idGrado = asigSeleccionada?.seccion?.idGrado;
     const idSeccion = asigSeleccionada?.seccion?.idSeccion;
 
-    this.nominaService.obtenerNomina(formVal.anio, idGrado, idSeccion).subscribe({
-      next: (data) => {
+    this.nominaService.obtenerNomina(formVal.anio, idGrado, idSeccion, this.paginaActual, this.limite).subscribe({
+      next: (data: RespuestaPaginada<NominaAlumno>) => {
         this.ngZone.run(() => {
-          this.alumnos = data || [];
+          this.alumnos = data.contenido || [];
+          this.totalRegistros = data.totalRegistros;
+          this.totalPaginas = data.totalPaginas;
+
           if (this.alumnos.length === 0) {
             this.successMessage = 'No se encontraron alumnos para este grado y sección.';
           }
@@ -100,6 +111,9 @@ export class AsistenciaComponent implements OnInit {
       },
       error: (err) => {
         this.ngZone.run(() => {
+          this.alumnos = [];
+          this.totalRegistros = 0;
+          this.totalPaginas = 0;
           this.errorMessage = err?.error?.mensaje || 'Error al obtener alumnos.';
           this.cargando = false;
           this.cdr.detectChanges();
@@ -108,7 +122,13 @@ export class AsistenciaComponent implements OnInit {
     });
   }
 
-  guardarAsistenciaIndividual(alumno: NominaAlumno, estado: 'PRESENTE' | 'AUSENTE' | 'TARDE' | 'JUSTIFICADO', obs: string = ''): void {
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+      this.cargarAlumnos(nuevaPagina);
+    }
+  }
+
+  guardarAsistenciaIndividual(alumno: NominaAlumno, estado: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADA', obs: string = ''): void {
     const formVal = this.asistenciaForm.value;
 
     const payload: Asistencia = {

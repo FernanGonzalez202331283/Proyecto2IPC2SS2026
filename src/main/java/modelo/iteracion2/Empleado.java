@@ -4,7 +4,7 @@
  */
 package modelo.iteracion2;
 
-import modelo.Persona;
+import modelo.Persona.Persona;
 
 /**
  *

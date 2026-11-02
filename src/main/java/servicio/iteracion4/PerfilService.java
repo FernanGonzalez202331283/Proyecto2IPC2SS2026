@@ -21,12 +21,10 @@ public class PerfilService {
 
     public Perfil obtenerPerfil(int idUsuario) {
 
-        // Validar el ID del usuario
         if (idUsuario <= 0) {
             return null;
         }
 
-        // Consultar el perfil
         return perfilDAO.obtenerPerfil(idUsuario);
     }
 }

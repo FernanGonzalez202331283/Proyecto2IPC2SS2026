@@ -5,6 +5,7 @@
 package Resource.etapa3;
 
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
@@ -13,9 +14,12 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion3.Libro;
 import seguridad.JwtService;
@@ -27,51 +31,18 @@ import servicio.etapa3.LibroService;
 public class LibroResource {
 
     private final LibroService libroService = new LibroService();
-    private final JwtService jwtService = new JwtService();
-
-    // Validar acceso usando Token JWT
-    private Response validarAcceso(String authHeader, String mensajePermiso) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Debe enviar el token de autenticación (Bearer token)."))
-                    .build();
-        }
-
-        String token = authHeader.substring(7);
-        Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Token inválido o expirado."))
-                    .build();
-        }
-
-        String rol = usuario.getRol();
-        if (!"SUPER_ADMIN".equals(rol) && !"BIBLIOTECARIO".equals(rol) && !"ESTUDIANTE".equals(rol) && !"MAESTRO".equals(rol)) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(jsonMensaje(mensajePermiso))
-                    .build();
-        }
-
-        return null;
-    }
 
     private String jsonMensaje(String mensaje) {
-        return """
-               {
-                   "mensaje": "%s"
-               }
-               """.formatted(mensaje);
+        return "{\"mensaje\": \"%s\"}".formatted(mensaje);
     }
 
-    // Registrar un libro
     @POST
-    public Response registrar(
-            @HeaderParam("Authorization") String authHeader,
-            Libro libro) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para registrar libros.");
-        if (acceso != null) return acceso;
+    public Response registrar(@Context SecurityContext sec, Libro libro) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para registrar libros."))
+                    .build();
+        }
 
         if (libro == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -80,7 +51,6 @@ public class LibroResource {
         }
 
         String resultado = libroService.registrarLibro(libro);
-
         if ("Libro registrado correctamente.".equals(resultado)) {
             return Response.status(Response.Status.CREATED)
                     .entity(jsonMensaje(resultado))
@@ -92,29 +62,34 @@ public class LibroResource {
                 .build();
     }
 
-    // Consultar todos los libros
     @GET
-    public Response obtenerTodos(@HeaderParam("Authorization") String authHeader) {
+    public Response obtenerTodos(
+            @Context SecurityContext sec,
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite) {
 
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar libros.");
-        if (acceso != null) return acceso;
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO") && 
+            !sec.isUserInRole("ESTUDIANTE") && !sec.isUserInRole("MAESTRO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar libros."))
+                    .build();
+        }
 
-        ArrayList<Libro> libros = libroService.obtenerTodos();
-        return Response.ok(libros).build();
+        RespuestaPaginada<Libro> resultado = libroService.obtenerTodosPaginado(pagina, limite);
+        return Response.ok(resultado).build();
     }
 
-    // Consultar un libro por ID
     @GET
     @Path("/{id}")
-    public Response buscarPorId(
-            @HeaderParam("Authorization") String authHeader,
-            @PathParam("id") int id) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar libros.");
-        if (acceso != null) return acceso;
+    public Response buscarPorId(@Context SecurityContext sec, @PathParam("id") int id) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO") && 
+            !sec.isUserInRole("ESTUDIANTE") && !sec.isUserInRole("MAESTRO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar libros."))
+                    .build();
+        }
 
         Libro libro = libroService.buscarPorId(id);
-
         if (libro == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje("El libro no existe."))
@@ -124,16 +99,14 @@ public class LibroResource {
         return Response.ok(libro).build();
     }
 
-    // Actualizar un libro
     @PUT
     @Path("/{id}")
-    public Response actualizar(
-            @HeaderParam("Authorization") String authHeader,
-            @PathParam("id") int id,
-            Libro libro) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para actualizar libros.");
-        if (acceso != null) return acceso;
+    public Response actualizar(@Context SecurityContext sec, @PathParam("id") int id, Libro libro) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para actualizar libros."))
+                    .build();
+        }
 
         if (libro == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -147,7 +120,6 @@ public class LibroResource {
         if ("Libro actualizado correctamente.".equals(resultado)) {
             return Response.ok(jsonMensaje(resultado)).build();
         }
-
         if ("El libro que intenta actualizar no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje(resultado))
@@ -159,27 +131,23 @@ public class LibroResource {
                 .build();
     }
 
-    // Cambiar estado de un libro
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(
-            @HeaderParam("Authorization") String authHeader,
-            @PathParam("id") int id,
-            @QueryParam("estado") boolean estado) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para cambiar el estado de los libros.");
-        if (acceso != null) return acceso;
+    public Response cambiarEstado(@Context SecurityContext sec, @PathParam("id") int id, @QueryParam("estado") boolean estado) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para cambiar el estado de los libros."))
+                    .build();
+        }
 
         String resultado = libroService.cambiarEstado(id, estado);
-
         if ("El libro que intenta modificar no existe.".equals(resultado)) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje(resultado))
                     .build();
         }
 
-        if ("Libro activado correctamente.".equals(resultado)
-                || "Libro desactivado correctamente.".equals(resultado)) {
+        if ("Libro activado correctamente.".equals(resultado) || "Libro desactivado correctamente.".equals(resultado)) {
             return Response.ok(jsonMensaje(resultado)).build();
         }
 
@@ -188,13 +156,15 @@ public class LibroResource {
                 .build();
     }
 
-    // Consultar catálogo de libros activos
     @GET
     @Path("/catalogo")
-    public Response obtenerCatalogo(@HeaderParam("Authorization") String authHeader) {
-
-        Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar el catálogo.");
-        if (acceso != null) return acceso;
+    public Response obtenerCatalogo(@Context SecurityContext sec) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO") && 
+            !sec.isUserInRole("ESTUDIANTE") && !sec.isUserInRole("MAESTRO")) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para consultar el catálogo."))
+                    .build();
+        }
 
         ArrayList<Libro> libros = libroService.obtenerCatalogo();
         return Response.ok(libros).build();

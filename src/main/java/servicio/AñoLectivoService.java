@@ -8,70 +8,102 @@ import Dao.AñoLectivoDAO;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
-import modelo.AñoLectivo;
+import modelo.añoLectivo.AñoLectivo;
+import modelo.RespuestaPaginada;
+import modelo.añoLectivo.AñoLectivoRequest;
+import modelo.añoLectivo.AñoLectivoResponse;
 
 /**
  *
  * @author fernan
  */
 public class AñoLectivoService {
-    private final AñoLectivoDAO añoLectivoDAO;
+private final AñoLectivoDAO añoLectivoDAO;
 
     public AñoLectivoService() {
         this.añoLectivoDAO = new AñoLectivoDAO();
     }
 
-    public String registrarAñoLectivo(AñoLectivo añoLectivo) {
-        String errorValidacion = validarDatosAñoLectivo(añoLectivo);
+    public String registrarAñoLectivo(AñoLectivoRequest request) {
+        String errorValidacion = validarDatosAñoLectivo(request);
         if (errorValidacion != null) {
             return errorValidacion;
         }
 
-        if (añoLectivoDAO.existeAño(añoLectivo.getAnio())) {
+        if (añoLectivoDAO.existeAño(request.getAnio())) {
             return "El año lectivo ya existe";
         }
+
+        // Convertir Request a Entidad para enviarla al DAO
+        AñoLectivo entidad = mapearAEntidad(request);
+        entidad.setEstado(true);
         
-        añoLectivo.setEstado(true);
-        boolean resultado = añoLectivoDAO.insertar(añoLectivo);
+        boolean resultado = añoLectivoDAO.insertar(entidad);
         return resultado ? "Año lectivo registrado correctamente"
                          : "No se pudo registrar el año lectivo";
     }
 
-    public AñoLectivo buscarAñoLectivo(int idAñoLectivo) {
+    public AñoLectivoResponse buscarAñoLectivo(int idAñoLectivo) {
         if (idAñoLectivo <= 0) {
             return null;
         }
-        return añoLectivoDAO.buscarPorId(idAñoLectivo);
+        AñoLectivo entidad = añoLectivoDAO.buscarPorId(idAñoLectivo);
+        return mapearAResponse(entidad);
     }
 
-    public List<AñoLectivo> obtenerAñosLectivos() {
-        return añoLectivoDAO.obtenerTodos();
+    public List<AñoLectivoResponse> obtenerAñosLectivos() {
+        List<AñoLectivo> entidades = añoLectivoDAO.obtenerTodos();
+        List<AñoLectivoResponse> responses = new ArrayList<>();
+        
+        for (AñoLectivo entidad : entidades) {
+            responses.add(mapearAResponse(entidad));
+        }
+        return responses;
     }
 
-    public String actualizarAñoLectivo(AñoLectivo añoLectivo) {
-        if (añoLectivo == null) {
+    public RespuestaPaginada<AñoLectivoResponse> obtenerAñosLectivosPaginados(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        
+        List<AñoLectivo> entidades = añoLectivoDAO.obtenerPaginados(limite, offset);
+        List<AñoLectivoResponse> responses = new ArrayList<>();
+        for (AñoLectivo entidad : entidades) {
+            responses.add(mapearAResponse(entidad));
+        }
+        
+        int totalRegistros = añoLectivoDAO.contarTotal();
+
+        return new RespuestaPaginada<>(responses, pagina, limite, totalRegistros);
+    }
+
+    public String actualizarAñoLectivo(AñoLectivoRequest request) {
+        if (request == null) {
             return "Los datos del año lectivo son obligatorios";
         }
 
-        if (añoLectivo.getIdAnoLectivo() <= 0) {
+        if (request.getIdAnoLectivo() <= 0) {
             return "El ID del año lectivo es obligatorio";
         }
 
-        AñoLectivo existente = añoLectivoDAO.buscarPorId(añoLectivo.getIdAnoLectivo());
+        AñoLectivo existente = añoLectivoDAO.buscarPorId(request.getIdAnoLectivo());
         if (existente == null) {
             return "El año lectivo no existe";
         }
 
-        String errorValidacion = validarDatosAñoLectivo(añoLectivo);
+        String errorValidacion = validarDatosAñoLectivo(request);
         if (errorValidacion != null) {
             return errorValidacion;
         }
 
-        if (añoLectivoDAO.existeAño(añoLectivo.getAnio()) && existente.getAnio()!= añoLectivo.getAnio()) {
+        if (añoLectivoDAO.existeAño(request.getAnio()) && existente.getAnio() != request.getAnio()) {
             return "El año lectivo ya existe en otro registro";
         }
 
-        boolean resultado = añoLectivoDAO.actualizar(añoLectivo);
+        AñoLectivo entidad = mapearAEntidad(request);
+        
+        boolean resultado = añoLectivoDAO.actualizar(entidad);
         return resultado ? "Año lectivo actualizado correctamente"
                          : "No se pudo actualizar el año lectivo";
     }
@@ -95,21 +127,22 @@ public class AñoLectivoService {
         return "No se pudo cambiar el estado del año lectivo";
     }
 
-    // Método auxiliar privado para centralizar la validación de fechas y formato
-    private String validarDatosAñoLectivo(AñoLectivo añoLectivo) {
-        if (añoLectivo == null) {
+    // --- MÉTODOS PRIVADOS DE VALIDACIÓN Y MAPEO ---
+
+    private String validarDatosAñoLectivo(AñoLectivoRequest request) {
+        if (request == null) {
             return "Los datos del año lectivo son obligatorios";
         }
 
-        if (añoLectivo.getAnio()<= 0) {
+        if (request.getAnio() <= 0) {
             return "El año lectivo debe ser mayor que 0";
         }
 
-        if (añoLectivo.getFechaInicio() == null || añoLectivo.getFechaInicio().trim().isEmpty()) {
+        if (request.getFechaInicio() == null || request.getFechaInicio().trim().isEmpty()) {
             return "La fecha de inicio es obligatoria";
         }
 
-        if (añoLectivo.getFechaFin() == null || añoLectivo.getFechaFin().trim().isEmpty()) {
+        if (request.getFechaFin() == null || request.getFechaFin().trim().isEmpty()) {
             return "La fecha de fin es obligatoria";
         }
 
@@ -117,8 +150,8 @@ public class AñoLectivoService {
         Date fechaFin;
 
         try {
-            fechaInicio = Date.valueOf(añoLectivo.getFechaInicio());
-            fechaFin = Date.valueOf(añoLectivo.getFechaFin());
+            fechaInicio = Date.valueOf(request.getFechaInicio());
+            fechaFin = Date.valueOf(request.getFechaFin());
         } catch (IllegalArgumentException e) {
             return "Las fechas deben tener el formato YYYY-MM-DD";
         }
@@ -128,5 +161,25 @@ public class AñoLectivoService {
         }
 
         return null;
+    }
+
+    private AñoLectivo mapearAEntidad(AñoLectivoRequest request) {
+        AñoLectivo entidad = new AñoLectivo();
+        entidad.setIdAnoLectivo(request.getIdAnoLectivo());
+        entidad.setAnio(request.getAnio());
+        entidad.setFechaInicio(request.getFechaInicio());
+        entidad.setFechaFin(request.getFechaFin());
+        return entidad;
+    }
+
+    private AñoLectivoResponse mapearAResponse(AñoLectivo entidad) {
+        if (entidad == null) return null;
+        return new AñoLectivoResponse(
+            entidad.getIdAnoLectivo(),
+            entidad.getAnio(),
+            entidad.getFechaInicio(),
+            entidad.getFechaFin(),
+            entidad.isEstado()
+        );
     }
 }

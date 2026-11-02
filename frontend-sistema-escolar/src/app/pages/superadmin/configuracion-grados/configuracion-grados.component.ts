@@ -1,30 +1,36 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConfiguracionGradoService, ConfiguracionGrado } from '../../../services/configuracion-grado.service';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ConfiguracionGradoService, ConfiguracionGrado } from '../../../services/configuracion-grado.service';
+
 @Component({
   selector: 'app-configuracion-grados',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './configuracion-grados.component.html'
 })
 export class ConfiguracionGradosComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private gradoService = inject(ConfiguracionGradoService);
+  private destroyRef = inject(DestroyRef);
+  private cdr = inject(ChangeDetectorRef);
+
   configuraciones: ConfiguracionGrado[] = [];
   configForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private gradoService: ConfiguracionGradoService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  successMessage = '';
+  errorMessage = '';
+  cargando = false;
+  procesando = false;
 
   ngOnInit(): void {
     this.initForm();
@@ -47,22 +53,47 @@ export class ConfiguracionGradosComponent implements OnInit {
 
   cargarConfiguraciones(): void {
     this.cargando = true;
-    this.gradoService.obtenerConfiguraciones().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.configuraciones = (data || []).sort((a, b) => a.orden - b.orden);
+    this.cdr.markForCheck();
+
+    this.gradoService.obtenerConfiguraciones(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          let lista: ConfiguracionGrado[] = [];
+
+          if (resp && Array.isArray(resp.contenido)) {
+            lista = resp.contenido;
+            this.paginaActual = resp.paginaActual || 1;
+            this.totalPaginas = resp.totalPaginas || 1;
+            this.totalRegistros = resp.totalRegistros || 0;
+          } else if (Array.isArray(resp)) {
+            lista = resp;
+            this.totalRegistros = resp.length;
+            this.totalPaginas = 1;
+          } else {
+            lista = [];
+            this.totalRegistros = 0;
+            this.totalPaginas = 1;
+          }
+
+          this.configuraciones = lista.sort((a, b) => a.orden - b.orden);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck(); // Notifica a Angular para redibujar la tabla
+        },
+        error: (err) => {
+          this.configuraciones = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarConfiguraciones();
+    }
   }
 
   guardarConfiguracion(): void {
@@ -71,51 +102,32 @@ export class ConfiguracionGradosComponent implements OnInit {
     if (this.configForm.invalid) {
       this.configForm.markAllAsTouched();
       this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
+    this.cdr.markForCheck();
     const datos: ConfiguracionGrado = this.configForm.value;
 
-    if (this.modoEdicion && this.idSeleccionado) {
-      this.gradoService.actualizarConfiguracion(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Configuración actualizada correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarConfiguraciones();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    } else {
-      this.gradoService.registrarConfiguracion(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Configuración registrada correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarConfiguraciones();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    }
+    const operacion$ = (this.modoEdicion && this.idSeleccionado)
+      ? this.gradoService.actualizarConfiguracion(this.idSeleccionado, datos)
+      : this.gradoService.registrarConfiguracion(datos);
+
+    operacion$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        const mensajeDefault = this.modoEdicion ? 'Configuración actualizada correctamente.' : 'Configuración registrada correctamente.';
+        this.successMessage = this.obtenerTextoRespuesta(res) || mensajeDefault;
+        this.procesando = false;
+        this.resetForm();
+        this.cargarConfiguraciones();
+      },
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoRespuesta(err);
+        this.procesando = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   toggleEstado(config: ConfiguracionGrado): void {
@@ -124,21 +136,19 @@ export class ConfiguracionGradosComponent implements OnInit {
     this.limpiarMensajes();
     const nuevoEstado = !config.estado;
 
-    this.gradoService.cambiarEstado(config.idConfiguracion, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.gradoService.cambiarEstado(config.idConfiguracion, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado actualizado correctamente.';
           config.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   editarConfiguracion(config: ConfiguracionGrado): void {
@@ -152,6 +162,7 @@ export class ConfiguracionGradosComponent implements OnInit {
       orden: config.orden,
       estado: config.estado
     });
+    this.cdr.markForCheck();
   }
 
   cancelarEdicion(): void {
@@ -164,9 +175,10 @@ export class ConfiguracionGradosComponent implements OnInit {
     this.idSeleccionado = null;
     this.configForm.reset({
       nivel: 'PRIMARIA',
-      orden: this.configuraciones.length + 1,
+      orden: this.totalRegistros + 1,
       estado: true
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

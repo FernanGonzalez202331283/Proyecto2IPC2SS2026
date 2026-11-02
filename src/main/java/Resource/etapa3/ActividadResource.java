@@ -6,8 +6,6 @@ package Resource.etapa3;
 
 import Dao.iteracion2.EmpleadoDAO;
 import Dao.iteracion3.AsistenciaDAO;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
@@ -17,10 +15,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
 import modelo.Usuario;
 import modelo.iteracion2.Empleado;
 import modelo.iteracion3.Actividad;
@@ -35,7 +31,7 @@ import servicio.etapa3.ActividadService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class ActividadResource {
-    
+
     private final ActividadService actividadService = new ActividadService();
     private final EmpleadoDAO empleadoDAO = new EmpleadoDAO();
     private final AsistenciaDAO asistenciaDAO = new AsistenciaDAO();
@@ -68,10 +64,14 @@ public class ActividadResource {
     }
 
     private Empleado obtenerMaestroDesdeToken(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
         String token = authHeader.substring(7);
         Usuario usuario = jwtService.obtenerUsuarioDesdeToken(token);
-        if (usuario == null || !"MAESTRO".equals(usuario.getRol())) return null;
+        if (usuario == null || !"MAESTRO".equals(usuario.getRol())) {
+            return null;
+        }
         return empleadoDAO.buscarPorIdPersona(usuario.getIdPersona());
     }
 
@@ -89,7 +89,9 @@ public class ActividadResource {
             Actividad actividad) {
 
         Response acceso = validarAcceso(authHeader, "No tiene permisos para registrar actividades.");
-        if (acceso != null) return acceso;
+        if (acceso != null) {
+            return acceso;
+        }
 
         Empleado maestro = obtenerMaestroDesdeToken(authHeader);
         if (maestro != null) {
@@ -115,7 +117,9 @@ public class ActividadResource {
             @PathParam("idAsignacion") int idAsignacion) {
 
         Response acceso = validarAcceso(authHeader, "No tiene permisos para consultar actividades.");
-        if (acceso != null) return acceso;
+        if (acceso != null) {
+            return acceso;
+        }
 
         Empleado maestro = obtenerMaestroDesdeToken(authHeader);
         if (maestro != null) {
@@ -137,7 +141,9 @@ public class ActividadResource {
             Actividad actividad) {
 
         Response acceso = validarAcceso(authHeader, "No tiene permisos para actualizar actividades.");
-        if (acceso != null) return acceso;
+        if (acceso != null) {
+            return acceso;
+        }
 
         if (actividad == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -154,8 +160,8 @@ public class ActividadResource {
 
         Empleado maestro = obtenerMaestroDesdeToken(authHeader);
         if (maestro != null) {
-            if (!asistenciaDAO.asignacionPerteneceEmpleado(existente.getIdAsignacion(), maestro.getIdEmpleado()) ||
-                !asistenciaDAO.asignacionPerteneceEmpleado(actividad.getIdAsignacion(), maestro.getIdEmpleado())) {
+            if (!asistenciaDAO.asignacionPerteneceEmpleado(existente.getIdAsignacion(), maestro.getIdEmpleado())
+                    || !asistenciaDAO.asignacionPerteneceEmpleado(actividad.getIdAsignacion(), maestro.getIdEmpleado())) {
                 return Response.status(Response.Status.FORBIDDEN)
                         .entity(jsonMensaje("No puede actualizar actividades de una asignación que no le pertenece."))
                         .build();
@@ -180,7 +186,9 @@ public class ActividadResource {
             @QueryParam("estado") Boolean estado) {
 
         Response acceso = validarAcceso(authHeader, "No tiene permisos para cambiar el estado de actividades.");
-        if (acceso != null) return acceso;
+        if (acceso != null) {
+            return acceso;
+        }
 
         if (estado == null) {
             return Response.status(Response.Status.BAD_REQUEST)

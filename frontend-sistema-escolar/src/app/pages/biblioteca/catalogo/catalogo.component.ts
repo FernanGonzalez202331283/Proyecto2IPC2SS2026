@@ -1,12 +1,13 @@
 import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { LibroService, Libro } from '../../../services/libro.service';
 
 @Component({
   selector: 'app-catalogo',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './catalogo.component.html'
 })
 export class CatalogoComponent implements OnInit {
@@ -20,6 +21,8 @@ export class CatalogoComponent implements OnInit {
 
   constructor(
     private libroService: LibroService,
+    private location: Location,
+    private router: Router,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
   ) {}
@@ -65,5 +68,13 @@ export class CatalogoComponent implements OnInit {
 
       return coincideBusqueda && coincideStock;
     });
+  }
+
+  volverDashboard(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/']);
+    }
   }
 }

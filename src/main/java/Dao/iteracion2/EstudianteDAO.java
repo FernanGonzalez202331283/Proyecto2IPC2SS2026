@@ -14,7 +14,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import modelo.Persona;
+import java.util.List;
+import modelo.Persona.Persona;
 import modelo.Usuario;
 import modelo.iteracion2.EstudianteEncargado;
 
@@ -23,9 +24,9 @@ import modelo.iteracion2.EstudianteEncargado;
  * @author fernan
  */
 public class EstudianteDAO {
-    private final EstudianteEncargadoDAO estudianteEncargadoDAO = new EstudianteEncargadoDAO();
-    private final EncargadoDAO encargadoDAO = new EncargadoDAO(); // Inyección de EncargadoDAO
-private final UsuarioDAO usuarioDAO = new UsuarioDAO();
+private final EstudianteEncargadoDAO estudianteEncargadoDAO = new EstudianteEncargadoDAO();
+    private final EncargadoDAO encargadoDAO = new EncargadoDAO();
+    private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     public boolean registrarEstudiante(Estudiante estudiante) {
         String sqlPersona = """
@@ -44,7 +45,6 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
             connection.setAutoCommit(false);
 
             try {
-                // 1. Insertar Persona
                 int idPersona;
                 try (PreparedStatement psPersona = connection.prepareStatement(sqlPersona, Statement.RETURN_GENERATED_KEYS)) {
                     psPersona.setString(1, estudiante.getPersona().getNombres());
@@ -65,7 +65,6 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
                     }
                 }
 
-                // 2. Insertar Estudiante
                 int idEstudiante;
                 try (PreparedStatement psEstudiante = connection.prepareStatement(sqlEstudiante, Statement.RETURN_GENERATED_KEYS)) {
                     psEstudiante.setInt(1, idPersona);
@@ -89,7 +88,6 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
                     }
                 }
 
-                // 3. Registrar Encargados y Relación
                 if (estudiante.getEncargados() != null && !estudiante.getEncargados().isEmpty()) {
                     for (EstudianteEncargado rel : estudiante.getEncargados()) {
                         int idEncargado = rel.getIdEncargado();
@@ -112,28 +110,22 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
                     }
                 }
 
-               // 4. CREAR USUARIO AUTOMÁTICO PARA EL ESTUDIANTE
                 Usuario nuevoUsuario = new Usuario();
                 nuevoUsuario.setUsername(estudiante.getCodigoEstudiante());
-                
-                // Uso de ContraseñaUtil para codificar la clave por defecto "123456"
+
                 String passCodificada = ContraseñaUtil.codificar("123456");
                 nuevoUsuario.setContraseña(passCodificada);
-                
+
                 nuevoUsuario.setIdPersona(idPersona);
                 nuevoUsuario.setRol("ESTUDIANTE");
                 nuevoUsuario.setEstado(true);
-                
-                // AQUÍ AGREGAMOS LA REGLA DE CAMBIO DE CLAVE
                 nuevoUsuario.setDebeCambiarClave(true);
 
-                // Al llamar a insertar, tu UsuarioDAO ya se encarga de guardar en el historial (¡Excelente!)
                 boolean usuarioCreado = usuarioDAO.insertar(connection, nuevoUsuario);
                 if (!usuarioCreado) {
                     throw new SQLException("No se pudo crear la cuenta de usuario para el estudiante.");
                 }
 
-                // Confirmar la transacción
                 connection.commit();
                 return true;
 
@@ -158,7 +150,7 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
                      INNER JOIN persona p ON e.id_persona = p.id_persona
                      WHERE e.id_estudiante = ?
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEstudiante);
@@ -184,10 +176,10 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
                          p.correo, p.direccion, p.estado AS estado_persona
                      FROM estudiante e
                      INNER JOIN persona p ON e.id_persona = p.id_persona
-                     ORDER BY e.id_estudiante
+                     ORDER BY e.id_estudiante DESC
                      """;
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
@@ -199,6 +191,52 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
             System.out.println("Error al obtener estudiantes: " + e.getMessage());
         }
         return estudiantes;
+    }
+
+    public List<Estudiante> obtenerPaginados(int limite, int offset) {
+        List<Estudiante> estudiantes = new ArrayList<>();
+        String sql = """
+                     SELECT 
+                         e.id_estudiante, e.id_persona, e.codigo_estudiante, e.informacion_medica,
+                         e.estado AS estado_estudiante, p.nombres, p.apellidos, p.dpi, p.telefono,
+                         p.correo, p.direccion, p.estado AS estado_persona
+                     FROM estudiante e
+                     INNER JOIN persona p ON e.id_persona = p.id_persona
+                     ORDER BY e.id_estudiante DESC
+                     LIMIT ? OFFSET ?
+                     """;
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Estudiante estudiante = mapearEstudiante(rs);
+                    estudiante.setEncargados(estudianteEncargadoDAO.obtenerPorEstudiante(estudiante.getIdEstudiante()));
+                    estudiantes.add(estudiante);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al obtener estudiantes paginados: " + e.getMessage());
+        }
+        return estudiantes;
+    }
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM estudiante";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al contar estudiantes: " + e.getMessage());
+        }
+        return 0;
     }
 
     public boolean actualizar(Estudiante estudiante) {
@@ -255,7 +293,7 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     public boolean cambiarEstado(int idEstudiante, String estado) {
         String sql = "UPDATE estudiante SET estado = ? WHERE id_estudiante = ?";
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, estado);
             ps.setInt(2, idEstudiante);
@@ -268,11 +306,13 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     public boolean existeCodigo(String codigoEstudiante) {
         String sql = "SELECT COUNT(*) FROM estudiante WHERE codigo_estudiante = ?";
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, codigoEstudiante);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt(1) > 0;
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
             }
         } catch (SQLException e) {
             System.out.println("Error al verificar codigo: " + e.getMessage());
@@ -282,12 +322,14 @@ private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     public boolean existeCodigo(String codigoEstudiante, int idEstudiante) {
         String sql = "SELECT COUNT(*) FROM estudiante WHERE codigo_estudiante = ? AND id_estudiante <> ?";
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, codigoEstudiante);
             ps.setInt(2, idEstudiante);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt(1) > 0;
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
             }
         } catch (SQLException e) {
             System.out.println("Error al verificar código: " + e.getMessage());

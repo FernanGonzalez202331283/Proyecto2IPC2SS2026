@@ -1,12 +1,13 @@
 import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
 import { PrestamoService, Prestamo } from '../../../services/prestamo.service';
 import { AuthService } from '../../../core/services/auth';
 
 @Component({
   selector: 'app-mis-prestamos',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './mis-prestamos.component.html'
 })
 export class MisPrestamosComponent implements OnInit {
@@ -17,6 +18,8 @@ export class MisPrestamosComponent implements OnInit {
   constructor(
     private prestamoService: PrestamoService,
     private authService: AuthService,
+    private location: Location,
+    private router: Router,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
   ) {}
@@ -40,16 +43,24 @@ export class MisPrestamosComponent implements OnInit {
         this.ngZone.run(() => {
           this.misPrestamos = prestamos || [];
           this.cargando = false;
-          this.cdr.detectChanges(); // Fuerza la actualización inmediata del HTML
+          this.cdr.detectChanges(); 
         });
       },
       error: (err) => {
         this.ngZone.run(() => {
           this.errorMessage = err?.error?.mensaje || 'Error al consultar el historial de préstamos.';
           this.cargando = false;
-          this.cdr.detectChanges(); // Fuerza la actualización inmediata del HTML
+          this.cdr.detectChanges(); 
         });
       }
     });
+  }
+
+  volverDashboard(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/']);
+    }
   }
 }

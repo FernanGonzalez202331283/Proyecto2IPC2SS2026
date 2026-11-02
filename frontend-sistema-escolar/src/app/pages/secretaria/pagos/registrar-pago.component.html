@@ -1,15 +1,14 @@
 <div class="container my-4">
 
-  <!-- Encabezado con Botón de Regreso -->
+  <!-- Encabezado -->
   <div class="p-3 mb-4 bg-success text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
     <div>
       <h3 class="fw-bold mb-0"><i class="bi bi-cash-stack me-2"></i>CU0029 & CU0030: Registro, Cobro y Comprobantes</h3>
-      <small class="text-white-50">Consulta de solvencia, cobro de obligaciones y emisión de recibos PDF</small>
+      <small class="text-white-50">Búsqueda de personas, cobro de obligaciones y emisión de recibos en PDF</small>
     </div>
-    <!-- Botón directo al dashboard de Secretaría -->
-    <a routerLink="/secretaria/dashboard" class="btn btn-light btn-sm text-success fw-semibold">
+    <button type="button" (click)="volver()" class="btn btn-light btn-sm text-success fw-semibold">
       <i class="bi bi-arrow-left-circle me-1"></i> Volver
-    </a>
+    </button>
   </div>
 
   <!-- Alertas -->
@@ -27,33 +26,72 @@
     </div>
   }
 
-  <!-- Búsqueda -->
+  <!-- Selección de Estudiante / Persona -->
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-dark text-white py-2">
-      <h6 class="mb-0 fw-bold"><i class="bi bi-search me-2"></i>Buscar Estudiante</h6>
+      <h6 class="mb-0 fw-bold"><i class="bi bi-person-bounding-box me-2"></i>Seleccionar Estudiante</h6>
     </div>
-    <div class="card-body p-3">
-      <form [formGroup]="busquedaForm" (ngSubmit)="buscarDeudas()" class="d-flex gap-2">
-        <input type="number" formControlName="idEstudiante" class="form-control form-control-sm" placeholder="ID o Código del Estudiante">
-        <button type="submit" class="btn btn-primary btn-sm fw-bold px-3" [disabled]="buscando || busquedaForm.invalid">
-          @if (buscando) {
-            <span class="spinner-border spinner-border-sm me-1"></span>
-          } @else {
-            <i class="bi bi-search me-1"></i>
+    <div class="card-body p-3 bg-light rounded-bottom">
+      <div class="row align-items-center g-3">
+        <div class="col-md-9">
+          <label class="form-label small fw-bold text-dark mb-1">
+            <i class="bi bi-search me-1"></i>Buscar Estudiante (Código, Nombres, Apellidos o DPI):
+          </label>
+          <select 
+            class="form-select" 
+            [(ngModel)]="idEstudianteSeleccionado" 
+            (change)="onSeleccionarEstudiante()"
+            [disabled]="cargandoEstudiantes || buscandoDeudas">
+            <option [ngValue]="null">--- Seleccione un estudiante activo ---</option>
+            @for (est of estudiantesLista; track est.idEstudiante) {
+              <option [ngValue]="est.idEstudiante">
+                {{ est.codigoEstudiante }} - {{ est.persona?.nombres }} {{ est.persona?.apellidos }} (DPI: {{ est.persona?.dpi || 'N/A' }})
+              </option>
+            }
+          </select>
+        </div>
+        <div class="col-md-3 text-md-end pt-3 pt-md-0">
+          @if (cargandoEstudiantes || buscandoDeudas) {
+            <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+            <span class="small text-muted fw-semibold">Procesando información...</span>
           }
-          Buscar Obligaciones
-        </button>
-      </form>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Estado de Cuenta -->
-  @if (listaObligaciones.length > 0) {
+  <!-- Ficha del Estudiante Seleccionado -->
+  @if (estudianteSeleccionado) {
+    <div class="card shadow-sm border-0 mb-4 border-start border-4 border-success">
+      <div class="card-body p-3">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h5 class="fw-bold mb-1 text-dark">
+              {{ estudianteSeleccionado.persona?.nombres }} {{ estudianteSeleccionado.persona?.apellidos }}
+            </h5>
+            <div class="small text-muted">
+              <span class="me-3"><i class="bi bi-card-text me-1"></i>Código: <strong class="text-primary">{{ estudianteSeleccionado.codigoEstudiante }}</strong></span>
+              <span class="me-3"><i class="bi bi-fingerprint me-1"></i>DPI: {{ estudianteSeleccionado.persona?.dpi || 'Sin registrar' }}</span>
+              <span><i class="bi bi-telephone me-1"></i>Teléfono: {{ estudianteSeleccionado.persona?.telefono || 'N/A' }}</span>
+            </div>
+          </div>
+          <div class="col-md-4 text-md-end mt-2 mt-md-0">
+            <span class="badge bg-success px-3 py-2">ESTUDIANTE ACTIVO</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Estado de Cuenta / Tabla de Obligaciones -->
+  @if (idEstudianteSeleccionado && !buscandoDeudas) {
     <div class="card shadow-sm border-0">
       <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-receipt me-2 text-success"></i>Estado de Cuenta del Estudiante</h6>
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="bi bi-receipt me-2 text-success"></i>Estado de Cuenta y Cobros
+        </h6>
         <span class="badge bg-success-subtle text-success border border-success fw-bold px-3 py-1 rounded-pill">
-          Total: {{ listaObligaciones.length }}
+          Obligaciones Registradas: {{ listaObligaciones.length }}
         </span>
       </div>
       <div class="card-body p-0">
@@ -72,7 +110,7 @@
               @for (obs of listaObligaciones; track obs.idObligacion) {
                 <tr [class.table-light]="obs.estado === 'PAGADA'">
                   <td class="ps-3 fw-bold text-primary">
-                    {{ obs.concepto.replace('_', ' ') }}
+                    {{ obs.concepto ? obs.concepto.replace('_', ' ') : 'S/C' }}
                   </td>
                   <td>{{ obs.descripcion }}</td>
                   <td class="text-nowrap">
@@ -87,17 +125,22 @@
                         <span class="badge bg-success-subtle text-success border border-success px-2 py-1 fw-semibold rounded-pill">
                           <i class="bi bi-check-circle-fill me-1"></i> PAGADA
                         </span>
-                        <!-- Botón para reimprimir/ver el PDF del comprobante si ya está pagada -->
-                        <button class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" 
-                                title="Ver / Imprimir Comprobante PDF"
-                                (click)="verComprobantePDF(obs.idObligacion)">
-                          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Recibo
-                        </button>
+                        @if (obs.idPago) {
+                          <button 
+                            type="button" 
+                            class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" 
+                            title="Ver / Imprimir Comprobante PDF"
+                            (click)="verComprobantePDF(obs.idPago)">
+                            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Recibo PDF
+                          </button>
+                        }
                       </div>
                     } @else {
-                      <button class="btn btn-success btn-sm fw-bold px-3 py-0" 
-                              [disabled]="procesandoId === obs.idObligacion"
-                              (click)="registrarPago(obs)">
+                      <button 
+                        type="button" 
+                        class="btn btn-success btn-sm fw-bold px-3 py-0" 
+                        [disabled]="procesandoId === obs.idObligacion"
+                        (click)="registrarPago(obs)">
                         @if (procesandoId === obs.idObligacion) {
                           <span class="spinner-border spinner-border-sm"></span>
                         } @else {
@@ -105,6 +148,12 @@
                         }
                       </button>
                     }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-muted">
+                    No se encontraron obligaciones registradas para el estudiante.
                   </td>
                 </tr>
               }

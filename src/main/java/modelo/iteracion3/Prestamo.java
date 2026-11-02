@@ -18,6 +18,8 @@ public class Prestamo {
     private String fechaDevolucionReal;
     private String estado;
     
+    private String nombrePersona;
+    private String tituloLibro;
     public Prestamo(){
         
     }
@@ -88,6 +90,19 @@ public class Prestamo {
         this.estado = estado;
     }
 
-    
-    
+    public String getNombrePersona() {
+        return nombrePersona;
+    }
+
+    public void setNombrePersona(String nombrePersona) {
+        this.nombrePersona = nombrePersona;
+    }
+
+    public String getTituloLibro() {
+        return tituloLibro;
+    }
+
+    public void setTituloLibro(String tituloLibro) {
+        this.tituloLibro = tituloLibro;
+    }
 }

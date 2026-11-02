@@ -21,22 +21,18 @@ public class ComprobantePagoService {
             return DATOS_INVALIDOS;
         }
 
-        // Verificar que el ID del pago sea válido
         if (comprobante.getIdPago() <= 0) {
             return DATOS_INVALIDOS;
         }
 
-        // Registrar el comprobante
         return comprobanteDAO.registrar(comprobante);
     }
 
-    // Obtener todos los comprobantes
     public java.util.ArrayList<ComprobantePago> obtenerTodos() {
 
         return comprobanteDAO.obtenerTodos();
     }
 
-    // Buscar comprobante por ID
     public ComprobantePago buscarPorId(int idComprobante) {
 
         if (idComprobante <= 0) {
@@ -46,7 +42,6 @@ public class ComprobantePagoService {
         return comprobanteDAO.buscarPorId(idComprobante);
     }
 
-    // Buscar comprobante por pago
     public ComprobantePago buscarPorPago(int idPago) {
 
         if (idPago <= 0) {

@@ -4,18 +4,19 @@
  */
 package Resource.etapa2;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import modelo.Usuario;
+import jakarta.ws.rs.core.SecurityContext;
+import modelo.RespuestaPaginada;
 import modelo.UsuarioOperativo;
-import seguridad.JwtService;
 import servicio.UsuarioOperativoService;
 
 /**
@@ -26,58 +27,42 @@ import servicio.UsuarioOperativoService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class UsuarioOperativoResource {
+
     private final UsuarioOperativoService service;
-    private final JwtService jwtService = new JwtService();
 
     public UsuarioOperativoResource() {
         this.service = new UsuarioOperativoService();
     }
 
-    private Response validarAcceso(HttpServletRequest httpRequest, String mensajePermiso) {
-        Usuario usuario = obtenerUsuarioSesion(httpRequest);
+    @GET
+    public Response obtenerOperativos(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context SecurityContext securityContext) {
 
-        if (usuario == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(jsonMensaje("Debe iniciar sesión."))
-                    .build();
-        }
-
-        if (!"SUPER_ADMIN".equals(usuario.getRol()) && !"ADMIN".equals(usuario.getRol())) {
+        if (!tienePermiso(securityContext)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity(jsonMensaje(mensajePermiso))
+                    .entity(jsonMensaje("No tiene permisos para consultar usuarios operativos."))
                     .build();
         }
 
-        return null;
-    }
-
-    private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
-            return (Usuario) session.getAttribute("usuario");
-        }
-
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            return jwtService.obtenerUsuarioDesdeToken(token);
-        }
-
-        return null;
-    }
-
-    private String jsonMensaje(String mensaje) {
-        return """
-               {
-                   "mensaje": "%s"
-               }
-               """.formatted(mensaje);
+        RespuestaPaginada<UsuarioOperativo> resultado = service.obtenerOperativosPaginados(pagina, limite);
+        return Response.ok(resultado).build();
     }
 
     @POST
-    public Response registrar(UsuarioOperativo dto, @Context HttpServletRequest httpRequest) {
-        Response acceso = validarAcceso(httpRequest, "No tiene permisos para gestionar empleados u usuarios.");
-        if (acceso != null) return acceso;
+    public Response registrar(UsuarioOperativo dto, @Context SecurityContext securityContext) {
+        if (!tienePermiso(securityContext)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(jsonMensaje("No tiene permisos para gestionar empleados u usuarios."))
+                    .build();
+        }
+
+        if (dto == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonMensaje("Los datos del formulario son obligatorios."))
+                    .build();
+        }
 
         String resultado = service.registrar(dto);
 
@@ -90,5 +75,18 @@ public class UsuarioOperativoResource {
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(jsonMensaje(resultado))
                 .build();
+    }
+
+    private boolean tienePermiso(SecurityContext securityContext) {
+        return securityContext != null 
+            && (securityContext.isUserInRole("SUPER_ADMIN") || securityContext.isUserInRole("ADMIN"));
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return """
+               {
+                   "mensaje": "%s"
+               }
+               """.formatted(mensaje);
     }
 }

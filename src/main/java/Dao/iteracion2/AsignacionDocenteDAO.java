@@ -10,9 +10,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import modelo.Curso;
-import modelo.Persona;
-import modelo.Seccion;
+import java.util.List;
+import modelo.curso.Curso;
+import modelo.Persona.Persona;
+import modelo.seccion.Seccion;
 import modelo.iteracion2.AsignacionDocente;
 import modelo.iteracion2.Empleado;
 
@@ -21,8 +22,7 @@ import modelo.iteracion2.Empleado;
  * @author fernan
  */
 public class AsignacionDocenteDAO {
-
-    private final String SQL_CONSULTA_ASIGNACIONES
+private final String SQL_CONSULTA_ASIGNACIONES
             = "SELECT "
             + "ad.id_asignacion, "
             + "ad.estado AS estado_asignacion, "
@@ -50,23 +50,16 @@ public class AsignacionDocenteDAO {
             + "s.capacidad, "
             + "s.estado AS estado_seccion "
             + "FROM asignacion_docente ad "
-            + "INNER JOIN empleado e "
-            + "ON ad.id_empleado = e.id_empleado "
-            + "INNER JOIN persona p "
-            + "ON e.id_persona = p.id_persona "
-            + "INNER JOIN curso c "
-            + "ON ad.id_curso = c.id_curso "
-            + "INNER JOIN seccion s "
-            + "ON ad.id_seccion = s.id_seccion ";
+            + "INNER JOIN empleado e ON ad.id_empleado = e.id_empleado "
+            + "INNER JOIN persona p ON e.id_persona = p.id_persona "
+            + "INNER JOIN curso c ON ad.id_curso = c.id_curso "
+            + "INNER JOIN seccion s ON ad.id_seccion = s.id_seccion ";
 
-    // Registrar una asignación docente
     public boolean registrar(AsignacionDocente asignacion) {
+        String sql = "INSERT INTO asignacion_docente (id_empleado, id_curso, id_seccion, estado) VALUES (?, ?, ?, ?)";
 
-        String sql = "INSERT INTO asignacion_docente "
-                + "(id_empleado, id_curso, id_seccion, estado) "
-                + "VALUES (?, ?, ?, ?)";
-
-        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, asignacion.getEmpleado().getIdEmpleado());
             ps.setInt(2, asignacion.getCurso().getIdCurso());
@@ -76,69 +69,96 @@ public class AsignacionDocenteDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.out.println("Error al registrar asignación docente: "
-                    + e.getMessage());
+            System.out.println("Error al registrar asignación docente: " + e.getMessage());
             return false;
         }
     }
 
     public AsignacionDocente buscarPorId(int idAsignacion) {
+        String sql = SQL_CONSULTA_ASIGNACIONES + "WHERE ad.id_asignacion = ?";
 
-        String sql = SQL_CONSULTA_ASIGNACIONES
-                + "WHERE ad.id_asignacion = ?";
-
-        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idAsignacion);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 if (rs.next()) {
                     return mapearAsignacion(rs);
                 }
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al buscar asignación docente: "
-                    + e.getMessage());
+            System.out.println("Error al buscar asignación docente: " + e.getMessage());
         }
 
         return null;
     }
 
     public ArrayList<AsignacionDocente> obtenerTodos() {
-
         ArrayList<AsignacionDocente> lista = new ArrayList<>();
+        String sql = SQL_CONSULTA_ASIGNACIONES + "ORDER BY ad.id_asignacion DESC";
 
-        String sql = SQL_CONSULTA_ASIGNACIONES
-                + "ORDER BY ad.id_asignacion";
-
-        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 lista.add(mapearAsignacion(rs));
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al obtener asignaciones docentes: "
-                    + e.getMessage());
+            System.out.println("Error al obtener asignaciones docentes: " + e.getMessage());
         }
 
         return lista;
     }
 
-    public AsignacionDocente buscarPorId(Connection connection,
-            int idAsignacion) throws SQLException {
+    public List<AsignacionDocente> obtenerPaginados(int limite, int offset) {
+        List<AsignacionDocente> lista = new ArrayList<>();
+        String sql = SQL_CONSULTA_ASIGNACIONES + "ORDER BY ad.id_asignacion DESC LIMIT ? OFFSET ?";
 
-        String sql = SQL_CONSULTA_ASIGNACIONES
-                + "WHERE ad.id_asignacion = ?";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearAsignacion(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al obtener asignaciones docentes paginadas: " + e.getMessage());
+        }
+
+        return lista;
+    }
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM asignacion_docente";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al contar asignaciones docentes: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    public AsignacionDocente buscarPorId(Connection connection, int idAsignacion) throws SQLException {
+        String sql = SQL_CONSULTA_ASIGNACIONES + "WHERE ad.id_asignacion = ?";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-
             ps.setInt(1, idAsignacion);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 if (rs.next()) {
                     return mapearAsignacion(rs);
                 }
@@ -149,14 +169,10 @@ public class AsignacionDocenteDAO {
     }
 
     public boolean actualizar(AsignacionDocente asignacion) {
+        String sql = "UPDATE asignacion_docente SET id_empleado = ?, id_curso = ?, id_seccion = ? WHERE id_asignacion = ?";
 
-        String sql = "UPDATE asignacion_docente SET "
-                + "id_empleado = ?, "
-                + "id_curso = ?, "
-                + "id_seccion = ? "
-                + "WHERE id_asignacion = ?";
-
-        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, asignacion.getEmpleado().getIdEmpleado());
             ps.setInt(2, asignacion.getCurso().getIdCurso());
@@ -166,19 +182,16 @@ public class AsignacionDocenteDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.out.println("Error al actualizar asignación docente: "
-                    + e.getMessage());
+            System.out.println("Error al actualizar asignación docente: " + e.getMessage());
             return false;
         }
     }
 
     public boolean cambiarEstado(int idAsignacion, boolean estado) {
+        String sql = "UPDATE asignacion_docente SET estado = ? WHERE id_asignacion = ?";
 
-        String sql = "UPDATE asignacion_docente "
-                + "SET estado = ? "
-                + "WHERE id_asignacion = ?";
-
-        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
             ps.setInt(2, idAsignacion);
@@ -186,18 +199,13 @@ public class AsignacionDocenteDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.out.println("Error al cambiar estado de asignación: "
-                    + e.getMessage());
+            System.out.println("Error al cambiar estado de asignación: " + e.getMessage());
             return false;
         }
     }
 
-    public int registrar(Connection connection,
-            AsignacionDocente asignacion) throws SQLException {
-
-        String sql = "INSERT INTO asignacion_docente "
-                + "(id_empleado, id_curso, id_seccion, estado) "
-                + "VALUES (?, ?, ?, ?)";
+    public int registrar(Connection connection, AsignacionDocente asignacion) throws SQLException {
+        String sql = "INSERT INTO asignacion_docente (id_empleado, id_curso, id_seccion, estado) VALUES (?, ?, ?, ?)";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
 
@@ -208,8 +216,8 @@ public class AsignacionDocenteDAO {
 
             ps.executeUpdate();
 
-            try (PreparedStatement psId = connection.prepareStatement(
-                    "SELECT LAST_INSERT_ID()"); ResultSet rs = psId.executeQuery()) {
+            try (PreparedStatement psId = connection.prepareStatement("SELECT LAST_INSERT_ID()"); 
+                 ResultSet rs = psId.executeQuery()) {
 
                 if (rs.next()) {
                     return rs.getInt(1);
@@ -222,11 +230,10 @@ public class AsignacionDocenteDAO {
 
     public ArrayList<AsignacionDocente> obtenerPorEmpleado(int idEmpleado) {
         ArrayList<AsignacionDocente> lista = new ArrayList<>();
-        String sql = SQL_CONSULTA_ASIGNACIONES
-                + "WHERE ad.id_empleado = ? AND ad.estado = 1 "
-                + "ORDER BY c.nombre ASC";
+        String sql = SQL_CONSULTA_ASIGNACIONES + "WHERE ad.id_empleado = ? AND ad.estado = 1 ORDER BY c.nombre ASC";
 
-        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEmpleado);
 
@@ -242,8 +249,7 @@ public class AsignacionDocenteDAO {
         return lista;
     }
 
-    private AsignacionDocente mapearAsignacion(ResultSet rs)throws SQLException {
-        AsignacionDocente asignacion = new AsignacionDocente();
+    private AsignacionDocente mapearAsignacion(ResultSet rs) throws SQLException {
         Persona persona = new Persona();
         persona.setIdPersona(rs.getInt("id_persona"));
         persona.setNombres(rs.getString("nombres"));
@@ -261,13 +267,14 @@ public class AsignacionDocenteDAO {
         empleado.setFechaContratacion(rs.getString("fecha_contratacion"));
         empleado.setSalario(rs.getDouble("salario"));
         empleado.setEstado(rs.getBoolean("estado_empleado"));
+
         Curso curso = new Curso();
         curso.setIdCurso(rs.getInt("id_curso"));
         curso.setNombre(rs.getString("nombre_curso"));
         curso.setDescripcion(rs.getString("descripcion"));
         curso.setEstado(rs.getBoolean("estado_curso"));
-        Seccion seccion = new Seccion();
 
+        Seccion seccion = new Seccion();
         seccion.setIdSeccion(rs.getInt("id_seccion"));
         seccion.setIdGrado(rs.getInt("id_grado"));
         seccion.setIdAnioLectivo(rs.getInt("id_año_lectivo"));
@@ -275,6 +282,7 @@ public class AsignacionDocenteDAO {
         seccion.setCapacidad(rs.getInt("capacidad"));
         seccion.setEstado(rs.getBoolean("estado_seccion"));
 
+        AsignacionDocente asignacion = new AsignacionDocente();
         asignacion.setIdAsignacion(rs.getInt("id_asignacion"));
         asignacion.setEmpleado(empleado);
         asignacion.setCurso(curso);

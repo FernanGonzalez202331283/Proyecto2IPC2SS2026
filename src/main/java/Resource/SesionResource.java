@@ -22,9 +22,10 @@ import seguridad.JwtService;
  *
  * @author fernan
  */
-@Path("/sesion")
+@Path("sesion")
 public class SesionResource {
-   private final JwtService jwtService;
+
+    private final JwtService jwtService;
 
     public SesionResource() {
         this.jwtService = new JwtService();
@@ -45,8 +46,7 @@ public class SesionResource {
             Claims claims = jwtService.validarToken(token);
 
             LoginResponse respuesta = new LoginResponse();
-            
-            // Extracción segura del ID de usuario desde los claims del JWT
+
             Object idUsuarioObj = claims.get("idUsuario");
             if (idUsuarioObj instanceof Number) {
                 respuesta.setIdUsuario(((Number) idUsuarioObj).intValue());
@@ -66,7 +66,6 @@ public class SesionResource {
         }
     }
 
-    // Método privado para mantener respuestas de error en formato JSON consistente
     private String jsonMensaje(String mensaje) {
         return """
                {

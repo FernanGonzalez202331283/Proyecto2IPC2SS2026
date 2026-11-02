@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -24,22 +24,28 @@ export interface CursoAsignado {
   providedIn: 'root'
 })
 export class CursoAsignadoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-  private httpOptions = { withCredentials: true };
 
-  constructor(private http: HttpClient) {}
+  private getHeaders(): HttpHeaders {
+    const token = localStorage.getItem('token');
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
 
   obtenerTodos(): Observable<CursoAsignado[]> {
     return this.http.get<CursoAsignado[]>(
       `${this.restConstants.getApiURL()}/cursos-asignados`,
-      this.httpOptions
+      { headers: this.getHeaders(), withCredentials: true }
     );
   }
 
   obtenerPorEmpleado(idEmpleado: number): Observable<CursoAsignado[]> {
     return this.http.get<CursoAsignado[]>(
       `${this.restConstants.getApiURL()}/cursos-asignados/empleado/${idEmpleado}`,
-      this.httpOptions
+      { headers: this.getHeaders(), withCredentials: true }
     );
   }
 }

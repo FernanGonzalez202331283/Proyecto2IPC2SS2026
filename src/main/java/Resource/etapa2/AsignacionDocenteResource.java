@@ -7,16 +7,19 @@ package Resource.etapa2;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion2.AsignacionDocente;
 import seguridad.JwtService;
@@ -80,7 +83,6 @@ public class AsignacionDocenteResource {
                """.formatted(mensaje);
     }
 
-    // Registrar una asignación docente
     @POST
     public Response registrar(AsignacionDocente asignacion, @Context HttpServletRequest httpRequest) {
         Response acceso = validarAcceso(httpRequest, "No tiene permisos para registrar asignaciones docentes.");
@@ -99,17 +101,19 @@ public class AsignacionDocenteResource {
                 .build();
     }
 
-    // Obtener todas las asignaciones docentes
     @GET
-    public Response obtenerTodos(@Context HttpServletRequest httpRequest) {
+    public Response obtenerTodos(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context HttpServletRequest httpRequest) {
+
         Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar asignaciones docentes.");
         if (acceso != null) return acceso;
 
-        ArrayList<AsignacionDocente> asignaciones = asignacionService.obtenerTodos();
-        return Response.ok(asignaciones).build();
+        RespuestaPaginada<AsignacionDocente> respuesta = asignacionService.obtenerAsignacionesPaginadas(pagina, limite);
+        return Response.ok(respuesta).build();
     }
 
-    // Buscar una asignación por ID
     @GET
     @Path("/{id}")
     public Response buscarPorId(@PathParam("id") int idAsignacion, @Context HttpServletRequest httpRequest) {
@@ -127,7 +131,6 @@ public class AsignacionDocenteResource {
         return Response.ok(asignacion).build();
     }
 
-    // Actualizar una asignación docente
     @PUT
     @Path("/{id}")
     public Response actualizar(@PathParam("id") int idAsignacion, AsignacionDocente asignacion, @Context HttpServletRequest httpRequest) {
@@ -158,7 +161,6 @@ public class AsignacionDocenteResource {
                 .build();
     }
 
-    // Cambiar estado de una asignación docente
     @PUT
     @Path("/{id}/estado")
     public Response cambiarEstado(@PathParam("id") int idAsignacion, EstadoRequest datos, @Context HttpServletRequest httpRequest) {
@@ -196,5 +198,4 @@ public class AsignacionDocenteResource {
         public boolean isEstado() { return estado; }
         public void setEstado(boolean estado) { this.estado = estado; }
     }
-    
 }

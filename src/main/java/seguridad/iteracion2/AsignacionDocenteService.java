@@ -5,27 +5,41 @@ import Dao.SeccionDAO;
 import Dao.iteracion2.AsignacionDocenteDAO;
 import Dao.iteracion2.EmpleadoDAO;
 import java.util.ArrayList;
-import modelo.Curso;
-import modelo.Seccion;
+import java.util.List;
+import modelo.curso.Curso;
+import modelo.RespuestaPaginada;
+import modelo.seccion.Seccion;
 import modelo.iteracion2.AsignacionDocente;
 import modelo.iteracion2.Empleado;
 
 public class AsignacionDocenteService {
-    
-    private AsignacionDocenteDAO asignacionDAO;
-    private EmpleadoDAO empleadoDAO;
-    private CursoDAO cursoDAO;
-    private SeccionDAO seccionDAO;
+    private final AsignacionDocenteDAO asignacionDAO;
+    private final EmpleadoDAO empleadoDAO;
+    private final CursoDAO cursoDAO;
+    private final SeccionDAO seccionDAO;
 
     public AsignacionDocenteService() {
-        asignacionDAO = new AsignacionDocenteDAO();
-        empleadoDAO = new EmpleadoDAO();
-        cursoDAO = new CursoDAO();
-        seccionDAO = new SeccionDAO();
+        this.asignacionDAO = new AsignacionDocenteDAO();
+        this.empleadoDAO = new EmpleadoDAO();
+        this.cursoDAO = new CursoDAO();
+        this.seccionDAO = new SeccionDAO();
+    }
+
+    public RespuestaPaginada<AsignacionDocente> obtenerAsignacionesPaginadas(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        List<AsignacionDocente> lista = asignacionDAO.obtenerPaginados(limite, offset);
+        int totalRegistros = asignacionDAO.contarTotal();
+
+        int totalPaginas = (int) Math.ceil((double) totalRegistros / limite);
+        if (totalPaginas == 0) totalPaginas = 1;
+
+        return new RespuestaPaginada<>(lista, pagina, totalPaginas, totalRegistros);
     }
 
     public String registrar(AsignacionDocente asignacion) {
-
         if (asignacion == null) {
             return "Los datos de la asignación son obligatorios.";
         }
@@ -33,7 +47,6 @@ public class AsignacionDocenteService {
         if (asignacion.getEmpleado() == null
                 || asignacion.getCurso() == null
                 || asignacion.getSeccion() == null) {
-
             return "Debe seleccionar un maestro, un curso y una sección.";
         }
 
@@ -46,7 +59,6 @@ public class AsignacionDocenteService {
         }
 
         Empleado empleado = empleadoDAO.buscarPorId(idEmpleado);
-
         if (empleado == null) {
             return "El empleado que seleccionó no existe.";
         }
@@ -56,7 +68,6 @@ public class AsignacionDocenteService {
         }
 
         Curso curso = cursoDAO.buscarPorId(idCurso);
-
         if (curso == null) {
             return "El curso seleccionado no existe.";
         }
@@ -66,7 +77,6 @@ public class AsignacionDocenteService {
         }
 
         Seccion seccion = seccionDAO.buscarPorId(idSeccion);
-
         if (seccion == null) {
             return "La sección seleccionada no existe.";
         }
@@ -75,14 +85,12 @@ public class AsignacionDocenteService {
             return "No se puede asignar una sección inactiva.";
         }
 
-        // VALIDACIÓN: Verificar que el curso no esté asignado previamente a esa sección
         ArrayList<AsignacionDocente> asignaciones = asignacionDAO.obtenerTodos();
 
         for (AsignacionDocente actual : asignaciones) {
             if (actual.isEstado()
                     && actual.getCurso().getIdCurso() == idCurso
                     && actual.getSeccion().getIdSeccion() == idSeccion) {
-
                 return "El curso seleccionado ya se encuentra asignado a esta sección.";
             }
         }
@@ -100,21 +108,17 @@ public class AsignacionDocenteService {
     }
 
     public AsignacionDocente buscarPorId(int idAsignacion) {
-
         if (idAsignacion <= 0) {
             return null;
         }
-
         return asignacionDAO.buscarPorId(idAsignacion);
     }
 
     public ArrayList<AsignacionDocente> obtenerTodos() {
-
         return asignacionDAO.obtenerTodos();
     }
 
     public String actualizar(AsignacionDocente asignacion) {
-
         if (asignacion == null) {
             return "Los datos de la asignación son obligatorios.";
         }
@@ -126,7 +130,6 @@ public class AsignacionDocenteService {
         if (asignacion.getEmpleado() == null
                 || asignacion.getCurso() == null
                 || asignacion.getSeccion() == null) {
-
             return "Debe seleccionar un maestro, un curso y una sección.";
         }
 
@@ -139,13 +142,11 @@ public class AsignacionDocenteService {
         }
 
         AsignacionDocente existente = asignacionDAO.buscarPorId(asignacion.getIdAsignacion());
-
         if (existente == null) {
             return "La asignación docente que desea actualizar no existe.";
         }
 
         Empleado empleado = empleadoDAO.buscarPorId(idEmpleado);
-
         if (empleado == null) {
             return "El empleado seleccionado no existe.";
         }
@@ -155,7 +156,6 @@ public class AsignacionDocenteService {
         }
 
         Curso curso = cursoDAO.buscarPorId(idCurso);
-
         if (curso == null) {
             return "El curso seleccionado no existe.";
         }
@@ -165,7 +165,6 @@ public class AsignacionDocenteService {
         }
 
         Seccion seccion = seccionDAO.buscarPorId(idSeccion);
-
         if (seccion == null) {
             return "La sección seleccionada no existe.";
         }
@@ -174,7 +173,6 @@ public class AsignacionDocenteService {
             return "No se puede asignar una sección inactiva.";
         }
 
-        // VALIDACIÓN: Verificar duplicados en la misma sección excluyendo el registro en edición
         ArrayList<AsignacionDocente> asignaciones = asignacionDAO.obtenerTodos();
 
         for (AsignacionDocente actual : asignaciones) {
@@ -182,7 +180,6 @@ public class AsignacionDocenteService {
                     && actual.isEstado()
                     && actual.getCurso().getIdCurso() == idCurso
                     && actual.getSeccion().getIdSeccion() == idSeccion) {
-
                 return "El curso seleccionado ya se encuentra asignado a esta sección.";
             }
         }
@@ -199,13 +196,11 @@ public class AsignacionDocenteService {
     }
 
     public String cambiarEstado(int idAsignacion, boolean estado) {
-
         if (idAsignacion <= 0) {
             return "El identificador de la asignación no es válido.";
         }
 
         AsignacionDocente asignacion = asignacionDAO.buscarPorId(idAsignacion);
-
         if (asignacion == null) {
             return "La asignación docente no existe.";
         }

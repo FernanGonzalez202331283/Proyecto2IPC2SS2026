@@ -1,51 +1,67 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurriculoService, Curriculo } from '../../../services/curriculo.service';
 import { GradoService, Grado } from '../../../services/grado.service';
-import { AnoLectivoService, AnoLectivo } from '../../../services/ano-lectivo.service';
 import { CursoService, Curso } from '../../../services/curso.services';
+import { AnoLectivoService, AnoLectivo } from '../../../services/ano-lectivo.service';
+
 @Component({
-  selector: 'app-curriculo',
+  selector: 'app-curriculos',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './curriculo.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './curriculo.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CurriculoComponent implements OnInit {
+export class CurriculosComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private curriculoService = inject(CurriculoService);
+  private gradoService = inject(GradoService);
+  private cursoService = inject(CursoService);
+  private anoLectivoService = inject(AnoLectivoService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   curriculos: Curriculo[] = [];
   grados: Grado[] = [];
   cursos: Curso[] = [];
   anosLectivos: AnoLectivo[] = [];
 
   curriculoForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
 
-  constructor(
-    private fb: FormBuilder,
-    private curriculoService: CurriculoService,
-    private gradoService: GradoService,
-    private cursoService: CursoService,
-    private anoLectivoService: AnoLectivoService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  cargando = false;
+  procesando = false;
+  successMessage = '';
+  errorMessage = '';
 
   ngOnInit(): void {
     this.initForm();
-    this.cargarDatosIniciales();
+    this.cargarCatalogos();
+    this.cargarCurriculos();
   }
 
   private initForm(): void {
     this.curriculoForm = this.fb.group({
-      idAnioLectivo: [null, [Validators.required]],
-      idGrado: [null, [Validators.required]],
-      idCurso: [null, [Validators.required]],
+      idGrado: [null, [Validators.required, Validators.min(1)]],
+      idCurso: [null, [Validators.required, Validators.min(1)]],
+      idAnioLectivo: [null, [Validators.required, Validators.min(1)]],
+      descripcion: [''],
       estado: [true]
     });
   }
@@ -55,50 +71,72 @@ export class CurriculoComponent implements OnInit {
     return !!(control && control.invalid && (control.dirty || control.touched));
   }
 
-  cargarDatosIniciales(): void {
-    this.cargando = true;
-
-    // Cargar Grados
-    this.gradoService.obtenerGrados().subscribe({
-      next: (data) => { this.grados = data || []; }
-    });
-
-    // Cargar Cursos activos
-    this.cursoService.obtenerCursos().subscribe({
-      next: (data) => { this.cursos = (data || []).filter(c => c.estado); }
-    });
-
-    // Cargar Años Lectivos
-    this.anoLectivoService.obtenerAnosLectivos().subscribe({
-      next: (data) => {
-        this.anosLectivos = (data || []).filter(a => a.estado);
-        if (this.anosLectivos.length > 0 && !this.curriculoForm.get('idAnioLectivo')?.value) {
-          const ultimo = this.anosLectivos[this.anosLectivos.length - 1];
-          this.curriculoForm.patchValue({ idAnioLectivo: ultimo.idAnoLectivo });
+  cargarCatalogos(): void {
+    this.gradoService.obtenerGrados(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: any) => {
+          this.grados = Array.isArray(res) ? res : (res?.contenido || []);
+          this.cdr.markForCheck();
         }
-      }
-    });
+      });
 
-    this.cargarCurriculos();
+    this.cursoService.obtenerCursos(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: any) => {
+          const lista = Array.isArray(res) ? res : (res?.contenido || []);
+          this.cursos = lista.filter((c: Curso) => c.estado);
+          this.cdr.markForCheck();
+        }
+      });
+
+    this.anoLectivoService.obtenerAnosLectivos(1, 100)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) ? resp : (resp?.contenido || []);
+          this.anosLectivos = lista.filter((a: AnoLectivo) => a.estado);
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al cargar años lectivos:', err)
+      });
   }
 
   cargarCurriculos(): void {
-    this.curriculoService.obtenerCurriculos().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.curriculos = data || [];
+    this.cargando = true;
+    this.cdr.markForCheck();
+
+    this.curriculoService.obtenerCurriculos(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp) 
+            ? resp 
+            : (resp?.contenido || resp?.lista || resp?.datos || resp?.elementos || resp?.data || []);
+
+          this.curriculos = lista;
+          this.paginaActual = resp?.paginaActual || 1;
+          this.totalPaginas = resp?.totalPaginas || 1;
+          this.totalRegistros = resp?.totalRegistros || this.curriculos.length;
+
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.curriculos = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarCurriculos();
+    }
   }
 
   guardarCurriculo(): void {
@@ -106,52 +144,40 @@ export class CurriculoComponent implements OnInit {
 
     if (this.curriculoForm.invalid) {
       this.curriculoForm.markAllAsTouched();
-      this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.errorMessage = 'Por favor complete los campos requeridos marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
-    const datos: Curriculo = this.curriculoForm.value;
+    this.cdr.markForCheck();
 
-    if (this.modoEdicion && this.idSeleccionado) {
-      this.curriculoService.actualizarCurriculo(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Asignación de curso a currículo actualizada.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarCurriculos();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    } else {
-      this.curriculoService.registrarCurriculo(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Curso asignado al currículo del grado exitosamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarCurriculos();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    }
+    const payload: Curriculo = {
+      idGrado: Number(this.curriculoForm.value.idGrado),
+      idCurso: Number(this.curriculoForm.value.idCurso),
+      idAnioLectivo: Number(this.curriculoForm.value.idAnioLectivo),
+      descripcion: this.curriculoForm.value.descripcion,
+      estado: this.curriculoForm.value.estado
+    };
+
+    const operacion$ = (this.modoEdicion && this.idSeleccionado)
+      ? this.curriculoService.actualizarCurriculo(this.idSeleccionado, payload)
+      : this.curriculoService.registrarCurriculo(payload);
+
+    operacion$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        const defaultMsg = this.modoEdicion ? 'Currículo actualizado correctamente.' : 'Currículo registrado correctamente.';
+        this.successMessage = this.obtenerTextoRespuesta(res) || defaultMsg;
+        this.procesando = false;
+        this.resetForm();
+        this.cargarCurriculos();
+      },
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoRespuesta(err);
+        this.procesando = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   toggleEstado(c: Curriculo): void {
@@ -160,21 +186,19 @@ export class CurriculoComponent implements OnInit {
     this.limpiarMensajes();
     const nuevoEstado = !c.estado;
 
-    this.curriculoService.cambiarEstado(c.idCurriculo, nuevoEstado).subscribe({
-      next: (res) => {
-        this.ngZone.run(() => {
+    this.curriculoService.cambiarEstado(c.idCurriculo, nuevoEstado)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
           this.successMessage = this.obtenerTextoRespuesta(res) || 'Estado actualizado correctamente.';
           c.estado = nuevoEstado;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   editarCurriculo(c: Curriculo): void {
@@ -183,11 +207,14 @@ export class CurriculoComponent implements OnInit {
     this.idSeleccionado = c.idCurriculo || null;
 
     this.curriculoForm.patchValue({
-      idAnioLectivo: c.idAnioLectivo,
       idGrado: c.idGrado,
       idCurso: c.idCurso,
+      idAnioLectivo: c.idAnioLectivo,
+      descripcion: c.descripcion || '',
       estado: c.estado
     });
+
+    this.cdr.markForCheck();
   }
 
   cancelarEdicion(): void {
@@ -195,32 +222,17 @@ export class CurriculoComponent implements OnInit {
     this.resetForm();
   }
 
-  obtenerNombreGrado(idGrado: number): string {
-    const grado = this.grados.find(g => g.idGrado === idGrado);
-    return grado ? `${grado.nombre} (${grado.nivel})` : `#${idGrado}`;
-  }
-
-  obtenerNombreCurso(idCurso: number): string {
-    const curso = this.cursos.find(c => c.idCurso === idCurso);
-    return curso ? curso.nombre : `#${idCurso}`;
-  }
-
-  obtenerAnioLectivo(idAnio: number): string {
-    const ano = this.anosLectivos.find(a => a.idAnoLectivo === idAnio);
-    return ano ? `${ano.anio}` : `#${idAnio}`;
-  }
-
   private resetForm(): void {
     this.modoEdicion = false;
     this.idSeleccionado = null;
-    const ultimoAno = this.anosLectivos.length > 0 ? this.anosLectivos[this.anosLectivos.length - 1].idAnoLectivo : null;
-
     this.curriculoForm.reset({
-      idAnioLectivo: ultimoAno,
       idGrado: null,
       idCurso: null,
+      idAnioLectivo: null,
+      descripcion: '',
       estado: true
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

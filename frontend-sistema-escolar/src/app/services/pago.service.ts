@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { RestConstants } from '../shared/rest-api/rest-constants'; // Ajusta tu ruta
+import { RestConstants } from '../shared/rest-api/rest-constants';
 
 export interface Pago {
   idPago?: number;
@@ -17,9 +17,8 @@ export interface Pago {
   providedIn: 'root'
 })
 export class PagoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-
-  constructor(private http: HttpClient) {}
 
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('token'); 
@@ -29,8 +28,8 @@ export class PagoService {
     });
   }
 
-  registrarPago(pago: Pago): Observable<any> {
-    return this.http.post<any>(`${this.restConstants.getApiURL()}/pagos`, pago, {
+  registrarPago(pago: Pago): Observable<Pago> {
+    return this.http.post<Pago>(`${this.restConstants.getApiURL()}/pagos`, pago, {
       headers: this.getHeaders(),
       withCredentials: true 
     });

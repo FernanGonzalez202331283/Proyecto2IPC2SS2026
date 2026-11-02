@@ -13,7 +13,7 @@
 
   <!-- Alerta de Error -->
   @if (errorMessage) {
-    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm mb-4" role="alert">
       <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
       <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
     </div>
@@ -29,7 +29,12 @@
           <label class="form-label small fw-bold text-secondary">Búsqueda rápida</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-            <input type="text" [(ngModel)]="filtroTexto" (input)="aplicarFiltro()" class="form-control" placeholder="Buscar por nombre de curso, grado o sección...">
+            <input 
+              type="text" 
+              [(ngModel)]="filtroTexto" 
+              (input)="aplicarFiltro()" 
+              class="form-control" 
+              placeholder="Buscar por nombre de curso, grado o sección...">
           </div>
         </div>
 
@@ -66,7 +71,7 @@
             @if (cargando) {
               <tr>
                 <td colspan="5" class="text-center py-4 text-muted">
-                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                   Cargando cursos asignados...
                 </td>
               </tr>
@@ -95,7 +100,12 @@
                     </span>
                   </td>
                   <td class="text-center">
-                    <span class="badge rounded-pill px-2 py-1" [class.bg-success-subtle]="item.estado" [class.text-success]="item.estado" [class.bg-secondary]="!item.estado">
+                    <span 
+                      class="badge px-2 py-1 rounded-pill" 
+                      [class.bg-success-subtle]="item.estado" 
+                      [class.text-success]="item.estado" 
+                      [class.bg-secondary-subtle]="!item.estado"
+                      [class.text-secondary]="!item.estado">
                       {{ item.estado ? 'ACTIVO' : 'INACTIVO' }}
                     </span>
                   </td>

@@ -21,12 +21,10 @@ public class HistorialAcademicoService {
 
     public HistorialAcademico obtenerHistorialAcademico(int idEstudiante) {
 
-        // Validar el ID del estudiante
         if (idEstudiante <= 0) {
             return null;
         }
 
-        // Consultar el historial académico
         return historialDAO.obtenerHistorialAcademico(idEstudiante);
     }
 }

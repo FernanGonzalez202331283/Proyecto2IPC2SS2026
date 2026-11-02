@@ -1,9 +1,9 @@
 <div class="container my-4">
   
-  <!-- Encabezado simple -->
+  <!-- Encabezado -->
   <div class="p-3 mb-4 bg-danger text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
     <div>
-      <h3 class="fw-bold mb-0"><i class="bi bi-shield-lock-fill me-2"></i>CU004: Usuarios Administrativos</h3>
+      <h3 class="fw-bold mb-0"><i class="bi bi-shield-lock-fill me-2"></i>CU004: Gestión de Usuarios</h3>
     </div>
     <a routerLink="/superadmin/dashboard" class="btn btn-light btn-sm text-danger fw-semibold">
       <i class="bi bi-arrow-left-circle me-1"></i> Volver
@@ -28,7 +28,6 @@
 
   <div class="row g-4">
 
-    <!-- Formulario Integrado (5 columnas) -->
     <div class="col-lg-5">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-dark text-white py-2">
@@ -119,8 +118,12 @@
             <div class="mb-3">
               <label class="form-label small">Rol *</label>
               <select formControlName="rol" class="form-select form-select-sm">
-                <option value="ADMIN">ADMIN</option>
                 <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="SECRETARIA">SECRETARIA</option>
+                <option value="MAESTRO">MAESTRO</option>
+                <option value="BIBLIOTECARIO">BIBLIOTECARIO</option>
+                <option value="ESTUDIANTE">ESTUDIANTE</option>
               </select>
             </div>
 
@@ -145,12 +148,12 @@
       </div>
     </div>
 
-    <!-- Tabla de Usuarios (7 columnas) -->
+    <!-- Tabla de Usuarios Paginada (7 columnas) -->
     <div class="col-lg-7">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-          <h6 class="mb-0 fw-bold text-secondary">Usuarios Administrativos</h6>
-          <span class="badge bg-secondary">Total: {{ usuarios.length }}</span>
+          <h6 class="mb-0 fw-bold text-secondary">Usuarios Registrados</h6>
+          <span class="badge bg-secondary">Total: {{ totalRegistros }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -179,7 +182,7 @@
                       <td class="fw-bold">#{{ u.idUsuario }}</td>
                       <td>{{ u.username }}</td>
                       <td>
-                        <span class="badge" [class.bg-danger]="u.rol === 'SUPER_ADMIN'" [class.bg-warning]="u.rol === 'ADMIN'" [class.text-dark]="u.rol === 'ADMIN'">
+                        <span class="badge {{ obtenerClaseRol(u.rol) }}">
                           {{ u.rol }}
                         </span>
                       </td>
@@ -210,6 +213,27 @@
             </table>
           </div>
         </div>
+
+        <!-- Controles de Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

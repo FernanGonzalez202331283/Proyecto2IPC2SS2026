@@ -1,17 +1,17 @@
 <div class="container my-4">
 
-  <!-- Encabezado -->
+  <!-- Encabezado con Botón Volver -->
   <div class="p-3 mb-4 bg-dark text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
     <div>
       <h3 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>CU0037: Historial de Pagos</h3>
       <small class="text-white-50">Consulta detallada de abonos, mensualidades y recibos emitidos</small>
     </div>
-    <button (click)="volver()" class="btn btn-light btn-sm text-dark fw-semibold">
+    <button type="button" (click)="volver()" class="btn btn-light btn-sm text-dark fw-semibold">
       <i class="bi bi-arrow-left-circle me-1"></i> Volver
     </button>
   </div>
 
-  <!-- Alerta Informativa (Búsqueda sin pagos registrados) -->
+  <!-- Alerta Informativa (Búsqueda sin pagos) -->
   @if (infoMessage) {
     <div class="alert alert-info alert-dismissible fade show fw-semibold shadow-sm" role="alert">
       <i class="bi bi-info-circle-fill me-2"></i>{{ infoMessage }}
@@ -19,7 +19,7 @@
     </div>
   }
 
-  <!-- Alerta de Error (Fallo de servidor o API) -->
+  <!-- Alerta de Error -->
   @if (errorMessage) {
     <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
       <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
@@ -27,7 +27,7 @@
     </div>
   }
 
-  <!-- Formulario de Búsqueda (Solo para personal administrativo) -->
+  <!-- Formulario de Búsqueda (Para Administrativos) -->
   @if (!esEstudiante) {
     <div class="card shadow-sm border-0 mb-4">
       <div class="card-header bg-light py-2">
@@ -52,15 +52,25 @@
     </div>
   }
 
+  <!-- Indicador de Carga -->
+  @if (cargando) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted fw-semibold">Cargando historial de pagos...</p>
+    </div>
+  }
+
   <!-- Tabla de Historial -->
-  @if (listaHistorial.length > 0) {
+  @if (!cargando && listaHistorial.length > 0) {
     <div class="card shadow-sm border-0">
       <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
         <div>
-          <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-receipt-cutoff me-2 text-primary"></i>Pagos Realizados por {{ listaHistorial[0].apellidos }}, {{ listaHistorial[0].nombres }}</h6>
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-receipt-cutoff me-2 text-primary"></i>Pagos Realizados por {{ listaHistorial[0].apellidos }}, {{ listaHistorial[0].nombres }}
+          </h6>
           <small class="text-muted">Código: {{ listaHistorial[0].codigoEstudiante }}</small>
         </div>
-        <button class="btn btn-danger btn-sm fw-bold px-3" [disabled]="descargandoPdf" (click)="descargarPdf()">
+        <button type="button" class="btn btn-danger btn-sm fw-bold px-3" [disabled]="descargandoPdf" (click)="descargarPdf()">
           @if (descargandoPdf) {
             <span class="spinner-border spinner-border-sm me-1"></span> Generando PDF...
           } @else {

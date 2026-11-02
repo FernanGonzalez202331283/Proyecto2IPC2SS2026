@@ -10,7 +10,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.core.Response;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import modelo.Persona;
+import modelo.Persona.Persona;
 import modelo.Usuario;
 import modelo.iteracion2.Empleado;
 
@@ -28,7 +28,6 @@ public class EmpleadoService {
         personaDAO = new PersonaDAO();
     }
 
-    // Registrar empleado
     public String registrar(Empleado empleado) {
 
         if (empleado == null) {
@@ -111,13 +110,11 @@ public class EmpleadoService {
         return empleadoDAO.buscarPorId(idEmpleado);
     }
 
-    // Consultar todos los empleados
     public ArrayList<Empleado> obtenerTodos() {
 
         return empleadoDAO.obtenerTodos();
     }
 
-    // Actualizar empleado
     public String actualizar(Empleado empleado) {
 
         if (empleado == null) {
@@ -192,7 +189,6 @@ public class EmpleadoService {
             return "El DPI ingresado ya se encuentra registrado.";
         }
 
-        // Mantener la relación con la persona original
         persona.setIdPersona(existente.getPersona().getIdPersona());
 
         if (empleadoDAO.actualizar(empleado)) {
@@ -202,21 +198,18 @@ public class EmpleadoService {
         return "No fue posible actualizar el empleado.";
     }
 
-    // Cambiar estado del empleado
     public String cambiarEstado(int idEmpleado, boolean estado) {
 
         if (idEmpleado <= 0) {
             return "El ID del empleado no es válido.";
         }
 
-        // Verificar que el empleado exista
         Empleado empleado = empleadoDAO.buscarPorId(idEmpleado);
 
         if (empleado == null) {
             return "El empleado no existe.";
         }
 
-        // Verificar si ya tiene el estado solicitado
         if (empleado.isEstado() == estado) {
 
             if (estado) {

@@ -1,52 +1,82 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  DestroyRef, 
+  ChangeDetectorRef, 
+  ChangeDetectionStrategy 
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { GradoService, Grado } from '../../../services/grado.service';
-import { ConfiguracionGradoService, ConfiguracionGrado } from '../../../services/configuracion-grado.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { GradoService, Grado, RespuestaPaginada } from '../../../services/grado.service';
+import { CarreraService, Carrera } from '../../../services/carrera.service';
 
 @Component({
   selector: 'app-grados',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './grados.component.html'
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './grados.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GradosComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  private gradoService = inject(GradoService);
+  private carreraService = inject(CarreraService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+
   grados: Grado[] = [];
-  configuraciones: ConfiguracionGrado[] = [];
-  configuracionesFiltradas: ConfiguracionGrado[] = [];
+  carrerasActivas: Carrera[] = [];
   gradoForm!: FormGroup;
-  modoEdicion: boolean = false;
+  modoEdicion = false;
   idSeleccionado: number | null = null;
 
-  successMessage: string = '';
-  errorMessage: string = '';
-  cargando: boolean = false;
-  procesando: boolean = false;
+  niveles = ['PREPRIMARIA', 'PRIMARIA', 'BASICO', 'DIVERSIFICADO'];
 
-  constructor(
-    private fb: FormBuilder,
-    private gradoService: GradoService,
-    private configuracionService: ConfiguracionGradoService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  paginaActual = 1;
+  limite = 10;
+  totalPaginas = 1;
+  totalRegistros = 0;
+
+  cargando = false;
+  procesando = false;
+  successMessage = '';
+  errorMessage = '';
 
   ngOnInit(): void {
     this.initForm();
+    this.cargarCarrerasActivas();
     this.cargarGrados();
-    this.cargarConfiguracionesBase();
   }
 
   private initForm(): void {
     this.gradoForm = this.fb.group({
-      nivel: ['PRIMARIA', [Validators.required]],
+      nivel: ['', [Validators.required]],
+      idCarrera: [null],
       nombre: ['', [Validators.required, Validators.maxLength(100)]],
       descripcion: ['']
     });
 
-    this.gradoForm.get('nivel')?.valueChanges.subscribe((nivelSeleccionado) => {
-      this.filtrarConfiguracionesPorNivel(nivelSeleccionado);
-    });
+    // Cambiar dinámicamente la validación de 'idCarrera'
+    this.gradoForm.get('nivel')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((nivel) => {
+        const controlCarrera = this.gradoForm.get('idCarrera');
+        if (nivel === 'DIVERSIFICADO') {
+          controlCarrera?.setValidators([Validators.required, Validators.min(1)]);
+        } else {
+          controlCarrera?.clearValidators();
+          controlCarrera?.setValue(null);
+        }
+        controlCarrera?.updateValueAndValidity();
+        this.cdr.markForCheck();
+      });
+  }
+
+  get esDiversificado(): boolean {
+    return this.gradoForm.get('nivel')?.value === 'DIVERSIFICADO';
   }
 
   esCampoInvalido(nombreControl: string): boolean {
@@ -54,46 +84,52 @@ export class GradosComponent implements OnInit {
     return !!(control && control.invalid && (control.dirty || control.touched));
   }
 
+  cargarCarrerasActivas(): void {
+    this.carreraService.obtenerCarrerasActivas()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.carrerasActivas = data || [];
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Error al cargar carreras activas:', err)
+      });
+  }
+
   cargarGrados(): void {
     this.cargando = true;
-    this.gradoService.obtenerGrados().subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.grados = data || [];
+    this.cdr.markForCheck();
+
+    this.gradoService.obtenerGrados(this.paginaActual, this.limite)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (resp: any) => {
+          const lista = Array.isArray(resp)
+            ? resp
+            : (resp?.contenido || resp?.lista || resp?.elementos || resp?.data || []);
+
+          this.grados = lista;
+          this.paginaActual = resp?.paginaActual || 1;
+          this.totalPaginas = resp?.totalPaginas || 1;
+          this.totalRegistros = resp?.totalRegistros || this.grados.length;
+
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.grados = [];
           this.errorMessage = this.obtenerTextoRespuesta(err);
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
-  cargarConfiguracionesBase(): void {
-    this.configuracionService.obtenerConfiguraciones().subscribe({
-      next: (data) => {
-        this.configuraciones = (data || []).filter(c => c.estado);
-        this.filtrarConfiguracionesPorNivel(this.gradoForm.get('nivel')?.value);
-      },
-      error: () => {}
-    });
-  }
-
-  filtrarConfiguracionesPorNivel(nivel: string): void {
-    if (!nivel) {
-      this.configuracionesFiltradas = [];
-      return;
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas && nuevaPagina !== this.paginaActual) {
+      this.paginaActual = nuevaPagina;
+      this.cargarGrados();
     }
-    this.configuracionesFiltradas = this.configuraciones.filter(c => c.nivel === nivel);
-  }
-
-  seleccionarPlantillaGrado(nombrePlantilla: string): void {
-    this.gradoForm.patchValue({ nombre: nombrePlantilla });
   }
 
   guardarGrado(): void {
@@ -102,51 +138,38 @@ export class GradosComponent implements OnInit {
     if (this.gradoForm.invalid) {
       this.gradoForm.markAllAsTouched();
       this.errorMessage = 'Por favor complete todos los campos obligatorios (*) marcados en rojo.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.procesando = true;
-    const datos: Grado = this.gradoForm.value;
+    this.cdr.markForCheck();
 
-    if (this.modoEdicion && this.idSeleccionado) {
-      this.gradoService.actualizarGrado(this.idSeleccionado, datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Grado actualizado correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarGrados();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    } else {
-      this.gradoService.registrarGrado(datos).subscribe({
-        next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = this.obtenerTextoRespuesta(res) || 'Grado registrado correctamente.';
-            this.procesando = false;
-            this.resetForm();
-            this.cargarGrados();
-            this.cdr.detectChanges();
-          });
-        },
-        error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = this.obtenerTextoRespuesta(err);
-            this.procesando = false;
-            this.cdr.detectChanges();
-          });
-        }
-      });
-    }
+    const payload: Grado = {
+      nivel: this.gradoForm.value.nivel,
+      idCarrera: this.esDiversificado ? Number(this.gradoForm.value.idCarrera) : null,
+      nombre: String(this.gradoForm.value.nombre).trim(),
+      descripcion: this.gradoForm.value.descripcion
+    };
+
+    const operacion$ = (this.modoEdicion && this.idSeleccionado)
+      ? this.gradoService.actualizarGrado(this.idSeleccionado, payload)
+      : this.gradoService.registrarGrado(payload);
+
+    operacion$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        const mensajeDefault = this.modoEdicion ? 'Grado actualizado correctamente.' : 'Grado registrado correctamente.';
+        this.successMessage = this.obtenerTextoRespuesta(res) || mensajeDefault;
+        this.procesando = false;
+        this.resetForm();
+        this.cargarGrados();
+      },
+      error: (err) => {
+        this.errorMessage = this.obtenerTextoRespuesta(err);
+        this.procesando = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   editarGrado(grado: Grado): void {
@@ -156,9 +179,12 @@ export class GradosComponent implements OnInit {
 
     this.gradoForm.patchValue({
       nivel: grado.nivel,
+      idCarrera: grado.idCarrera,
       nombre: grado.nombre,
       descripcion: grado.descripcion || ''
     });
+
+    this.cdr.markForCheck();
   }
 
   cancelarEdicion(): void {
@@ -170,10 +196,12 @@ export class GradosComponent implements OnInit {
     this.modoEdicion = false;
     this.idSeleccionado = null;
     this.gradoForm.reset({
-      nivel: 'PRIMARIA',
+      nivel: '',
+      idCarrera: null,
       nombre: '',
       descripcion: ''
     });
+    this.cdr.markForCheck();
   }
 
   private limpiarMensajes(): void {

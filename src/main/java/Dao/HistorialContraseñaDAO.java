@@ -24,8 +24,7 @@ public class HistorialContraseñaDAO {
                      LIMIT 1
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idUsuario);
             ps.setString(2, contraseñaBase64);
@@ -47,8 +46,7 @@ public class HistorialContraseñaDAO {
                      VALUES (?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idUsuario);
             ps.setString(2, contraseñaBase64);

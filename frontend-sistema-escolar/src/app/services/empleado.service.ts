@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -23,32 +23,42 @@ export interface Empleado {
   estado: boolean;
 }
 
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class EmpleadoService {
+  private http = inject(HttpClient);
   private restConstants = new RestConstants();
-  private httpOptions = { withCredentials: true };
+  private readonly baseUrl = `${this.restConstants.getApiURL()}/empleados`;
 
-  constructor(private http: HttpClient) {}
+  obtenerEmpleados(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Empleado>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
 
-  obtenerEmpleados(): Observable<Empleado[]> {
-    return this.http.get<Empleado[]>(`${this.restConstants.getApiURL()}/empleados`, this.httpOptions);
+    return this.http.get<RespuestaPaginada<Empleado>>(this.baseUrl, { params });
   }
 
   buscarPorId(id: number): Observable<Empleado> {
-    return this.http.get<Empleado>(`${this.restConstants.getApiURL()}/empleados/${id}`, this.httpOptions);
+    return this.http.get<Empleado>(`${this.baseUrl}/${id}`);
   }
 
   registrarEmpleado(empleado: Empleado): Observable<any> {
-    return this.http.post(`${this.restConstants.getApiURL()}/empleados`, empleado, this.httpOptions);
+    return this.http.post(this.baseUrl, empleado);
   }
 
   actualizarEmpleado(id: number, empleado: Empleado): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/empleados/${id}`, empleado, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}`, empleado);
   }
 
   cambiarEstado(id: number, estado: boolean): Observable<any> {
-    return this.http.put(`${this.restConstants.getApiURL()}/empleados/${id}/estado`, { estado }, this.httpOptions);
+    return this.http.put(`${this.baseUrl}/${id}/estado`, { estado });
   }
 }

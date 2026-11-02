@@ -89,7 +89,7 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-bold text-secondary">Años Lectivos Registrados</h6>
-          <span class="badge bg-primary">Total: {{ anosLectivos.length }}</span>
+          <span class="badge bg-primary">Total: {{ totalRegistros }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -147,6 +147,27 @@
             </table>
           </div>
         </div>
+
+        <!-- Controles de Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

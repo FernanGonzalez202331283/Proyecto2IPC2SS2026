@@ -8,7 +8,9 @@ import Dao.PersonaDAO;
 import Dao.iteracion2.EncargadoDAO;
 import Dao.iteracion2.EstudianteDAO;
 import java.util.ArrayList;
-import modelo.Persona;
+import java.util.List;
+import modelo.Persona.Persona;
+import modelo.RespuestaPaginada;
 import modelo.iteracion2.Encargado;
 import modelo.iteracion2.Estudiante;
 import modelo.iteracion2.EstudianteEncargado;
@@ -26,6 +28,20 @@ public class EstudianteService {
         this.estudianteDAO = new EstudianteDAO();
         this.personaDAO = new PersonaDAO();
         this.encargadoDAO = new EncargadoDAO();
+    }
+
+    public RespuestaPaginada<Estudiante> obtenerEstudiantesPaginados(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        List<Estudiante> lista = estudianteDAO.obtenerPaginados(limite, offset);
+        int totalRegistros = estudianteDAO.contarTotal();
+
+        int totalPaginas = (int) Math.ceil((double) totalRegistros / limite);
+        if (totalPaginas == 0) totalPaginas = 1;
+
+        return new RespuestaPaginada<>(lista, pagina, totalPaginas, totalRegistros);
     }
 
     public String registrarEstudiante(Estudiante estudiante) {
@@ -60,7 +76,6 @@ public class EstudianteService {
             return "El código de estudiante ya se encuentra registrado.";
         }
 
-        // Validacion de encargados
         ArrayList<EstudianteEncargado> encargados = estudiante.getEncargados();
         if (encargados == null || encargados.isEmpty()) {
             return "Debe proporcionar los datos del encargado / padre del estudiante.";

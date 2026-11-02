@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { NominaService, NominaAlumno } from '../../../services/nomina.service';
+import { NominaService, NominaAlumno, RespuestaPaginada } from '../../../services/nomina.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http'; 
 import { RestConstants } from '../../../shared/rest-api/rest-constants';
 
@@ -21,6 +21,11 @@ export class NominaComponent implements OnInit {
   successMessage: string = '';
   errorMessage: string = '';
   cargando: boolean = false;
+
+  paginaActual: number = 1;
+  limite: number = 10;
+  totalPaginas: number = 0;
+  totalRegistros: number = 0;
 
   private restConstants = new RestConstants();
 
@@ -54,31 +59,29 @@ export class NominaComponent implements OnInit {
       'Authorization': `Bearer ${token}`
     });
 
-    // 1. Cargar Grados con Token JWT
-    this.http.get<any[]>(`${this.restConstants.getApiURL()}/grados`, { headers, withCredentials: true })
+    this.http.get<any>(`${this.restConstants.getApiURL()}/grados`, { headers, withCredentials: true })
       .subscribe({
         next: (data) => {
           this.ngZone.run(() => {
-            this.grados = data || [];
+            // Extraer .contenido si viene paginado
+            this.grados = data.contenido || data || [];
             this.cdr.detectChanges();
           });
         },
         error: (err) => console.error('Error al cargar grados:', err)
       });
 
-    // 2. Cargar Secciones con Token JWT
-    this.http.get<any[]>(`${this.restConstants.getApiURL()}/secciones`, { headers, withCredentials: true })
+    this.http.get<any>(`${this.restConstants.getApiURL()}/secciones`, { headers, withCredentials: true })
       .subscribe({
         next: (data) => {
           this.ngZone.run(() => {
-            this.secciones = data || [];
+            this.secciones = data.contenido || data || [];
             this.cdr.detectChanges();
           });
         },
         error: (err) => console.error('Error al cargar secciones:', err)
       });
   }
-
   onGradoChange(): void {
     this.filtroForm.get('idSeccion')?.setValue(null); 
   }
@@ -88,7 +91,11 @@ export class NominaComponent implements OnInit {
     return !!(control && control.invalid && (control.dirty || control.touched));
   }
 
-  consultarNomina(): void {
+  buscarNuevaNomina(): void {
+    this.consultarNomina(1);
+  }
+
+  consultarNomina(pagina: number): void {
     this.limpiarMensajes();
 
     if (this.filtroForm.invalid) {
@@ -98,28 +105,41 @@ export class NominaComponent implements OnInit {
     }
 
     this.cargando = true;
+    this.paginaActual = pagina;
     const formVal = this.filtroForm.value;
 
-    this.nominaService.obtenerNomina(formVal.anio, formVal.idGrado, formVal.idSeccion).subscribe({
-      next: (data) => {
-        this.ngZone.run(() => {
-          this.nomina = data || [];
-          if (this.nomina.length === 0) {
-            this.successMessage = 'No se encontraron alumnos activos para los criterios seleccionados.';
-          }
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
-          this.nomina = [];
-          this.errorMessage = this.obtenerTextoRespuesta(err);
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+    this.nominaService.obtenerNomina(formVal.anio, formVal.idGrado, formVal.idSeccion, this.paginaActual, this.limite)
+      .subscribe({
+        next: (data: RespuestaPaginada<NominaAlumno>) => {
+          this.ngZone.run(() => {
+            this.nomina = data.contenido || [];
+            this.totalRegistros = data.totalRegistros;
+            this.totalPaginas = data.totalPaginas;
+
+            if (this.nomina.length === 0) {
+              this.successMessage = 'No se encontraron alumnos activos para los criterios seleccionados.';
+            }
+            this.cargando = false;
+            this.cdr.detectChanges();
+          });
+        },
+        error: (err) => {
+          this.ngZone.run(() => {
+            this.nomina = [];
+            this.totalRegistros = 0;
+            this.totalPaginas = 0;
+            this.errorMessage = this.obtenerTextoRespuesta(err);
+            this.cargando = false;
+            this.cdr.detectChanges();
+          });
+        }
+      });
+  }
+
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+      this.consultarNomina(nuevaPagina);
+    }
   }
 
   volverDashboard(): void {

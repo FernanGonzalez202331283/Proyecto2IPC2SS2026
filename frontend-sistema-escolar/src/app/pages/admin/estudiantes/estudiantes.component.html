@@ -5,9 +5,9 @@
     <div>
       <h3 class="fw-bold mb-0"><i class="bi bi-person-vcard-fill me-2"></i>CU013: Gestión de Estudiantes</h3>
     </div>
-    <a routerLink="/admin/dashboard" class="btn btn-light btn-sm text-primary fw-semibold">
+    <button type="button" (click)="volverDashboard()" class="btn btn-light btn-sm text-primary fw-semibold">
       <i class="bi bi-arrow-left-circle me-1"></i> Volver
-    </a>
+    </button>
   </div>
 
   <!-- Alertas -->
@@ -36,9 +36,9 @@
         <div class="card-body p-3">
           <form [formGroup]="estudianteForm" (ngSubmit)="guardarEstudiante()">
 
-            <!-- Sección Datos Personales -->
+            <!-- Sección Datos del Estudiante -->
             <div formGroupName="persona">
-              <h6 class="fw-bold text-secondary border-bottom pb-1 mb-3"><i class="bi bi-person-lines-fill me-1"></i>Datos Personales</h6>
+              <h6 class="fw-bold text-secondary border-bottom pb-1 mb-3"><i class="bi bi-person-lines-fill me-1"></i>Datos del Estudiante</h6>
 
               <div class="row g-2 mb-2">
                 <div class="col-md-6">
@@ -57,7 +57,7 @@
                   <input type="text" formControlName="dpi" class="form-control form-control-sm" [class.is-invalid]="esCampoInvalido('dpi', 'persona')">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-bold">Teléfono Encargado</label>
+                  <label class="form-label small fw-bold">Teléfono Estudiante</label>
                   <input type="text" formControlName="telefono" class="form-control form-control-sm">
                 </div>
               </div>
@@ -73,7 +73,49 @@
               </div>
             </div>
 
-            <!-- Sección Datos Académicos y Médicos -->
+            <!-- Sección Datos del Encargado -->
+            <div formGroupName="encargado">
+              <h6 class="fw-bold text-secondary border-bottom pb-1 mb-3"><i class="bi bi-people-fill me-1"></i>Datos del Padre / Encargado</h6>
+
+              <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Nombres Encargado *</label>
+                  <input type="text" formControlName="nombres" class="form-control form-control-sm" [class.is-invalid]="esCampoInvalido('nombres', 'encargado')">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Apellidos Encargado *</label>
+                  <input type="text" formControlName="apellidos" class="form-control form-control-sm" [class.is-invalid]="esCampoInvalido('apellidos', 'encargado')">
+                </div>
+              </div>
+
+              <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Teléfono Contacto *</label>
+                  <input type="text" formControlName="telefono" class="form-control form-control-sm" [class.is-invalid]="esCampoInvalido('telefono', 'encargado')">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Parentesco *</label>
+                  <select formControlName="parentesco" class="form-select form-select-sm">
+                    <option value="PADRE">PADRE</option>
+                    <option value="MADRE">MADRE</option>
+                    <option value="TUTOR">TUTOR</option>
+                    <option value="OTRO">OTRO</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small fw-bold">Correo Encargado</label>
+                <input type="email" formControlName="correo" class="form-control form-control-sm">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Dirección Encargado</label>
+                <input type="text" formControlName="direccion" class="form-control form-control-sm">
+              </div>
+            </div>
+
+            <!-- Sección Datos Institucionales y Médicos -->
             <h6 class="fw-bold text-secondary border-bottom pb-1 mb-3"><i class="bi bi-journal-medical me-1"></i>Información Institucional</h6>
 
             <div class="row g-2 mb-2">
@@ -117,7 +159,7 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-bold text-secondary">Estudiantes Registrados</h6>
-          <span class="badge bg-primary">Total: {{ estudiantes.length }}</span>
+          <span class="badge bg-primary">Total: {{ totalRegistros }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -126,7 +168,7 @@
                 <tr>
                   <th>Código</th>
                   <th>Estudiante</th>
-                  <th>DPI</th>
+                  <th>Encargado</th>
                   <th>Estado</th>
                   <th class="text-center">Acciones</th>
                 </tr>
@@ -146,9 +188,16 @@
                       <td class="fw-bold text-primary">{{ item.codigoEstudiante }}</td>
                       <td>
                         <div class="fw-bold">{{ item.persona.nombres }} {{ item.persona.apellidos }}</div>
-                        <small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ item.persona.telefono || 'Sin tel.' }}</small>
+                        <small class="text-muted">DPI: {{ item.persona.dpi }}</small>
                       </td>
-                      <td>{{ item.persona.dpi }}</td>
+                      <td>
+                        @if (item.encargados && item.encargados.length > 0 && item.encargados[0].encargado) {
+                          <div class="fw-semibold">{{ item.encargados[0].encargado.nombres }} {{ item.encargados[0].encargado.apellidos }}</div>
+                          <small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ item.encargados[0].encargado.telefono || 'Sin tel.' }} ({{ item.encargados[0].parentesco }})</small>
+                        } @else {
+                          <span class="text-muted fst-italic">Sin encargado asignado</span>
+                        }
+                      </td>
                       <td>
                         <span class="badge" 
                           [class.bg-success]="item.estado === 'ACTIVO'" 
@@ -163,7 +212,6 @@
                             <i class="bi bi-pencil-fill"></i>
                           </button>
                           
-                          <!-- Menú desplegable para cambiar estados sin eliminar -->
                           <div class="btn-group btn-group-sm" role="group">
                             <button id="btnGroupDropState" type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                               Estado
@@ -184,6 +232,29 @@
             </table>
           </div>
         </div>
+
+        <!-- Controles de Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

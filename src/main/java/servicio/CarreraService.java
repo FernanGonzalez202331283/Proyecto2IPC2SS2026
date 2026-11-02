@@ -6,7 +6,12 @@ package servicio;
 
 import Dao.CarreraDAO;
 import java.util.ArrayList;
-import modelo.Carrera;
+import java.util.List;
+import java.util.stream.Collectors;
+import modelo.carrera.Carrera;
+import modelo.RespuestaPaginada;
+import modelo.carrera.CarreraRequest;
+import modelo.carrera.CarreraResponse;
 
 /**
  *
@@ -19,134 +24,108 @@ public class CarreraService {
         carreraDAO = new CarreraDAO();
     }
 
-    public String registrarCarrera(Carrera carrera) {
+    private CarreraResponse mapearAResponse(Carrera c) {
+        return new CarreraResponse(c.getIdCarrera(), c.getNombre(), c.getDescripcion(), c.isEstado());
+    }
 
-        if (carrera == null) {
-            return "La carrera no puede ser nula.";
+    public RespuestaPaginada<CarreraResponse> obtenerCarrerasPaginadas(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        List<Carrera> lista = carreraDAO.obtenerPaginados(limite, offset);
+        
+        List<CarreraResponse> listaResponse = lista.stream()
+                .map(this::mapearAResponse)
+                .collect(Collectors.toList());
+                
+        int totalRegistros = carreraDAO.contarTotalCarreras();
+        int totalPaginas = (int) Math.ceil((double) totalRegistros / limite);
+        if (totalPaginas == 0) totalPaginas = 1;
+
+        return new RespuestaPaginada<>(listaResponse, pagina, limite, totalRegistros);
+    }
+
+    public String registrarCarrera(CarreraRequest peticion) {
+        if (peticion == null) {
+            return "La petición no puede ser nula.";
         }
-
-        if (carrera.getNombre() == null
-                || carrera.getNombre().trim().isEmpty()) {
+        if (peticion.getNombre() == null || peticion.getNombre().trim().isEmpty()) {
             return "El nombre de la carrera es obligatorio.";
         }
 
-        String nombre = carrera.getNombre().trim();
+        String nombre = peticion.getNombre().trim();
         ArrayList<Carrera> carreras = carreraDAO.obtenerTodos();
 
         for (Carrera existente : carreras) {
-
-            if (existente.getNombre()
-                    .equalsIgnoreCase(nombre)) {
-
+            if (existente.getNombre().equalsIgnoreCase(nombre)) {
                 return "Ya existe una carrera con ese nombre.";
             }
         }
 
-        carrera.setNombre(nombre);
-
-        if (carrera.getDescripcion() != null) {
-            carrera.setDescripcion(
-                    carrera.getDescripcion().trim());
+        Carrera nuevaCarrera = new Carrera();
+        nuevaCarrera.setNombre(nombre);
+        if (peticion.getDescripcion() != null) {
+            nuevaCarrera.setDescripcion(peticion.getDescripcion().trim());
         }
+        nuevaCarrera.setEstado(true);
 
-        carrera.setEstado(true);
-
-        boolean resultado = carreraDAO.insertar(carrera);
-
-        if (resultado) {
-            return "Carrera registrada correctamente.";
-        }
-
-        return "No se pudo registrar la carrera.";
+        boolean resultado = carreraDAO.insertar(nuevaCarrera);
+        return resultado ? "Carrera registrada correctamente." : "No se pudo registrar la carrera.";
     }
 
-    public Carrera buscarCarrera(int idCarrera) {
-
-        if (idCarrera <= 0) {
-            return null;
+    public CarreraResponse buscarCarrera(int idCarrera) {
+        if (idCarrera <= 0) return null;
+        
+        Carrera carrera = carreraDAO.buscarPorId(idCarrera);
+        if (carrera != null) {
+            return mapearAResponse(carrera);
         }
-
-        return carreraDAO.buscarPorId(idCarrera);
+        return null;
     }
 
-    public ArrayList<Carrera> obtenerCarreras() {
-
-        return carreraDAO.obtenerTodos();
+    public List<CarreraResponse> obtenerCarrerasActivas() {
+        return carreraDAO.obtenerActivas().stream()
+                .map(this::mapearAResponse)
+                .collect(Collectors.toList());
     }
 
-    public String actualizarCarrera(Carrera carrera) {
+    public String actualizarCarrera(int id, CarreraRequest peticion) {
+        if (peticion == null) return "La petición no puede ser nula.";
+        if (id <= 0) return "El ID de la carrera no es válido.";
 
-        if (carrera == null) {
-            return "La carrera no puede ser nula.";
-        }
+        Carrera existente = carreraDAO.buscarPorId(id);
+        if (existente == null) return "La carrera no existe.";
 
-        if (carrera.getIdCarrera() <= 0) {
-            return "El ID de la carrera no es válido.";
-        }
-
-        Carrera existente = carreraDAO.buscarPorId(carrera.getIdCarrera());
-
-        if (existente == null) {
-            return "La carrera no existe.";
-        }
-
-        if (carrera.getNombre() == null || carrera.getNombre().trim().isEmpty()) {
+        if (peticion.getNombre() == null || peticion.getNombre().trim().isEmpty()) {
             return "El nombre de la carrera es obligatorio.";
         }
 
-        String nombre =
-                carrera.getNombre().trim();
-
-        ArrayList<Carrera> carreras =
-                carreraDAO.obtenerTodos();
+        String nombre = peticion.getNombre().trim();
+        ArrayList<Carrera> carreras = carreraDAO.obtenerTodos();
 
         for (Carrera otraCarrera : carreras) {
-
-            if (otraCarrera.getIdCarrera()
-                    != carrera.getIdCarrera()
-                    && otraCarrera.getNombre()
-                            .equalsIgnoreCase(nombre)) {
-
+            if (otraCarrera.getIdCarrera() != id && otraCarrera.getNombre().equalsIgnoreCase(nombre)) {
                 return "Ya existe otra carrera con ese nombre.";
             }
         }
 
-        carrera.setNombre(nombre);
-
-        if (carrera.getDescripcion() != null) {
-            carrera.setDescripcion(carrera.getDescripcion().trim());
+        existente.setNombre(nombre);
+        if (peticion.getDescripcion() != null) {
+            existente.setDescripcion(peticion.getDescripcion().trim());
         }
 
-        carrera.setEstado(existente.isEstado());
-
-        boolean resultado = carreraDAO.actualizar(carrera);
-
-        if (resultado) {
-            return "Carrera actualizada correctamente.";
-        }
-
-        return "No se pudo actualizar la carrera.";
+        boolean resultado = carreraDAO.actualizar(existente);
+        return resultado ? "Carrera actualizada correctamente." : "No se pudo actualizar la carrera.";
     }
 
-    public String cambiarEstado(
-            int idCarrera,
-            boolean estado) {
-
-        if (idCarrera <= 0) {
-            return "El ID de la carrera no es válido.";
-        }
-
+    public String cambiarEstado(int idCarrera, boolean estado) {
+        if (idCarrera <= 0) return "El ID de la carrera no es válido.";
+        
         Carrera existente = carreraDAO.buscarPorId(idCarrera);
+        if (existente == null) return "La carrera no existe.";
 
-        if (existente == null) {
-            return "La carrera no existe.";
-        }
-
-        boolean resultado = carreraDAO.actualizarEstado( idCarrera, estado);
-        if (resultado) {
-            return "Estado de la carrera actualizado correctamente.";
-        }
-
-        return "No se pudo actualizar el estado de la carrera.";
+        boolean resultado = carreraDAO.actualizarEstado(idCarrera, estado);
+        return resultado ? "Estado de la carrera actualizado correctamente." : "No se pudo actualizar el estado de la carrera.";
     }
 }

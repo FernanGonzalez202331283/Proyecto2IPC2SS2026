@@ -24,7 +24,6 @@ public class CursoAsignadoService {
         this.empleadoDAO = new EmpleadoDAO();
     }
 
-    // Consultar todos los cursos asignados
     public ArrayList<CursoAsignado> obtenerTodos() {
 
         ArrayList<CursoAsignado> lista =
@@ -37,7 +36,6 @@ public class CursoAsignadoService {
         return lista;
     }
 
-    // Consultar cursos asignados a un maestro específico
     public ArrayList<CursoAsignado> obtenerPorEmpleado(int idEmpleado) {
 
         if (idEmpleado <= 0) {
@@ -54,7 +52,6 @@ public class CursoAsignadoService {
         return lista;
     }
 
-    // Buscar empleado relacionado con una persona
     public Empleado obtenerEmpleadoPorPersona(int idPersona) {
 
         if (idPersona <= 0) {

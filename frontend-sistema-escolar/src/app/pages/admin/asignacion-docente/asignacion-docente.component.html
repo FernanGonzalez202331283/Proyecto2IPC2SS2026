@@ -28,7 +28,7 @@
 
   <div class="row g-4">
 
-    <!-- Formulario de Asignación (5 Columnas) -->
+    <!-- Formulario de Asignación -->
     <div class="col-lg-5">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-secondary text-white py-2">
@@ -95,12 +95,12 @@
       </div>
     </div>
 
-    <!-- Lista de Asignaciones (7 Columnas) -->
+    <!-- Lista de Asignaciones -->
     <div class="col-lg-7">
       <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-bold text-secondary">Asignaciones Docentes Registradas</h6>
-          <span class="badge bg-dark">Total: {{ asignaciones.length }}</span>
+          <span class="badge bg-dark">Total: {{ totalRegistros }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -166,6 +166,29 @@
             </table>
           </div>
         </div>
+
+        <!-- Controles de Paginación -->
+        @if (totalPaginas > 1) {
+          <div class="card-footer bg-light py-2 d-flex justify-content-between align-items-center">
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === 1 || cargando" 
+              (click)="cambiarPagina(paginaActual - 1)">
+              <i class="bi bi-chevron-left me-1"></i> Anterior
+            </button>
+            <span class="small fw-semibold text-muted">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <button 
+              type="button"
+              class="btn btn-outline-secondary btn-sm" 
+              [disabled]="paginaActual === totalPaginas || cargando" 
+              (click)="cambiarPagina(paginaActual + 1)">
+              Siguiente <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        }
       </div>
     </div>
 

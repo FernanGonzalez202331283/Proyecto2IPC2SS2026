@@ -1,72 +1,69 @@
-import { Component, ChangeDetectorRef, NgZone, OnInit } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HistorialPagoService, HistorialPago } from '../../../services/historial-pago.service';
-import { AuthService } from '../../../core/services/auth';
 
 @Component({
   selector: 'app-historial-pago',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './historial-pago.component.html'
+  templateUrl: './historial-pago.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HistorialPagoComponent implements OnInit {
-  busquedaForm: FormGroup;
-  listaHistorial: HistorialPago[] = [];
-  
-  cargando: boolean = false;
-  descargandoPdf: boolean = false;
-  esEstudiante: boolean = false;
-  
-  errorMessage: string = '';
-  infoMessage: string = '';
+  private fb = inject(FormBuilder);
+  private historialService = inject(HistorialPagoService);
+  private cdr = inject(ChangeDetectorRef);
+  private location = inject(Location);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
-  constructor(
-    private fb: FormBuilder,
-    private historialService: HistorialPagoService,
-    private authService: AuthService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone,
-    private location: Location
-  ) {
-    this.busquedaForm = this.fb.group({
-      idEstudiante: ['', [Validators.required, Validators.min(1)]]
-    });
-  }
+  busquedaForm: FormGroup = this.fb.group({
+    idEstudiante: ['', [Validators.required, Validators.min(1)]]
+  });
+
+  listaHistorial: HistorialPago[] = [];
+  cargando = false;
+  descargandoPdf = false;
+  esEstudiante = false;
+
+  errorMessage = '';
+  infoMessage = '';
 
   ngOnInit(): void {
-    // 1. Limpiar todos los mensajes e historial al cargar la vista
     this.errorMessage = '';
     this.infoMessage = '';
     this.listaHistorial = [];
     this.esEstudiante = false;
 
-    // 2. Determinar el rol del usuario conectado
     const rawUser = localStorage.getItem('usuario') || sessionStorage.getItem('usuario');
     if (rawUser) {
       try {
         const parsed = JSON.parse(rawUser);
         const rolUsuario = String(parsed.rol || parsed.usuario?.rol || '').toUpperCase();
 
-        // Si es ESTUDIANTE, se consulta automáticamente su propio historial
         if (rolUsuario === 'ESTUDIANTE' || rolUsuario === 'ROLE_ESTUDIANTE') {
           this.esEstudiante = true;
-          const miId = parsed.idPersona || this.authService.getIdPersona() || parsed.id;
+          const miId = parsed.idPersona || parsed.idEstudiante || parsed.id;
           if (miId && miId > 0) {
             this.busquedaForm.patchValue({ idEstudiante: miId });
             this.consultar();
           }
         }
-        // Si es SECRETARIA o ADMIN: No hace nada, espera a que ingrese un ID manualmente
       } catch (e) {
-        console.error('Error al verificar sesión:', e);
+        console.error('Error al verificar datos de sesión:', e);
       }
     }
   }
 
   volver(): void {
-    this.location.back();
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/admin/dashboard']);
+    }
   }
 
   consultar(): void {
@@ -76,53 +73,52 @@ export class HistorialPagoComponent implements OnInit {
     this.errorMessage = '';
     this.infoMessage = '';
     this.listaHistorial = [];
+    this.cdr.markForCheck();
 
     const { idEstudiante } = this.busquedaForm.value;
 
-    this.historialService.obtenerHistorial(idEstudiante).subscribe({
-      next: (data: HistorialPago[]) => {
-        this.ngZone.run(() => {
+    this.historialService.obtenerHistorial(idEstudiante)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data: HistorialPago[]) => {
           this.listaHistorial = data || [];
           if (this.listaHistorial.length === 0) {
             this.infoMessage = `El estudiante con ID #${idEstudiante} no posee pagos o recibos registrados en el sistema.`;
           }
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.errorMessage = err.error?.mensaje || 'Ocurrió un error al consultar el historial del estudiante.';
           this.listaHistorial = [];
           this.cargando = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   descargarPdf(): void {
     if (this.busquedaForm.invalid || this.listaHistorial.length === 0) return;
 
     this.descargandoPdf = true;
+    this.cdr.markForCheck();
+
     const { idEstudiante } = this.busquedaForm.value;
 
-    this.historialService.obtenerPdfHistorial(idEstudiante).subscribe({
-      next: (blobData: Blob) => {
-        this.ngZone.run(() => {
+    this.historialService.obtenerPdfHistorial(idEstudiante)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blobData: Blob) => {
           const fileURL = URL.createObjectURL(blobData);
           window.open(fileURL, '_blank');
           this.descargandoPdf = false;
-          this.cdr.detectChanges();
-        });
-      },
-      error: (err) => {
-        this.ngZone.run(() => {
+          this.cdr.markForCheck();
+        },
+        error: () => {
           this.errorMessage = 'Ocurrió un error al generar la vista previa del PDF.';
           this.descargandoPdf = false;
-          this.cdr.detectChanges();
-        });
-      }
-    });
+          this.cdr.markForCheck();
+        }
+      });
   }
 }

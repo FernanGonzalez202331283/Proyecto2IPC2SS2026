@@ -5,6 +5,7 @@ import Dao.iteracion3.PrestamoDAO;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.iteracion3.Libro;
 import modelo.iteracion3.Prestamo;
 
@@ -13,7 +14,6 @@ import modelo.iteracion3.Prestamo;
  * @author fernan
  */
 public class PrestamoService {
-    
     private final PrestamoDAO prestamoDAO;
     private final LibroDAO libroDAO;
 
@@ -54,16 +54,12 @@ public class PrestamoService {
             return "La persona no existe o no es un estudiante o empleado activo.";
         }
 
-        // Validar fechas
         LocalDate fechaPrestamo;
         LocalDate fechaDevolucion;
 
         try {
             fechaPrestamo = LocalDate.parse(prestamo.getFechaPrestamo());
-            fechaDevolucion = LocalDate.parse(
-                    prestamo.getFechaDevolucionEsperada()
-            );
-
+            fechaDevolucion = LocalDate.parse(prestamo.getFechaDevolucionEsperada());
         } catch (DateTimeParseException | NullPointerException e) {
             return "Las fechas deben tener el formato AAAA-MM-DD.";
         }
@@ -81,42 +77,40 @@ public class PrestamoService {
         return "No se pudo registrar el préstamo.";
     }
 
-    // Obtener todos los préstamos
-    public ArrayList<Prestamo> obtenerTodos() {
-        return prestamoDAO.obtenerTodos();
+    public RespuestaPaginada<Prestamo> obtenerTodosPaginado(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
+
+        int offset = (pagina - 1) * limite;
+        ArrayList<Prestamo> lista = prestamoDAO.obtenerTodosPaginado(offset, limite);
+        int totalRegistros = prestamoDAO.contarTotal();
+
+        return new RespuestaPaginada<>(lista, pagina, limite, totalRegistros);
     }
 
-    // Buscar préstamo por ID
     public Prestamo buscarPorId(int idPrestamo) {
-
         if (idPrestamo <= 0) {
             return null;
         }
-
         return prestamoDAO.buscarPorId(idPrestamo);
     }
     
-    // Registrar devolución de un libro
     public String registrarDevolucion(int idPrestamo) {
-
         if (idPrestamo <= 0) {
             return "Debe proporcionar un ID de préstamo válido.";
         }
 
-        // Verificar que el préstamo exista
         Prestamo prestamo = prestamoDAO.buscarPorId(idPrestamo);
 
         if (prestamo == null) {
             return "El préstamo indicado no existe.";
         }
 
-        // Verificar que el préstamo esté activo (acepta PRESTADO o VENCIDO)
         String estadoActual = prestamo.getEstado();
         if (!"PRESTADO".equals(estadoActual) && !"VENCIDO".equals(estadoActual)) {
             return "Este préstamo ya fue devuelto o no se encuentra activo.";
         }
 
-        // Registrar devolución
         if (prestamoDAO.registrarDevolucion(idPrestamo)) {
             return "Devolución registrada correctamente.";
         }
@@ -124,13 +118,10 @@ public class PrestamoService {
         return "No se pudo registrar la devolución.";
     }
 
-    // Obtener préstamos de una persona
     public ArrayList<Prestamo> obtenerPorPersona(int idPersona) {
-
         if (idPersona <= 0) {
             return new ArrayList<>();
         }
-
         return prestamoDAO.obtenerPorPersona(idPersona);
     }
 }

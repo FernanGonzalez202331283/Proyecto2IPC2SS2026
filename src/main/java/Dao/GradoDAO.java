@@ -10,149 +10,200 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import modelo.Grado;
+import java.util.List;
+import modelo.grado.Grado;
 
 /**
  *
  * @author fernan
  */
 public class GradoDAO {
-    public boolean insertar(Grado grado){
+public boolean insertar(Grado grado) {
         String sql = """
                      INSERT INTO grado 
                      (nivel, id_carrera, nombre, descripcion)
-                     VALUES (?,?,?,?)
+                     VALUES (?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
-            ps.setString(1, grado.getNivel());
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
             
-            if(grado.getIdCarrera() == null){
+            ps.setString(1, grado.getNivel());
+
+            if (grado.getIdCarrera() == null) {
                 ps.setNull(2, java.sql.Types.INTEGER);
-            }else{
+            } else {
                 ps.setInt(2, grado.getIdCarrera());
             }
+
             ps.setString(3, grado.getNombre());
             ps.setString(4, grado.getDescripcion());
-            
-            int filas = ps.executeUpdate();
-            
-            return filas > 0;
-            
+
+            return ps.executeUpdate() > 0;
+
         } catch (SQLException e) {
-            System.out.println("Error al insertar grado : "+e.getMessage());
+            System.out.println("Error al insertar grado: " + e.getMessage());
             return false;
         }
     }
-    
-    
-    public Grado buscarPorId(int idGrado){
+
+    public Grado buscarPorId(int idGrado) {
         String sql = """
-                     SELECT id_grado, 
-                            nivel,
-                            id_carrera,
-                            nombre,
-                            descripcion
-                     FROM grado
-                     WHERE id_grado = ?
+                     SELECT g.id_grado, 
+                            g.nivel, 
+                            g.id_carrera, 
+                            g.nombre, 
+                            g.descripcion,
+                            c.nombre AS nombre_carrera
+                     FROM grado g
+                     LEFT JOIN carrera c ON g.id_carrera = c.id_carrera
+                     WHERE g.id_grado = ?
                      """;
-        
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
-            ps.setInt(1, idGrado);
+
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
             
-            try (ResultSet rs = ps.executeQuery()){
-                if(rs.next()){
-                    Grado grado = new Grado();
-                    grado.setIdGrado(rs.getInt("id_grado"));
-                    grado.setNivel(rs.getString("nivel"));
-                    int idCarrera = rs.getInt("id_carrera");
-                    if(rs.wasNull()){
-                        grado.setIdCarrera(null);
-                    }else{
-                        grado.setIdCarrera(idCarrera);
-                    }
-                    
-                    grado.setNombre(rs.getString("nombre"));
-                    grado.setDescripcion(rs.getString("descripcion"));
-                    return grado;
+            ps.setInt(1, idGrado);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToGrado(rs);
                 }
-                
-            } 
+            }
         } catch (SQLException e) {
-            System.out.println("error al buscar el grado: "+e.getMessage());
+            System.out.println("Error al buscar el grado: " + e.getMessage());
         }
         return null;
     }
-    
-    public ArrayList<Grado> obtenerTodos(){
+
+    public ArrayList<Grado> obtenerTodos() {
         String sql = """
-                     SELECT id_grado,
-                            nivel, 
-                            id_carrera,
-                            nombre, 
-                            descripcion
-                     FROM grado
-                     ORDER BY nivel, nombre
+                     SELECT g.id_grado, 
+                            g.nivel, 
+                            g.id_carrera, 
+                            g.nombre, 
+                            g.descripcion,
+                            c.nombre AS nombre_carrera
+                     FROM grado g
+                     LEFT JOIN carrera c ON g.id_carrera = c.id_carrera
+                     ORDER BY g.nivel, g.nombre
                      """;
-        
-        ArrayList <Grado> grados = new ArrayList<>();
-        
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()){
-            while (rs.next()) {                
-                Grado grado = new Grado();
-                grado.setIdGrado(rs.getInt("id_grado"));
-                grado.setNivel(rs.getString("nivel"));
-                int idCarrera = rs.getInt("id_carrera");
-                if(rs.wasNull()){
-                    grado.setIdCarrera(null);
-                }else {
-                    grado.setIdCarrera(idCarrera);
-                }
-                grado.setNombre(rs.getString("nombre"));
-                grado.setDescripcion(rs.getString("descripcion"));
-                
-                grados.add(grado);
-            }
+
+        ArrayList<Grado> grados = new ArrayList<>();
+
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
+             ResultSet rs = ps.executeQuery()) {
             
+            while (rs.next()) {
+                grados.add(mapResultSetToGrado(rs));
+            }
+
         } catch (SQLException e) {
-            System.out.println("Error al obtener grado: "+e.getMessage());
+            System.out.println("Error al obtener grados: " + e.getMessage());
         }
         return grados;
     }
-    
-    public boolean actualizar(Grado grado){
+
+    public List<Grado> obtenerPaginados(int limite, int offset) {
+        String sql = """
+                     SELECT g.id_grado, 
+                            g.nivel, 
+                            g.id_carrera, 
+                            g.nombre, 
+                            g.descripcion,
+                            c.nombre AS nombre_carrera
+                     FROM grado g
+                     LEFT JOIN carrera c ON g.id_carrera = c.id_carrera
+                     ORDER BY g.id_grado DESC
+                     LIMIT ? OFFSET ?
+                     """;
+
+        List<Grado> grados = new ArrayList<>();
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    grados.add(mapResultSetToGrado(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al obtener grados paginados: " + e.getMessage());
+        }
+        return grados;
+    }
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM grado";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al contar grados: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    public boolean actualizar(Grado grado) {
         String sql = """
                      UPDATE grado
                      SET nivel = ?,
-                        id_carrera = ?,
-                        nombre = ?,
-                        descripcion = ?
+                         id_carrera = ?,
+                         nombre = ?,
+                         descripcion = ?
                      WHERE id_grado = ?
                      """;
-        
-        try (Connection connection = Conexion.getInstance().getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)){
-            ps.setString(1, grado.getNivel());
+
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
             
-            if(grado.getIdCarrera() == null){
+            ps.setString(1, grado.getNivel());
+
+            if (grado.getIdCarrera() == null) {
                 ps.setNull(2, java.sql.Types.INTEGER);
-            }else {
+            } else {
                 ps.setInt(2, grado.getIdCarrera());
             }
-            
+
             ps.setString(3, grado.getNombre());
             ps.setString(4, grado.getDescripcion());
             ps.setInt(5, grado.getIdGrado());
-            
-            int filas = ps.executeUpdate();
-            return filas > 0;
+
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.out.println("Error al actualizar grado: "+e.getMessage());
+            System.out.println("Error al actualizar grado: " + e.getMessage());
             return false;
         }
+    }
+
+    private Grado mapResultSetToGrado(ResultSet rs) throws SQLException {
+        Grado grado = new Grado();
+        grado.setIdGrado(rs.getInt("id_grado"));
+        grado.setNivel(rs.getString("nivel"));
+        
+        int idCarrera = rs.getInt("id_carrera");
+        if (rs.wasNull()) {
+            grado.setIdCarrera(null);
+        } else {
+            grado.setIdCarrera(idCarrera);
+        }
+        
+        grado.setNombre(rs.getString("nombre"));
+        grado.setDescripcion(rs.getString("descripcion"));
+
+        try {
+            grado.setNombreCarrera(rs.getString("nombre_carrera"));
+        } catch (SQLException ignored) {}
+
+        return grado;
     }
 }

@@ -1,12 +1,13 @@
 import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { LibroService, Libro } from '../../../services/libro.service';
+import { CommonModule, Location } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
+import { LibroService, Libro, RespuestaPaginada } from '../../../services/libro.service';
 
 @Component({
   selector: 'app-libros',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './libros.component.html'
 })
 export class LibrosComponent implements OnInit {
@@ -22,16 +23,24 @@ export class LibrosComponent implements OnInit {
   successMessage: string = '';
   errorMessage: string = '';
 
+  // Control de paginación
+  paginaActual: number = 1;
+  limite: number = 10;
+  totalPaginas: number = 0;
+  totalRegistros: number = 0;
+
   constructor(
     private fb: FormBuilder,
     private libroService: LibroService,
+    private location: Location,
+    private router: Router,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
     this.initForm();
-    this.cargarLibros();
+    this.cargarLibros(1);
   }
 
   initForm(): void {
@@ -44,12 +53,16 @@ export class LibrosComponent implements OnInit {
     });
   }
 
-  cargarLibros(): void {
+  cargarLibros(pagina: number = 1): void {
     this.cargando = true;
-    this.libroService.obtenerTodos().subscribe({
-      next: (data) => {
+    this.paginaActual = pagina;
+
+    this.libroService.obtenerTodos(this.paginaActual, this.limite).subscribe({
+      next: (res: RespuestaPaginada<Libro>) => {
         this.ngZone.run(() => {
-          this.libros = data || [];
+          this.libros = res.contenido || [];
+          this.totalRegistros = res.totalRegistros || 0;
+          this.totalPaginas = res.totalPaginas || 0;
           this.cargando = false;
           this.cdr.detectChanges();
         });
@@ -64,6 +77,12 @@ export class LibrosComponent implements OnInit {
     });
   }
 
+  cambiarPagina(nuevaPagina: number): void {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+      this.cargarLibros(nuevaPagina);
+    }
+  }
+
   guardarLibro(): void {
     if (this.libroForm.invalid) {
       this.libroForm.markAllAsTouched();
@@ -76,7 +95,6 @@ export class LibrosComponent implements OnInit {
 
     const formVal = this.libroForm.value;
     
-    // Validación lógica de cantidades
     if (Number(formVal.cantidadDisponible) > Number(formVal.cantidadTotal)) {
       this.errorMessage = 'La cantidad disponible no puede superar la cantidad total.';
       this.guardando = false;
@@ -89,13 +107,12 @@ export class LibrosComponent implements OnInit {
       editorial: formVal.editorial ? formVal.editorial : undefined,
       cantidadTotal: Number(formVal.cantidadTotal),
       cantidadDisponible: Number(formVal.cantidadDisponible),
-      estado: true // Se establece activo por defecto al registrar
+      estado: true
     };
 
     if (this.esEdicion && this.idLibroEditar) {
       libroData.idLibro = this.idLibroEditar;
 
-      // Preserva el estado original del registro que se está editando
       const libroExistente = this.libros.find(l => l.idLibro === this.idLibroEditar);
       if (libroExistente) {
         libroData.estado = libroExistente.estado;
@@ -107,7 +124,7 @@ export class LibrosComponent implements OnInit {
             this.successMessage = res?.mensaje || 'Libro actualizado correctamente.';
             this.guardando = false;
             this.limpiarFormulario();
-            this.cargarLibros();
+            this.cargarLibros(this.paginaActual);
           });
         },
         error: (err) => {
@@ -125,7 +142,7 @@ export class LibrosComponent implements OnInit {
             this.successMessage = res?.mensaje || 'Libro registrado correctamente.';
             this.guardando = false;
             this.limpiarFormulario();
-            this.cargarLibros();
+            this.cargarLibros(1);
           });
         },
         error: (err) => {
@@ -159,7 +176,7 @@ export class LibrosComponent implements OnInit {
       next: (res) => {
         this.ngZone.run(() => {
           this.successMessage = res?.mensaje || 'Estado actualizado correctamente.';
-          this.cargarLibros();
+          this.cargarLibros(this.paginaActual);
         });
       },
       error: (err) => {
@@ -181,5 +198,13 @@ export class LibrosComponent implements OnInit {
       cantidadTotal: 1,
       cantidadDisponible: 1
     });
+  }
+
+  volverDashboard(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/']);
+    }
   }
 }

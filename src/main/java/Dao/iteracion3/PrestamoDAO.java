@@ -14,10 +14,7 @@ import modelo.iteracion3.Prestamo;
  * @author fernan
  */
 public class PrestamoDAO {
-
-    // Registrar un préstamo
     public boolean registrar(Prestamo prestamo) {
-
         String sqlLibro = """
             UPDATE libro
             SET cantidad_disponible = cantidad_disponible - 1
@@ -89,30 +86,63 @@ public class PrestamoDAO {
         }
     }
 
-    // Obtener todos los préstamos
-    public ArrayList<Prestamo> obtenerTodos() {
+    public ArrayList<Prestamo> obtenerTodosPaginado(int offset, int limite) {
         ArrayList<Prestamo> prestamos = new ArrayList<>();
-        String sql = "SELECT * FROM prestamo ORDER BY id_prestamo";
+        String sql = """
+            SELECT pr.id_prestamo, pr.id_libro, pr.id_persona,
+                   pr.fecha_prestamo, pr.fecha_devolucion_esperada,
+                   pr.fecha_devolucion_real, pr.estado,
+                   TRIM(CONCAT(p.nombres, ' ', p.apellidos)) AS nombre_persona,
+                   l.titulo AS titulo_libro
+            FROM prestamo pr
+            INNER JOIN persona p ON pr.id_persona = p.id_persona
+            INNER JOIN libro l ON pr.id_libro = l.id_libro
+            ORDER BY pr.id_prestamo DESC
+            LIMIT ? OFFSET ?
+            """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                prestamos.add(mapearPrestamo(rs));
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Prestamo prestamo = mapearPrestamo(rs);
+                    prestamo.setNombrePersona(rs.getString("nombre_persona"));
+                    prestamo.setTituloLibro(rs.getString("titulo_libro"));
+                    prestamos.add(prestamo);
+                }
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al obtener préstamos: " + e.getMessage());
+            System.out.println("Error al obtener préstamos paginados con JOIN: " + e.getMessage());
         }
 
         return prestamos;
     }
 
+    
+
+    public int contarTotal() {
+        String sql = "SELECT COUNT(*) FROM prestamo";
+        try (Connection connection = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = connection.prepareStatement(sql); 
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al contar préstamos: " + e.getMessage());
+        }
+        return 0;
+    }
+
     public Prestamo buscarPorId(int idPrestamo) {
         String sql = "SELECT * FROM prestamo WHERE id_prestamo = ?";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPrestamo);
@@ -134,7 +164,7 @@ public class PrestamoDAO {
         ArrayList<Prestamo> prestamos = new ArrayList<>();
         String sql = "SELECT * FROM prestamo WHERE id_persona = ? ORDER BY id_prestamo";
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPersona);
@@ -152,7 +182,6 @@ public class PrestamoDAO {
         return prestamos;
     }
 
-    // Verificar si la persona es un estudiante o empleado activo
     public boolean personaActiva(int idPersona) {
         String sql = """
             SELECT
@@ -169,7 +198,7 @@ public class PrestamoDAO {
                 ) AS activa
             """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
+        try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPersona);
@@ -188,11 +217,9 @@ public class PrestamoDAO {
         return false;
     }
 
-    // Registrar devolución de un libro y generar multa si existe atraso
     public boolean registrarDevolucion(int idPrestamo) {
-
         String sqlBuscar = """
-            SELECT id_libro, estado
+            SELECT id_libro, UPPER(TRIM(estado)) AS estado, fecha_devolucion_esperada
             FROM prestamo
             WHERE id_prestamo = ?
             FOR UPDATE
@@ -201,9 +228,9 @@ public class PrestamoDAO {
         String sqlPrestamo = """
             UPDATE prestamo
             SET estado = 'DEVUELTO',
-                fecha_devolucion_real = CURDATE()
+                fecha_devolucion_real = ?
             WHERE id_prestamo = ?
-            AND estado IN ('PRESTADO', 'VENCIDO')
+            AND UPPER(TRIM(estado)) IN ('PRESTADO', 'VENCIDO')
             """;
 
         String sqlLibro = """
@@ -219,45 +246,56 @@ public class PrestamoDAO {
             connection.setAutoCommit(false);
 
             int idLibro;
+            String estadoActual;
+            Date fechaEsperada;
+            Date fechaActual = new Date(System.currentTimeMillis());
 
-            // 1. Buscar el préstamo
             try (PreparedStatement ps = connection.prepareStatement(sqlBuscar)) {
                 ps.setInt(1, idPrestamo);
 
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
+                        System.out.println("Devolución fallida: El préstamo #" + idPrestamo + " no existe.");
                         connection.rollback();
                         return false;
                     }
 
-                    String estado = rs.getString("estado");
-                    if (!"PRESTADO".equals(estado) && !"VENCIDO".equals(estado)) {
+                    estadoActual = rs.getString("estado");
+                    if (!"PRESTADO".equals(estadoActual) && !"VENCIDO".equals(estadoActual)) {
+                        System.out.println("Devolución fallida: El préstamo #" + idPrestamo + " ya está en estado " + estadoActual);
                         connection.rollback();
                         return false;
                     }
 
                     idLibro = rs.getInt("id_libro");
+                    fechaEsperada = rs.getDate("fecha_devolucion_esperada");
                 }
             }
 
-            // 2. Actualizar estado del préstamo a DEVUELTO
             try (PreparedStatement ps = connection.prepareStatement(sqlPrestamo)) {
-                ps.setInt(1, idPrestamo);
+                ps.setDate(1, fechaActual);
+                ps.setInt(2, idPrestamo);
                 if (ps.executeUpdate() == 0) {
+                    System.out.println("Devolución fallida: No se pudo actualizar el estado a DEVUELTO.");
                     connection.rollback();
                     return false;
                 }
             }
 
-            // 3. Aumentar stock del libro (+1)
             try (PreparedStatement ps = connection.prepareStatement(sqlLibro)) {
                 ps.setInt(1, idLibro);
                 ps.executeUpdate();
             }
 
-            // 4. Registrar multa automáticamente si aplica mora
-            MultaDAO multaDAO = new MultaDAO();
-            multaDAO.registrar(connection, idPrestamo);
+            if ("VENCIDO".equals(estadoActual) || (fechaEsperada != null && fechaActual.after(fechaEsperada))) {
+                try {
+                    MultaDAO multaDAO = new MultaDAO();
+                    multaDAO.registrarConFecha(connection, idPrestamo, fechaActual);
+                } catch (Exception exMulta) {
+                    // Se registra la advertencia en consola pero NO se rompe la devolución del libro
+                    System.out.println("Advertencia al generar multa para el préstamo #" + idPrestamo + ": " + exMulta.getMessage());
+                }
+            }
 
             connection.commit();
             return true;
@@ -267,10 +305,10 @@ public class PrestamoDAO {
                 try {
                     connection.rollback();
                 } catch (SQLException ex) {
-                    System.out.println("Error al cancelar devolución: " + ex.getMessage());
+                    System.out.println("Error en rollback de devolución: " + ex.getMessage());
                 }
             }
-            System.out.println("Error al registrar devolución: " + e.getMessage());
+            System.out.println("Error al registrar devolución del préstamo #" + idPrestamo + ": " + e.getMessage());
             return false;
 
         } finally {

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RestConstants } from '../shared/rest-api/rest-constants';
 
@@ -9,7 +9,14 @@ export interface Multa {
   diasAtraso: number;
   monto: number;
   fechaGeneracion?: string;
-  estado: string; // 'PENDIENTE', 'PAGADA', 'ANULADA'
+  estado: string; 
+}
+
+export interface RespuestaPaginada<T> {
+  contenido: T[];
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
 }
 
 export interface RespuestaServidor {
@@ -32,9 +39,14 @@ export class MultaService {
     });
   }
 
-  obtenerTodas(): Observable<Multa[]> {
-    return this.http.get<Multa[]>(`${this.restConstants.getApiURL()}/multas`, {
+  obtenerTodas(pagina: number = 1, limite: number = 10): Observable<RespuestaPaginada<Multa>> {
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('limite', limite.toString());
+
+    return this.http.get<RespuestaPaginada<Multa>>(`${this.restConstants.getApiURL()}/multas`, {
       headers: this.getHeaders(),
+      params,
       withCredentials: true
     });
   }

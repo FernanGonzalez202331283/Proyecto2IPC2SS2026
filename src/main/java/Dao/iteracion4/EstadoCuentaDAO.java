@@ -19,6 +19,7 @@ import modelo.iteracion4.EstadoCuenta;
  * @author fernan
  */
 public class EstadoCuentaDAO {
+
     public static final int ESTUDIANTE_NO_ENCONTRADO = -1;
     public static final int ERROR = -2;
 
@@ -64,7 +65,7 @@ public class EstadoCuentaDAO {
                     if (rs.next()) {
                         idEstudianteReal = rs.getInt("id_estudiante");
                     } else {
-                        return null; 
+                        return null;
                     }
                 }
             }
@@ -73,7 +74,6 @@ public class EstadoCuentaDAO {
             double totalPagado = 0;
             double saldoPendiente = 0;
 
-            // 2. Consultar obligaciones usando el id_estudiante real (7)
             try (PreparedStatement ps = conexion.prepareStatement(sql)) {
                 ps.setInt(1, idEstudianteReal);
                 ps.setInt(2, idAñoLectivo);

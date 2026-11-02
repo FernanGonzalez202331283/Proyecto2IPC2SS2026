@@ -17,7 +17,7 @@ import modelo.iteracion2.Encargado;
  * @author fernan
  */
 public class EncargadoDAO {
-    
+
     public boolean registrar(Encargado encargado) {
 
         String sql = """
@@ -26,8 +26,7 @@ public class EncargadoDAO {
                      VALUES (?, ?, ?, ?, ?, ?)
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, encargado.getNombres());
             ps.setString(2, encargado.getApellidos());
@@ -52,8 +51,7 @@ public class EncargadoDAO {
                      WHERE id_encargado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idEncargado);
 
@@ -81,9 +79,7 @@ public class EncargadoDAO {
                      ORDER BY id_encargado
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 encargados.add(mapearEncargado(rs));
@@ -108,8 +104,7 @@ public class EncargadoDAO {
                      WHERE id_encargado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, encargado.getNombres());
             ps.setString(2, encargado.getApellidos());
@@ -134,8 +129,7 @@ public class EncargadoDAO {
                      WHERE id_encargado = ?
                      """;
 
-        try (Connection connection = Conexion.getInstance().getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection connection = Conexion.getInstance().getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setBoolean(1, estado);
             ps.setInt(2, idEncargado);
@@ -147,6 +141,7 @@ public class EncargadoDAO {
             return false;
         }
     }
+
     public int registrar(Connection connection, Encargado encargado) throws SQLException {
 
         String sql = """
@@ -170,8 +165,7 @@ public class EncargadoDAO {
 
                 String sqlId = "SELECT LAST_INSERT_ID()";
 
-                try (PreparedStatement psId = connection.prepareStatement(sqlId);
-                     ResultSet rs = psId.executeQuery()) {
+                try (PreparedStatement psId = connection.prepareStatement(sqlId); ResultSet rs = psId.executeQuery()) {
 
                     if (rs.next()) {
                         return rs.getInt(1);
@@ -182,9 +176,9 @@ public class EncargadoDAO {
 
         return 0;
     }
-    
+
     public Encargado buscarPorId(Connection connection, int idEncargado)
-        throws SQLException {
+            throws SQLException {
 
         String sql = """
                      SELECT *

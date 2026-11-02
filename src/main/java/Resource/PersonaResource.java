@@ -15,123 +15,116 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
 import java.util.List;
-import modelo.Persona;
+import modelo.Persona.Persona;
+import modelo.Persona.PersonaActualizacionRequest;
+import modelo.Persona.PersonaEstadoRequest;
+import modelo.Persona.PersonaRegistroRequest;
+import modelo.Persona.PersonaResponse;
+import modelo.PersonaSeleccionable;
 import servicio.PersonaService;
 
 /**
  *
  * @author fernan
  */
-@Path("/personas")
+@Path("personas")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
 public class PersonaResource {
-    private PersonaService personaService;
+
+    private final PersonaService personaService;
 
     public PersonaResource() {
-        personaService = new PersonaService();
+        this.personaService = new PersonaService();
+    }
+
+    private String jsonMensaje(String mensaje) {
+        return "{\"mensaje\": \"%s\"}".formatted(mensaje);
     }
 
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response obtenerPersonas(
-            @Context HttpServletRequest httpRequest) {
-
-        List<Persona> persona= personaService.obtenerPersona();
-        
-        return Response.ok(persona).build();
+    @Path("/activas")
+    public Response obtenerPersonasActivas(@Context SecurityContext sec) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN).entity(jsonMensaje("No tiene permisos.")).build();
+        }
+        List<PersonaSeleccionable> activas = personaService.obtenerPersonasActivasConRol();
+        return Response.ok(activas).build();
     }
 
-    // Buscar una persona por ID
+    @GET
+    public Response obtenerPersonas(@Context SecurityContext sec) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN).entity(jsonMensaje("No tiene permisos.")).build();
+        }
+        List<PersonaResponse> lista = personaService.obtenerPersonas();
+        return Response.ok(lista).build();
+    }
+
     @GET
     @Path("/{id}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response buscarPersona(
-            @PathParam("id") int idPersona,
-            @Context HttpServletRequest httpRequest) {
-
-        Persona persona = personaService.buscarPersona(idPersona);
-
-        if (persona == null) {
-            return Response
-                    .status(Response.Status.NOT_FOUND)
-                    .build();
+    public Response buscarPersona(@Context SecurityContext sec, @PathParam("id") int idPersona) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN).entity(jsonMensaje("No tiene permisos.")).build();
         }
-
+        PersonaResponse persona = personaService.buscarPersona(idPersona);
+        if (persona == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonMensaje("La persona indicada no existe.")).build();
+        }
         return Response.ok(persona).build();
     }
 
-    // Registrar una persona
     @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response registrarPersona(
-            Persona persona,
-            @Context HttpServletRequest httpRequest) {
-
-       String resultado = personaService.registrarPersona(persona);
-
-        if (!resultado.equals("OK")) {
-
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity("""
-                            {
-                                "mensaje": "%s"
-                            }
-                            """.formatted(resultado))
-                    .build();
+    public Response registrarPersona(@Context SecurityContext sec, PersonaRegistroRequest request) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN).entity(jsonMensaje("No tiene permisos.")).build();
+        }
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje("Los datos son obligatorios.")).build();
         }
 
-        return Response
-                .status(Response.Status.CREATED)
-                .entity(persona)
-                .build();
+        String resultado = personaService.registrarPersona(request);
+        if (!"OK".equalsIgnoreCase(resultado)) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje(resultado)).build();
+        }
+        
+        return Response.status(Response.Status.CREATED).entity(jsonMensaje("Persona registrada con éxito")).build();
     }
 
-    // Actualizar una persona
     @PUT
     @Path("/{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response actualizarPersona(
-            @PathParam("id") int idPersona,
-            Persona persona,
-            @Context HttpServletRequest httpRequest) {
-
-        persona.setIdPersona(idPersona);
-
-        boolean actualizado = personaService.actualizarPersona(persona);
-
-        if (!actualizado) {
-            return Response
-                    .status(Response.Status.NOT_FOUND)
-                    .build();
+    public Response actualizarPersona(@Context SecurityContext sec, @PathParam("id") int idPersona, PersonaActualizacionRequest request) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN).entity(jsonMensaje("No tiene permisos.")).build();
+        }
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje("Los datos son obligatorios.")).build();
         }
 
-        return Response.ok(persona).build();
+        boolean actualizado = personaService.actualizarPersona(idPersona, request);
+        if (!actualizado) {
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonMensaje("No se pudo actualizar la persona o no existe.")).build();
+        }
+        return Response.ok(jsonMensaje("Persona actualizada correctamente.")).build();
     }
 
-    // Cambiar estado de una persona
     @PUT
     @Path("/{id}/estado")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response cambiarEstado(
-            @PathParam("id") int idPersona,
-            Persona persona,
-            @Context HttpServletRequest httpRequest) {
-
-        boolean actualizado = personaService.cambiarEstado(
-                idPersona,
-                persona.isEstado()
-        );
-
-        if (!actualizado) {
-            return Response
-                    .status(Response.Status.NOT_FOUND)
-                    .build();
+    public Response cambiarEstado(@Context SecurityContext sec, @PathParam("id") int idPersona, PersonaEstadoRequest request) {
+        if (!sec.isUserInRole("SUPER_ADMIN") && !sec.isUserInRole("BIBLIOTECARIO")) {
+            return Response.status(Response.Status.FORBIDDEN).entity(jsonMensaje("No tiene permisos.")).build();
+        }
+        if (request == null) {
+             return Response.status(Response.Status.BAD_REQUEST).entity(jsonMensaje("Debe enviar el nuevo estado.")).build();
         }
 
-        return Response.ok().build();
+        boolean actualizado = personaService.cambiarEstado(idPersona, request.isEstado());
+        if (!actualizado) {
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonMensaje("La persona no existe.")).build();
+        }
+        return Response.ok(jsonMensaje("Estado actualizado correctamente.")).build();
     }
 }

@@ -7,38 +7,41 @@ package servicio.etapa3;
 import Dao.iteracion3.MultaDAO;
 import java.util.ArrayList;
 import modelo.iteracion3.Multa;
-
+import modelo.RespuestaPaginada;
 /**
  *
  * @author fernan
  */
 public class MultaService {
-    
-    private final MultaDAO multaDAO;
+private final MultaDAO multaDAO;
 
     public MultaService() {
         this.multaDAO = new MultaDAO();
     }
 
-    // Obtener todas las multas
-    public ArrayList<Multa> obtenerTodos() {
+    public RespuestaPaginada<Multa> obtenerTodosPaginado(int pagina, int limite) {
+        if (pagina < 1) pagina = 1;
+        if (limite < 1) limite = 10;
 
+        int offset = (pagina - 1) * limite;
+        ArrayList<Multa> lista = multaDAO.obtenerTodosPaginado(offset, limite);
+        int totalRegistros = multaDAO.contarTotal();
+
+        return new RespuestaPaginada<>(lista, pagina, limite, totalRegistros);
+    }
+
+    public ArrayList<Multa> obtenerTodos() {
         return multaDAO.obtenerTodos();
     }
 
-    // Buscar una multa por ID
     public Multa buscarPorId(int idMulta) {
-
         if (idMulta <= 0) {
             return null;
         }
-
         return multaDAO.buscarPorId(idMulta);
     }
 
-    // Actualizar el estado de una multa
     public String actualizarEstado(int idMulta, String estado) {
-
         if (idMulta <= 0) {
             return "El ID de la multa debe ser válido.";
         }
@@ -49,7 +52,7 @@ public class MultaService {
 
         estado = estado.trim().toUpperCase();
 
-        if (!estado.equals("PENDIENTE") && !estado.equals("PAGADA")) {
+        if (!"PENDIENTE".equals(estado) && !"PAGADA".equals(estado)) {
             return "El estado debe ser PENDIENTE o PAGADA.";
         }
 

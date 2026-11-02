@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth/auth-guard';
 
 export const routes: Routes = [
-  // Rutas públicas
   {
     path: 'login',
     loadComponent: () => import('./pages/auth/login/login').then(m => m.LoginComponent)
@@ -12,9 +11,6 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/auth/recuperar-password/recuperar-password.component').then(m => m.RecuperarPasswordComponent)
   },
 
-  // ==========================================
-  // MÓDULO DE BIBLIOTECA
-  // ==========================================
   {
     path: 'biblioteca/dashboard',
     loadComponent: () => import('./pages/biblioteca/biblioteca-dashboard/biblioteca-dashboard.component').then(m => m.BibliotecaDashboardComponent),
@@ -28,12 +24,12 @@ export const routes: Routes = [
   {
     path: 'biblioteca/catalogo',
     loadComponent: () => import('./pages/biblioteca/catalogo/catalogo.component').then(m => m.CatalogoComponent),
-    canActivate: [authGuard(['BIBLIOTECARIO', 'SUPER_ADMIN', 'ESTUDIANTE'])]
+    canActivate: [authGuard(['BIBLIOTECARIO', 'MAESTRO', 'ESTUDIANTE'])]
   },
   {
     path: 'biblioteca/prestamos',
     loadComponent: () => import('./pages/biblioteca/prestamo/prestamo.component').then(m => m.PrestamoComponent),
-    canActivate: [authGuard(['BIBLIOTECARIO', 'SUPER_ADMIN'])]
+    canActivate: [authGuard(['BIBLIOTECARIO', 'SUPER_ADMIN', 'MAESTRO'])]
   },
   {
     path: 'estudiante/consultar-estado',
@@ -43,27 +39,27 @@ export const routes: Routes = [
   {
     path: 'reporte/solvencia',
     loadComponent: () => import('./pages/secretaria/reporte-moroso/reporte-solvencia.component').then(m => m.ReporteSolvenciaComponent),
-    canActivate: [authGuard(['SECRETARIA'])]
+    canActivate: [authGuard(['SECRETARIA','SUPER_ADMIN', 'ADMIN'])]
   },
   {
     path: 'reporte/rendimiento',
     loadComponent: () => import('./pages/admin/reporte-rendimiento/reporte-rendimiento.component').then(m => m.ReporteRendimientoComponent),
-    canActivate: [authGuard(['ADMIN'])]
+    canActivate: [authGuard(['ADMIN','SUPER_ADMIN'])]
   },
   {
     path: 'reporte/historial',
     loadComponent: () => import('./pages/secretaria/reporte-historial-pago/historial-pago.component').then(m => m.HistorialPagoComponent),
-    canActivate: [authGuard(['SECRETARIA'])]
+    canActivate: [authGuard(['ADMIN','SUPER_ADMIN'])]
   },
   {
     path: 'reporte/ingresos',
     loadComponent: () => import('./pages/admin/reporte-ingresos/reporte-ingresos.component').then(m => m.ReporteIngresosComponent),
-    canActivate: [authGuard(['ADMIN', 'SUPER_ADMIN'])]
+    canActivate: [authGuard(['SUPER_ADMIN'])]
   },
   {
     path: 'reporte/prestamo-mora',
     loadComponent: () => import('./pages/biblioteca/reporte-mora/reporte-prestamo-mora.component').then(m => m.ReportePrestamoMoraComponent),
-    canActivate: [authGuard(['BIBLIOTECARIO'])]
+    canActivate: [authGuard(['BIBLIOTECARIO', 'SUPER_ADMIN', 'ADMIN'])]
   },
   {
     path: 'biblioteca/devoluciones',
@@ -102,9 +98,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/admin/curso/curso.component').then(m => m.CursosComponent),
     canActivate: [authGuard(['ADMIN'])]
   },
+   {
+    path: 'admin/estudiante',
+    loadComponent: () => import('./pages/admin/admin-estudiante/admin-component').then(m => m.AdminEstudiantesComponent),
+    canActivate: [authGuard(['ADMIN'])]
+  },
   {
     path: 'admin/curriculo',
-    loadComponent: () => import('./pages/admin/curriculo/curriculo.component').then(m => m.CurriculoComponent),
+    loadComponent: () => import('./pages/admin/curriculo/curriculo.component').then(m => m.CurriculosComponent),
     canActivate: [authGuard(['ADMIN', 'SUPER_ADMIN'])] 
   },
   {
@@ -163,9 +164,9 @@ export const routes: Routes = [
     canActivate: [authGuard(['SECRETARIA', 'SUPER_ADMIN'])]
   },
   {
-    path: 'secretaria/estudiantes',
+    path: 'super-admin/estudiantes',
     loadComponent: () => import('./pages/secretaria/estudiantes/estudiantes.component').then(m => m.EstudiantesComponent),
-    canActivate: [authGuard(['SECRETARIA', 'SUPER_ADMIN'])]
+    canActivate: [authGuard([ 'SUPER_ADMIN'])]
   },
   {
     path: 'secretaria/expedientes',
@@ -240,17 +241,11 @@ export const routes: Routes = [
 },
   
   {
-    path: 'academico/carreras',
-    loadComponent: () => import('./pages/academico/carreras/carreras').then(m => m.Carreras),
-    canActivate: [authGuard(['SUPER_ADMIN', 'ADMIN'])]
-  },
-  {
     path: 'usuarios',
     loadComponent: () => import('./pages/usuarios/usuarios-list/usuarios-list').then(m => m.UsuariosList),
     canActivate: [authGuard(['SUPER_ADMIN', 'ADMIN'])]
   },
 
-  // Redirecciones por defecto
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: '**', redirectTo: 'login' }
 ];

@@ -256,6 +256,47 @@ public class UsuarioDAO {
             return false;
         }
     }
+    
+    public ArrayList<Usuario> obtenerPaginados(int limite, int offset) {
+        String sql = """
+                     SELECT id_usuario, username, contraseña, id_persona, rol, estado, fecha_creacion, debe_cambiar_clave
+                     FROM usuario
+                     LIMIT ? OFFSET ?
+                     """;
+
+        ArrayList<Usuario> usuarios = new ArrayList<>();
+
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limite);
+            ps.setInt(2, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    usuarios.add(mapResultSetToUsuario(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al obtener usuarios paginados: " + e.getMessage());
+        }
+
+        return usuarios;
+    }
+
+    public int contarTotalUsuarios() {
+        String sql = "SELECT COUNT(*) FROM usuario";
+        try (Connection connection = Conexion.getInstance().getConnection();
+             PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al contar usuarios: " + e.getMessage());
+        }
+        return 0;
+    }
 
     private Usuario mapResultSetToUsuario(ResultSet rs) throws SQLException {
         Usuario usuario = new Usuario();

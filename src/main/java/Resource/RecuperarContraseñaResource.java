@@ -11,17 +11,18 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import modelo.RecuperarContraseñaRequest;
+import modelo.recuperarContraseña.RecuperarContraseñaRequest;
 
 /**
  *
  * @author fernan
  */
-@Path("/recuperar-password")
+@Path("recuperar-password")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecuperarContraseñaResource {
-private final RecuperarContraseñaService servicio;
+    
+    private final RecuperarContraseñaService servicio;
 
     public RecuperarContraseñaResource() {
         this.servicio = new RecuperarContraseñaService();
@@ -48,12 +49,17 @@ private final RecuperarContraseñaService servicio;
                     .build();
         }
 
+        if ("La contraseña anterior no es válida.".equals(resultado) || "El usuario está inactivo.".equals(resultado)) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(jsonMensaje(resultado))
+                    .build();
+        }
+
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(jsonMensaje(resultado))
                 .build();
     }
 
-    // Método auxiliar para garantizar respuestas JSON homogéneas hacia el cliente
     private String jsonMensaje(String mensaje) {
         return """
                {

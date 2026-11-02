@@ -7,16 +7,19 @@ package Resource.etapa2;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion2.Estudiante;
 import seguridad.JwtService;
@@ -26,7 +29,7 @@ import seguridad.iteracion2.EstudianteService;
  *
  * @author fernan
  */
-@Path("/estudiantes")
+@Path("estudiantes")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class EstudiantesResource {
@@ -98,12 +101,16 @@ public class EstudiantesResource {
     }
 
     @GET
-    public Response obtenerTodos(@Context HttpServletRequest httpRequest) {
+    public Response obtenerTodos(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context HttpServletRequest httpRequest) {
+
         Response acceso = validarAcceso(httpRequest, "No tiene permisos para consultar estudiantes.");
         if (acceso != null) return acceso;
 
-        ArrayList<Estudiante> estudiantes = estudianteService.obtenerTodos();
-        return Response.ok(estudiantes).build();
+        RespuestaPaginada<Estudiante> respuesta = estudianteService.obtenerEstudiantesPaginados(pagina, limite);
+        return Response.ok(respuesta).build();
     }
 
     @GET

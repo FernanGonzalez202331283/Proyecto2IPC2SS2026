@@ -17,7 +17,7 @@ public class JwtService {
             = "AvU/7HXYU1Fr5+EpcEwxPv2IeNHtERVstcNIuLJ0eo4=";
 
     private static final long TIEMPO_EXPIRACION
-            = 1000 * 60 * 60; // 1 hora
+            = 4000 * 60 * 60; 
     private final SecretKey key;
 
     public JwtService() {
@@ -25,7 +25,6 @@ public class JwtService {
                 java.util.Base64.getDecoder().decode(CLAVE_SECRETA));
     }
 
-    // 1. AGREGAMOS 'int idPersona' A LOS PARÁMETROS Y COMO CLAIM
     public String generarToken(int idUsuario, String username, String rol, int idPersona) {
         Date ahora = new Date();
         Date expiracion = new Date(ahora.getTime() + TIEMPO_EXPIRACION);
@@ -64,7 +63,6 @@ public class JwtService {
         return claims.get("idUsuario", Integer.class);
     }
 
-    // 2. EXTRAEMOS EL 'idPersona' DEL TOKEN Y LO ASIGNAMOS AL USUARIO
     public Usuario obtenerUsuarioDesdeToken(String token) {
         try {
             Claims claims = validarToken(token);
@@ -73,13 +71,12 @@ public class JwtService {
             usuario.setIdUsuario(claims.get("idUsuario", Integer.class));
             usuario.setUsername(claims.getSubject());
             usuario.setRol(claims.get("rol", String.class));
-            
-            // <-- SE EXTRAE Y SE ASIGNA
+
             Integer idPersona = claims.get("idPersona", Integer.class);
             if (idPersona != null) {
                 usuario.setIdPersona(idPersona);
             }
-            
+
             usuario.setEstado(true);
 
             return usuario;

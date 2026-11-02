@@ -7,18 +7,21 @@ package Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.List;
-import modelo.AñoLectivo;
+import modelo.RespuestaPaginada;
 import modelo.Usuario;
+import modelo.añoLectivo.AñoLectivoRequest;
+import modelo.añoLectivo.AñoLectivoResponse;
 import seguridad.JwtService;
 import servicio.AñoLectivoService;
 
@@ -26,10 +29,11 @@ import servicio.AñoLectivoService;
  *
  * @author fernan
  */
-@Path("/anos-lectivos")
+@Path("anos-lectivos")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AñoLectivoResource {
+
     private final AñoLectivoService añoLectivoService;
     private final JwtService jwtService = new JwtService();
 
@@ -38,13 +42,13 @@ public class AñoLectivoResource {
     }
 
     @POST
-    public Response registrarAñoLectivo(AñoLectivo añoLectivo, @Context HttpServletRequest request) {
+    public Response registrarAñoLectivo(AñoLectivoRequest peticion, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para gestionar años lectivos");
         if (errorAcceso != null) {
             return errorAcceso;
         }
 
-        String resultado = añoLectivoService.registrarAñoLectivo(añoLectivo);
+        String resultado = añoLectivoService.registrarAñoLectivo(peticion);
 
         if ("Año lectivo registrado correctamente".equals(resultado)) {
             return Response.status(Response.Status.CREATED)
@@ -58,14 +62,18 @@ public class AñoLectivoResource {
     }
 
     @GET
-    public Response obtenerAñosLectivos(@Context HttpServletRequest request) {
+    public Response obtenerAñosLectivos(
+            @QueryParam("pagina") @DefaultValue("1") int pagina,
+            @QueryParam("limite") @DefaultValue("10") int limite,
+            @Context HttpServletRequest request) {
+
         Response errorAcceso = validarAcceso(request, "No tiene permisos para consultar años lectivos");
         if (errorAcceso != null) {
             return errorAcceso;
         }
 
-        List<AñoLectivo> añosLectivos = añoLectivoService.obtenerAñosLectivos();
-        return Response.ok(añosLectivos).build();
+        RespuestaPaginada<AñoLectivoResponse> respuesta = añoLectivoService.obtenerAñosLectivosPaginados(pagina, limite);
+        return Response.ok(respuesta).build();
     }
 
     @GET
@@ -76,27 +84,27 @@ public class AñoLectivoResource {
             return errorAcceso;
         }
 
-        AñoLectivo añoLectivo = añoLectivoService.buscarAñoLectivo(id);
+        AñoLectivoResponse responseDTO = añoLectivoService.buscarAñoLectivo(id);
 
-        if (añoLectivo == null) {
+        if (responseDTO == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonMensaje("El año lectivo no existe"))
                     .build();
         }
 
-        return Response.ok(añoLectivo).build();
+        return Response.ok(responseDTO).build();
     }
 
     @PUT
     @Path("/{id}")
-    public Response actualizarAñoLectivo(@PathParam("id") int id, AñoLectivo añoLectivo, @Context HttpServletRequest request) {
+    public Response actualizarAñoLectivo(@PathParam("id") int id, AñoLectivoRequest peticion, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para actualizar años lectivos");
         if (errorAcceso != null) {
             return errorAcceso;
         }
 
-        añoLectivo.setIdAnoLectivo(id);
-        String resultado = añoLectivoService.actualizarAñoLectivo(añoLectivo);
+        peticion.setIdAnoLectivo(id);
+        String resultado = añoLectivoService.actualizarAñoLectivo(peticion);
 
         if ("Año lectivo actualizado correctamente".equals(resultado)) {
             return Response.ok(jsonMensaje(resultado)).build();
@@ -109,13 +117,13 @@ public class AñoLectivoResource {
 
     @PUT
     @Path("/{id}/estado")
-    public Response cambiarEstado(@PathParam("id") int id, AñoLectivo añoLectivo, @Context HttpServletRequest request) {
+    public Response cambiarEstado(@PathParam("id") int id, AñoLectivoRequest peticion, @Context HttpServletRequest request) {
         Response errorAcceso = validarAcceso(request, "No tiene permisos para cambiar el estado");
         if (errorAcceso != null) {
             return errorAcceso;
         }
 
-        String resultado = añoLectivoService.cambiarEstado(id, añoLectivo.isEstado());
+        String resultado = añoLectivoService.cambiarEstado(id, peticion.isEstado());
 
         if ("Año lectivo activado correctamente".equals(resultado)
                 || "Año lectivo desactivado correctamente".equals(resultado)) {
@@ -127,7 +135,6 @@ public class AñoLectivoResource {
                 .build();
     }
 
-    // Centralización de la validación de sesión y rol con respuesta inmediata de error
     private Response validarAcceso(HttpServletRequest request, String mensajePermisos) {
         Usuario usuario = obtenerUsuarioSesion(request);
 
@@ -138,7 +145,7 @@ public class AñoLectivoResource {
         }
 
         String rol = usuario.getRol();
-        if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol)) {
+        if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol) && !"SECRETARIA".equals(rol)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(jsonMensaje(mensajePermisos))
                     .build();
@@ -147,15 +154,7 @@ public class AñoLectivoResource {
         return null;
     }
 
-    // Obtención segura de usuario (por Sesión HTTP o por Token JWT)
     private Usuario obtenerUsuarioSesion(HttpServletRequest request) {
-        // 1. Intentar por la sesión HTTP tradicional (JSESSIONID)
-        HttpSession session = request.getSession(false);
-        if (session != null && session.getAttribute("usuario") instanceof Usuario) {
-            return (Usuario) session.getAttribute("usuario");
-        }
-
-        // 2. Si no hay sesión, extraer y validar desde el Token JWT de la cabecera Authorization
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -165,7 +164,6 @@ public class AñoLectivoResource {
         return null;
     }
 
-    // Generador de respuestas JSON homogéneas
     private String jsonMensaje(String mensaje) {
         return """
                {

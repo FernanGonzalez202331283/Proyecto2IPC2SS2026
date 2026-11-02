@@ -22,8 +22,6 @@ public class Conexion {
     private static Conexion instance;
 
     private final DataSource dataSource;
-
-    // Constructor privado para utilizar una única instancia
     private Conexion() {
 
         try {
