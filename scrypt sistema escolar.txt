@@ -1,0 +1,272 @@
+CREATE DATABASE IF NOT EXISTS sistema_escolar;
+USE sistema_escolar;
+
+-- 1. TABLAS INDEPENDIENTES (Sin dependencias previas)
+
+CREATE TABLE persona (
+    id_persona INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    dpi VARCHAR(20) NULL UNIQUE,
+    telefono VARCHAR(20) NULL,
+    correo VARCHAR(150) NULL,
+    direccion VARCHAR(255) NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE año_lectivo (
+    id_año_lectivo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    año INT NOT NULL UNIQUE,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE carrera (
+    id_carrera INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL UNIQUE,
+    descripcion VARCHAR(255) NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE curso (
+    id_curso INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL UNIQUE,
+    descripcion VARCHAR(255) NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE encargado (
+    id_encargado INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20) NULL,
+    correo VARCHAR(150) NULL,
+    direccion VARCHAR(255) NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE libro (
+    id_libro INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(200) NOT NULL,
+    autor VARCHAR(150) NOT NULL,
+    editorial VARCHAR(150) NULL,
+    cantidad_total INT NOT NULL,
+    cantidad_disponible INT NOT NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE configuracion_grado (
+    id_configuracion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nivel ENUM('PREPRIMARIA','PRIMARIA','BASICO','DIVERSIFICADO') NOT NULL,
+    nombre_grado VARCHAR(100) NOT NULL,
+    orden INT NOT NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+
+-- 2. TABLAS DE PRIMER NIVEL DE DEPENDENCIA
+
+CREATE TABLE usuario (
+    id_usuario INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    contraseña VARCHAR(255) NOT NULL,
+    id_persona INT NOT NULL UNIQUE,
+    rol ENUM('SUPER_ADMIN','ADMIN','BIBLIOTECARIO','SECRETARIA','MAESTRO','ESTUDIANTE','PERSONAL') NOT NULL,
+    estado TINYINT(1) DEFAULT 1,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    debe_cambiar_clave TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE empleado (
+    id_empleado INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_persona INT NOT NULL UNIQUE,
+    puesto VARCHAR(100) NOT NULL,
+    fecha_contratacion DATE NOT NULL,
+    salario DECIMAL(12,2) NOT NULL,
+    estado TINYINT(1) DEFAULT 1
+);
+
+CREATE TABLE estudiante (
+    id_estudiante INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_persona INT NOT NULL UNIQUE,
+    codigo_estudiante VARCHAR(50) NOT NULL UNIQUE,
+    informacion_medica TEXT NULL,
+    estado ENUM('ACTIVO','INACTIVO','GRADUADO') DEFAULT 'ACTIVO'
+);
+
+CREATE TABLE grado (
+    id_grado INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nivel ENUM('PREPRIMARIA','PRIMARIA','BASICO','DIVERSIFICADO') NOT NULL,
+    id_carrera INT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    INDEX (id_carrera)
+);
+
+CREATE TABLE prestamo (
+    id_prestamo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_libro INT NOT NULL,
+    id_persona INT NOT NULL,
+    fecha_prestamo DATE NOT NULL,
+    fecha_devolucion_esperada DATE NOT NULL,
+    fecha_devolucion_real DATE NULL,
+    estado ENUM('PRESTADO','DEVUELTO','VENCIDO') DEFAULT 'PRESTADO',
+    INDEX (id_libro),
+    INDEX (id_persona)
+);
+
+
+-- 3. TABLAS DE SEGUNDO NIVEL DE DEPENDENCIA
+
+CREATE TABLE historial_contraseña (
+    id_historial INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    contraseña VARCHAR(255) NOT NULL,
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX (id_usuario)
+);
+
+CREATE TABLE estudiante_encargado (
+    id_estudiante INT NOT NULL,
+    id_encargado INT NOT NULL,
+    parentesco VARCHAR(50) NOT NULL,
+    responsable_principal TINYINT(1) DEFAULT 0,
+    PRIMARY KEY (id_estudiante, id_encargado)
+);
+
+CREATE TABLE seccion (
+    id_seccion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_grado INT NOT NULL,
+    id_año_lectivo INT NOT NULL,
+    nombre VARCHAR(50) NOT NULL,
+    capacidad INT NOT NULL,
+    estado TINYINT(1) DEFAULT 1,
+    INDEX (id_grado),
+    INDEX (id_año_lectivo)
+);
+
+CREATE TABLE curriculo (
+    id_curriculo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_grado INT NOT NULL,
+    id_curso INT NOT NULL,
+    id_anio_lectivo INT NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    estado TINYINT(1) DEFAULT 1,
+    INDEX (id_grado),
+    INDEX (id_anio_lectivo)
+);
+
+CREATE TABLE asignacion_docente (
+    id_asignacion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_empleado INT NOT NULL,
+    id_curso INT NOT NULL,
+    id_seccion INT NOT NULL,
+    estado TINYINT(1) DEFAULT 1,
+    INDEX (id_empleado),
+    INDEX (id_curso),
+    INDEX (id_seccion)
+);
+
+CREATE TABLE obligacion_pago (
+    id_obligacion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_estudiante INT NOT NULL,
+    id_año_lectivo INT NOT NULL,
+    concepto ENUM('MES_DE_COLEGIATURA','INSCRIPCION','ACTIVIDAD') NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    monto DECIMAL(12,2) NOT NULL,
+    fecha_vencimiento DATE NOT NULL,
+    estado ENUM('PENDIENTE','PAGADA','VENCIDA','ANULADA') DEFAULT 'PENDIENTE',
+    INDEX (id_estudiante),
+    INDEX (id_año_lectivo)
+);
+
+CREATE TABLE devolucion (
+    id_devolucion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_prestamo INT NOT NULL UNIQUE,
+    fecha_devolucion_real DATE NOT NULL,
+    observacion VARCHAR(255) NULL
+);
+
+CREATE TABLE multa (
+    id_multa INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_prestamo INT NOT NULL UNIQUE,
+    dias_atraso INT NOT NULL,
+    monto DECIMAL(10,2) NOT NULL,
+    fecha_generacion DATE NOT NULL,
+    estado ENUM('PENDIENTE','PAGADA','ANULADA') DEFAULT 'PENDIENTE'
+);
+
+
+-- 4. TABLAS DE TERCER NIVEL Y POSTERIORES
+
+CREATE TABLE curriculo_curso (
+    id_curriculo INT NOT NULL,
+    id_curso INT NOT NULL,
+    obligatorio TINYINT(1) DEFAULT 1,
+    estado TINYINT(1) DEFAULT 1,
+    PRIMARY KEY (id_curriculo, id_curso)
+);
+
+CREATE TABLE inscripcion (
+    id_inscripcion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_estudiante INT NOT NULL,
+    id_seccion INT NOT NULL,
+    fecha_inscripcion DATE NOT NULL,
+    estado ENUM('ACTIVA','RETIRADA','FINALIZADA') DEFAULT 'ACTIVA',
+    INDEX (id_estudiante),
+    INDEX (id_seccion)
+);
+
+CREATE TABLE pago (
+    id_pago INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_obligacion INT NOT NULL,
+    id_usuario INT NOT NULL,
+    concepto ENUM('MES_DE_COLEGIATURA','INSCRIPCION','ACTIVIDAD') NOT NULL,
+    monto DECIMAL(12,2) NOT NULL,
+    fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
+    estado ENUM('REGISTRADO','ANULADO') DEFAULT 'REGISTRADO',
+    INDEX (id_obligacion),
+    INDEX (id_usuario)
+);
+
+CREATE TABLE comprobante_pago (
+    id_comprobante INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_pago INT NOT NULL UNIQUE,
+    numero_comprobante VARCHAR(50) NOT NULL UNIQUE,
+    fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tipo VARCHAR(50) DEFAULT 'RECIBO'
+);
+
+CREATE TABLE actividad (
+    id_actividad INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_asignacion INT NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    porcentaje DECIMAL(5,2) NOT NULL,
+    fecha DATE NOT NULL,
+    estado TINYINT(1) DEFAULT 1,
+    INDEX (id_asignacion)
+);
+
+CREATE TABLE asistencia (
+    id_asistencia INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_inscripcion INT NOT NULL,
+    id_asignacion INT NOT NULL,
+    fecha DATE NOT NULL,
+    estado ENUM('PRESENTE','AUSENTE','JUSTIFICADA') NOT NULL,
+    observacion VARCHAR(255) NULL,
+    INDEX (id_inscripcion),
+    INDEX (id_asignacion)
+);
+
+CREATE TABLE nota (
+    id_nota INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_actividad INT NOT NULL,
+    id_inscripcion INT NOT NULL,
+    calificacion DECIMAL(5,2) NOT NULL,
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_modificacion DATETIME NULL,
+    INDEX (id_actividad),
+    INDEX (id_inscripcion)
+);
