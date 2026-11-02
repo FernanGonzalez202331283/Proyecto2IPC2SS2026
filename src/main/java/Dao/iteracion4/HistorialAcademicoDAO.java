@@ -102,7 +102,6 @@ public class HistorialAcademicoDAO {
                         historial.setNombres(rs.getString("nombres"));
                         historial.setApellidos(rs.getString("apellidos"));
 
-                        // Garantizar que la lista de cursos esté inicializada
                         if (historial.getCursos() == null) {
                             historial.setCursos(new ArrayList<>());
                         }
@@ -193,4 +192,6 @@ public class HistorialAcademicoDAO {
             return null;
         }
     }
+    
+    
 }

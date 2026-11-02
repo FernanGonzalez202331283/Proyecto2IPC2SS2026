@@ -10,6 +10,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import modelo.Persona.Persona;
+import modelo.iteracion2.Estudiante;
 import modelo.iteracion4.HistorialPago;
 
 /**
@@ -86,5 +88,55 @@ public class HistorialPagoDAO {
             e.printStackTrace();
             return null;
         }
+    }
+    
+    public ArrayList<Estudiante> buscarEstudiantes(String criterio) {
+        ArrayList<Estudiante> lista = new ArrayList<>();
+
+        String sql = """
+                     SELECT 
+                        e.id_estudiante, 
+                        e.codigo_estudiante, 
+                        e.estado,
+                        p.id_persona,
+                        p.nombres, 
+                        p.apellidos
+                     FROM estudiante e
+                     INNER JOIN persona p ON e.id_persona = p.id_persona
+                     WHERE p.nombres LIKE ? 
+                        OR p.apellidos LIKE ? 
+                        OR e.codigo_estudiante LIKE ?
+                     LIMIT 20
+                     """;
+
+        try (Connection conexion = Conexion.getInstance().getConnection(); 
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            String parametroBusqueda = "%" + criterio + "%";
+            ps.setString(1, parametroBusqueda);
+            ps.setString(2, parametroBusqueda);
+            ps.setString(3, parametroBusqueda);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Persona persona = new Persona();
+                    persona.setIdPersona(rs.getInt("id_persona"));
+                    persona.setNombres(rs.getString("nombres"));
+                    persona.setApellidos(rs.getString("apellidos"));
+                    
+                    Estudiante estudiante = new Estudiante();
+                    estudiante.setIdEstudiante(rs.getInt("id_estudiante"));
+                    estudiante.setCodigoEstudiante(rs.getString("codigo_estudiante"));
+                    estudiante.setEstado(rs.getString("estado"));
+                    estudiante.setPersona(persona);
+
+                    lista.add(estudiante);
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        
+        return lista;
     }
 }
