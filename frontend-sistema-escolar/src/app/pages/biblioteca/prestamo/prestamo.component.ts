@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule, Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -12,30 +12,29 @@ import { LibroService, Libro } from '../../../services/libro.service';
   templateUrl: './prestamo.component.html'
 })
 export class PrestamoComponent implements OnInit {
-  prestamos: Prestamo[] = [];
-  librosActivos: Libro[] = [];
-  personasActivas: PersonaSeleccionable[] = [];
+  prestamos = signal<Prestamo[]>([]);
+  librosActivos = signal<Libro[]>([]);
+  personasActivas = signal<PersonaSeleccionable[]>([]);
+  
   prestamoForm!: FormGroup;
 
-  cargando: boolean = false;
-  guardando: boolean = false;
+  cargando = signal<boolean>(false);
+  guardando = signal<boolean>(false);
 
-  successMessage: string = '';
-  errorMessage: string = '';
+  successMessage = signal<string>('');
+  errorMessage = signal<string>('');
 
-  paginaActual: number = 1;
-  limite: number = 10;
-  totalPaginas: number = 0;
-  totalRegistros: number = 0;
+  paginaActual = signal<number>(1);
+  limite = signal<number>(10);
+  totalPaginas = signal<number>(0);
+  totalRegistros = signal<number>(0);
 
   constructor(
     private fb: FormBuilder,
     private prestamoService: PrestamoService,
     private libroService: LibroService,
     private location: Location,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -58,70 +57,55 @@ export class PrestamoComponent implements OnInit {
   cargarLibrosDisponibles(): void {
     this.libroService.obtenerCatalogo().subscribe({
       next: (data) => {
-        this.ngZone.run(() => {
-          this.librosActivos = (data || []).filter(l => l.cantidadDisponible > 0);
-          this.cdr.detectChanges();
-        });
+        this.librosActivos.set((data || []).filter(l => l.cantidadDisponible > 0));
       },
       error: () => console.error('Error al cargar libros para préstamos.')
     });
   }
 
   cargarPersonasActivas(): void {
-  this.prestamoService.obtenerPersonasActivas().subscribe({
-    next: (personas) => {
-      this.ngZone.run(() => {
-        this.personasActivas = personas || [];
-        this.cdr.detectChanges();
-      });
-    },
-    error: (err) => {
-      this.ngZone.run(() => {
-        console.warn('No se pudo cargar el listado de personas activas:', err);
-        this.personasActivas = [];
-        this.cdr.detectChanges();
-      });
-    }
-  });
-}
-
-  cargarPrestamos(pagina: number = 1): void {
-    this.cargando = true;
-    this.paginaActual = pagina;
-
-    this.prestamoService.obtenerTodos(this.paginaActual, this.limite).subscribe({
-      next: (res: RespuestaPaginada<Prestamo>) => {
-        this.ngZone.run(() => {
-          this.prestamos = res.contenido || [];
-          this.totalRegistros = res.totalRegistros || 0;
-          this.totalPaginas = res.totalPaginas || 0;
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+    this.prestamoService.obtenerPersonasActivas().subscribe({
+      next: (personas) => {
+        this.personasActivas.set(personas || []);
       },
       error: (err) => {
-        this.ngZone.run(() => {
-          this.errorMessage = err?.error?.mensaje || 'Error al obtener historial de préstamos.';
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+        console.warn('No se pudo cargar el listado de personas activas:', err);
+        this.personasActivas.set([]);
+      }
+    });
+  }
+
+  cargarPrestamos(pagina: number = 1): void {
+    this.cargando.set(true);
+    this.paginaActual.set(pagina);
+
+    this.prestamoService.obtenerTodos(this.paginaActual(), this.limite()).subscribe({
+      next: (res: RespuestaPaginada<Prestamo>) => {
+        this.prestamos.set(res.contenido || []);
+        this.totalRegistros.set(res.totalRegistros || 0);
+        this.totalPaginas.set(res.totalPaginas || 0);
+        this.cargando.set(false);
+      },
+      error: (err) => {
+        this.errorMessage.set(err?.error?.mensaje || 'Error al obtener historial de préstamos.');
+        this.cargando.set(false);
       }
     });
   }
 
   cambiarPagina(nuevaPagina: number): void {
-    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas()) {
       this.cargarPrestamos(nuevaPagina);
     }
   }
 
   obtenerNombrePersona(idPersona: number): string {
-    const persona = this.personasActivas.find(p => p.idPersona === idPersona);
+    const persona = this.personasActivas().find(p => p.idPersona === idPersona);
     return persona ? persona.nombreCompleto : `Persona #${idPersona}`;
   }
 
   obtenerTituloLibro(idLibro: number): string {
-    const libro = this.librosActivos.find(l => l.idLibro === idLibro);
+    const libro = this.librosActivos().find(l => l.idLibro === idLibro);
     return libro ? libro.titulo : `Libro #${idLibro}`;
   }
 
@@ -131,9 +115,9 @@ export class PrestamoComponent implements OnInit {
       return;
     }
 
-    this.errorMessage = '';
-    this.successMessage = '';
-    this.guardando = true;
+    this.errorMessage.set('');
+    this.successMessage.set('');
+    this.guardando.set(true);
 
     const formVal = this.prestamoForm.value;
 
@@ -146,20 +130,15 @@ export class PrestamoComponent implements OnInit {
 
     this.prestamoService.registrar(prestamoData).subscribe({
       next: (res) => {
-        this.ngZone.run(() => {
-          this.successMessage = res?.mensaje || 'Préstamo registrado correctamente.';
-          this.guardando = false;
-          this.initForm();
-          this.cargarLibrosDisponibles();
-          this.cargarPrestamos(1);
-        });
+        this.successMessage.set(res?.mensaje || 'Préstamo registrado correctamente.');
+        this.guardando.set(false);
+        this.initForm();
+        this.cargarLibrosDisponibles();
+        this.cargarPrestamos(1);
       },
       error: (err) => {
-        this.ngZone.run(() => {
-          this.errorMessage = err?.error?.mensaje || 'Error al registrar el préstamo.';
-          this.guardando = false;
-          this.cdr.detectChanges();
-        });
+        this.errorMessage.set(err?.error?.mensaje || 'Error al registrar el préstamo.');
+        this.guardando.set(false);
       }
     });
   }

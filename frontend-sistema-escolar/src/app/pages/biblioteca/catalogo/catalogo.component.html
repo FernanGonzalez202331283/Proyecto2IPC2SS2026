@@ -11,7 +11,8 @@
     
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="badge bg-warning text-dark fs-6 px-3 py-2 fw-bold">
-        Activos en Catálogo: {{ librosCatalogo.length }}
+        <!-- Llamamos al signal con () -->
+        Activos en Catálogo: {{ librosCatalogo().length }}
       </span>
       <button type="button" (click)="volverDashboard()" class="btn btn-outline-light btn-sm fw-semibold">
         <i class="bi bi-arrow-left-circle me-1"></i> Volver
@@ -20,10 +21,10 @@
   </div>
 
   <!-- Alerta de Error -->
-  @if (errorMessage) {
+  @if (errorMessage()) {
     <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
-      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
+      <button type="button" class="btn-close" (click)="errorMessage.set('')"></button>
     </div>
   }
 
@@ -38,13 +39,14 @@
             <span class="input-group-text bg-white border-end-0">
               <i class="bi bi-search text-muted"></i>
             </span>
+            <!-- Bindeamos el ngModel al signal. ¡Ya no ocupamos el (input)="aplicarFiltros()"! -->
             <input type="text" 
                    class="form-control border-start-0 ps-0" 
                    placeholder="Buscar por título, autor o editorial..."
-                   [(ngModel)]="filtroBusqueda" 
-                   (input)="aplicarFiltros()">
-            @if (filtroBusqueda) {
-              <button class="btn btn-outline-secondary" type="button" (click)="filtroBusqueda = ''; aplicarFiltros()">
+                   [ngModel]="filtroBusqueda()"
+                   (ngModelChange)="filtroBusqueda.set($event)">
+            @if (filtroBusqueda()) {
+              <button class="btn btn-outline-secondary" type="button" (click)="filtroBusqueda.set('')">
                 <i class="bi bi-x-circle-fill"></i>
               </button>
             }
@@ -54,11 +56,12 @@
         <!-- Switch de Disponibilidad Inmediata -->
         <div class="col-md-4">
           <div class="form-check form-switch d-flex align-items-center justify-content-md-end gap-2 mb-0">
+             <!-- Bindeamos al signal de disponibles. ¡Ya no ocupamos el (change)="aplicarFiltros()"! -->
             <input class="form-check-input mt-0" 
                    type="checkbox" 
                    id="checkStock" 
-                   [(ngModel)]="soloDisponibles" 
-                   (change)="aplicarFiltros()">
+                   [ngModel]="soloDisponibles()"
+                   (ngModelChange)="soloDisponibles.set($event)">
             <label class="form-check-label fw-bold text-secondary" for="checkStock">
               Solo con ejemplares disponibles
             </label>
@@ -70,12 +73,12 @@
   </div>
 
   <!-- Vista de Resultados (Tarjetas de Libros) -->
-  @if (cargando) {
+  @if (cargando()) {
     <div class="text-center py-5 text-muted">
       <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
       <h6 class="fw-semibold">Cargando catálogo bibliográfico...</h6>
     </div>
-  } @else if (librosFiltrados.length === 0) {
+  } @else if (librosFiltrados().length === 0) {
     <div class="card shadow-sm border-0 py-5 text-center text-muted">
       <i class="bi bi-journal-x fs-1 mb-2 text-secondary"></i>
       <h5 class="fw-bold text-secondary mb-1">No se encontraron libros</h5>
@@ -83,14 +86,14 @@
     </div>
   } @else {
     <div class="row g-4">
-      @for (libro of librosFiltrados; track libro.idLibro) {
+      <!-- Iteramos sobre el computed signal con () -->
+      @for (libro of librosFiltrados(); track libro.idLibro) {
         <div class="col-md-6 col-lg-4">
           <div class="card h-100 shadow-sm border-0 border-top border-4"
                [class.border-success]="libro.cantidadDisponible > 0"
                [class.border-danger]="libro.cantidadDisponible === 0">
             
             <div class="card-body d-flex flex-column p-3">
-              <!-- Título y Código -->
               <div class="d-flex justify-content-between align-items-start mb-2">
                 <h5 class="card-title fw-bold text-dark mb-0 text-truncate" title="{{ libro.titulo }}">
                   {{ libro.titulo }}
@@ -98,13 +101,11 @@
                 <span class="badge bg-secondary ms-2">#{{ libro.idLibro }}</span>
               </div>
 
-              <!-- Autor y Editorial -->
               <div class="small text-muted mb-3 flex-grow-1">
                 <div><i class="bi bi-person-fill text-primary me-1"></i><strong>Autor:</strong> {{ libro.autor }}</div>
                 <div><i class="bi bi-building text-secondary me-1"></i><strong>Editorial:</strong> {{ libro.editorial || 'No especificada' }}</div>
               </div>
 
-              <!-- Estado de Disponibilidad Físico -->
               <div class="p-2 rounded bg-light d-flex justify-content-between align-items-center mt-auto">
                 <span class="small fw-bold text-secondary">Ejemplares:</span>
                 

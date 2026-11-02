@@ -18,7 +18,6 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
 import modelo.RespuestaPaginada;
 import modelo.Usuario;
 import modelo.iteracion2.AsignacionDocente;

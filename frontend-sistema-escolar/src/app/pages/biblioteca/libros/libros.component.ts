@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule, Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -11,31 +11,29 @@ import { LibroService, Libro, RespuestaPaginada } from '../../../services/libro.
   templateUrl: './libros.component.html'
 })
 export class LibrosComponent implements OnInit {
-  libros: Libro[] = [];
+  libros = signal<Libro[]>([]);
+  
+  esEdicion = signal<boolean>(false);
+  idLibroEditar = signal<number | null>(null);
+
+  cargando = signal<boolean>(false);
+  guardando = signal<boolean>(false);
+
+  successMessage = signal<string>('');
+  errorMessage = signal<string>('');
+
+  paginaActual = signal<number>(1);
+  limite = signal<number>(10);
+  totalPaginas = signal<number>(0);
+  totalRegistros = signal<number>(0);
+
   libroForm!: FormGroup;
-
-  esEdicion: boolean = false;
-  idLibroEditar: number | null = null;
-
-  cargando: boolean = false;
-  guardando: boolean = false;
-
-  successMessage: string = '';
-  errorMessage: string = '';
-
-  // Control de paginación
-  paginaActual: number = 1;
-  limite: number = 10;
-  totalPaginas: number = 0;
-  totalRegistros: number = 0;
 
   constructor(
     private fb: FormBuilder,
     private libroService: LibroService,
     private location: Location,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -54,31 +52,25 @@ export class LibrosComponent implements OnInit {
   }
 
   cargarLibros(pagina: number = 1): void {
-    this.cargando = true;
-    this.paginaActual = pagina;
+    this.cargando.set(true);
+    this.paginaActual.set(pagina);
 
-    this.libroService.obtenerTodos(this.paginaActual, this.limite).subscribe({
+    this.libroService.obtenerTodos(this.paginaActual(), this.limite()).subscribe({
       next: (res: RespuestaPaginada<Libro>) => {
-        this.ngZone.run(() => {
-          this.libros = res.contenido || [];
-          this.totalRegistros = res.totalRegistros || 0;
-          this.totalPaginas = res.totalPaginas || 0;
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+        this.libros.set(res.contenido || []);
+        this.totalRegistros.set(res.totalRegistros || 0);
+        this.totalPaginas.set(res.totalPaginas || 0);
+        this.cargando.set(false);
       },
       error: (err) => {
-        this.ngZone.run(() => {
-          this.errorMessage = err?.error?.mensaje || 'Error al cargar los libros de la biblioteca.';
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+        this.errorMessage.set(err?.error?.mensaje || 'Error al cargar los libros de la biblioteca.');
+        this.cargando.set(false);
       }
     });
   }
 
   cambiarPagina(nuevaPagina: number): void {
-    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas()) {
       this.cargarLibros(nuevaPagina);
     }
   }
@@ -89,15 +81,15 @@ export class LibrosComponent implements OnInit {
       return;
     }
 
-    this.errorMessage = '';
-    this.successMessage = '';
-    this.guardando = true;
+    this.errorMessage.set('');
+    this.successMessage.set('');
+    this.guardando.set(true);
 
     const formVal = this.libroForm.value;
     
     if (Number(formVal.cantidadDisponible) > Number(formVal.cantidadTotal)) {
-      this.errorMessage = 'La cantidad disponible no puede superar la cantidad total.';
-      this.guardando = false;
+      this.errorMessage.set('La cantidad disponible no puede superar la cantidad total.');
+      this.guardando.set(false);
       return;
     }
 
@@ -110,55 +102,46 @@ export class LibrosComponent implements OnInit {
       estado: true
     };
 
-    if (this.esEdicion && this.idLibroEditar) {
-      libroData.idLibro = this.idLibroEditar;
+    if (this.esEdicion() && this.idLibroEditar()) {
+      const id = this.idLibroEditar()!;
+      libroData.idLibro = id;
 
-      const libroExistente = this.libros.find(l => l.idLibro === this.idLibroEditar);
+      const libroExistente = this.libros().find(l => l.idLibro === id);
       if (libroExistente) {
         libroData.estado = libroExistente.estado;
       }
 
-      this.libroService.actualizar(this.idLibroEditar, libroData).subscribe({
+      this.libroService.actualizar(id, libroData).subscribe({
         next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = res?.mensaje || 'Libro actualizado correctamente.';
-            this.guardando = false;
-            this.limpiarFormulario();
-            this.cargarLibros(this.paginaActual);
-          });
+          this.successMessage.set(res?.mensaje || 'Libro actualizado correctamente.');
+          this.guardando.set(false);
+          this.limpiarFormulario();
+          this.cargarLibros(this.paginaActual());
         },
         error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = err?.error?.mensaje || err?.error || 'Error al actualizar el libro.';
-            this.guardando = false;
-            this.cdr.detectChanges();
-          });
+          this.errorMessage.set(err?.error?.mensaje || err?.error || 'Error al actualizar el libro.');
+          this.guardando.set(false);
         }
       });
     } else {
       this.libroService.registrar(libroData).subscribe({
         next: (res) => {
-          this.ngZone.run(() => {
-            this.successMessage = res?.mensaje || 'Libro registrado correctamente.';
-            this.guardando = false;
-            this.limpiarFormulario();
-            this.cargarLibros(1);
-          });
+          this.successMessage.set(res?.mensaje || 'Libro registrado correctamente.');
+          this.guardando.set(false);
+          this.limpiarFormulario();
+          this.cargarLibros(1);
         },
         error: (err) => {
-          this.ngZone.run(() => {
-            this.errorMessage = err?.error?.mensaje || err?.error || 'Error al registrar el libro.';
-            this.guardando = false;
-            this.cdr.detectChanges();
-          });
+          this.errorMessage.set(err?.error?.mensaje || err?.error || 'Error al registrar el libro.');
+          this.guardando.set(false);
         }
       });
     }
   }
 
   seleccionarParaEditar(libro: Libro): void {
-    this.esEdicion = true;
-    this.idLibroEditar = libro.idLibro || null;
+    this.esEdicion.set(true);
+    this.idLibroEditar.set(libro.idLibro || null);
     this.libroForm.patchValue({
       titulo: libro.titulo,
       autor: libro.autor,
@@ -174,23 +157,18 @@ export class LibrosComponent implements OnInit {
 
     this.libroService.cambiarEstado(libro.idLibro, nuevoEstado).subscribe({
       next: (res) => {
-        this.ngZone.run(() => {
-          this.successMessage = res?.mensaje || 'Estado actualizado correctamente.';
-          this.cargarLibros(this.paginaActual);
-        });
+        this.successMessage.set(res?.mensaje || 'Estado actualizado correctamente.');
+        this.cargarLibros(this.paginaActual());
       },
       error: (err) => {
-        this.ngZone.run(() => {
-          this.errorMessage = err?.error?.mensaje || 'Error al cambiar estado del libro.';
-          this.cdr.detectChanges();
-        });
+        this.errorMessage.set(err?.error?.mensaje || 'Error al cambiar estado del libro.');
       }
     });
   }
 
   limpiarFormulario(): void {
-    this.esEdicion = false;
-    this.idLibroEditar = null;
+    this.esEdicion.set(false);
+    this.idLibroEditar.set(null);
     this.libroForm.reset({
       titulo: '',
       autor: '',

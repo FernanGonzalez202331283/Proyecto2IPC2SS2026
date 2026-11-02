@@ -184,25 +184,18 @@ public class PrestamoDAO {
 
     public boolean personaActiva(int idPersona) {
         String sql = """
-            SELECT
-                (
-                    EXISTS (
-                        SELECT 1 FROM estudiante
-                        WHERE id_persona = ? AND estado = 'ACTIVO'
-                    )
-                    OR
-                    EXISTS (
-                        SELECT 1 FROM empleado
-                        WHERE id_persona = ? AND estado = 1
-                    )
-                ) AS activa
+            SELECT EXISTS (
+                SELECT 1 FROM usuario 
+                WHERE id_persona = ? 
+                AND UPPER(TRIM(rol)) IN ('ESTUDIANTE', 'MAESTRO') 
+                AND estado = 1
+            ) AS activa
             """;
 
         try (Connection connection = Conexion.getInstance().getConnection(); 
              PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, idPersona);
-            ps.setInt(2, idPersona);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -211,7 +204,7 @@ public class PrestamoDAO {
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al verificar persona: " + e.getMessage());
+            System.out.println("Error al verificar rol de persona: " + e.getMessage());
         }
 
         return false;

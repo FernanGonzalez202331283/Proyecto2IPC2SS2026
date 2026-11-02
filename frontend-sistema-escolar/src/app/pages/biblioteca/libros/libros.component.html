@@ -15,17 +15,17 @@
   </div>
 
   <!-- Alertas del Servidor -->
-  @if (successMessage) {
+  @if (successMessage()) {
     <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
-      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+      <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage() }}
+      <button type="button" class="btn-close" (click)="successMessage.set('')"></button>
     </div>
   }
 
-  @if (errorMessage) {
+  @if (errorMessage()) {
     <div class="alert alert-danger alert-dismissible fade show fw-semibold shadow-sm" role="alert">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
-      <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
+      <button type="button" class="btn-close" (click)="errorMessage.set('')"></button>
     </div>
   }
 
@@ -35,10 +35,10 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-secondary text-white py-2 fw-bold d-flex justify-content-between align-items-center">
           <span>
-            <i class="bi" [class.bi-pencil-square]="esEdicion" [class.bi-plus-circle-fill]="!esEdicion"></i>
-            {{ esEdicion ? 'Editar Libro #' + idLibroEditar : 'Nuevo Libro' }}
+            <i class="bi" [class.bi-pencil-square]="esEdicion()" [class.bi-plus-circle-fill]="!esEdicion()"></i>
+            {{ esEdicion() ? 'Editar Libro #' + idLibroEditar() : 'Nuevo Libro' }}
           </span>
-          @if (esEdicion) {
+          @if (esEdicion()) {
             <span class="badge bg-warning text-dark">Modo Edición</span>
           }
         </div>
@@ -96,7 +96,7 @@
               <div class="col-6">
                 <label class="form-label small fw-bold">
                   Disponible * 
-                  @if (esEdicion) {
+                  @if (esEdicion()) {
                     <i class="bi bi-lock-fill text-muted" title="Calculado automáticamente por el sistema según los préstamos activos"></i>
                   }
                 </label>
@@ -104,22 +104,22 @@
                        formControlName="cantidadDisponible" 
                        class="form-control form-control-sm" 
                        min="0"
-                       [attr.disabled]="esEdicion ? true : null">
+                       [attr.disabled]="esEdicion() ? true : null">
               </div>
             </div>
 
             <!-- Botones de Acción -->
             <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-success btn-sm w-100 fw-bold" [disabled]="guardando">
-                @if (guardando) {
+              <button type="submit" class="btn btn-success btn-sm w-100 fw-bold" [disabled]="guardando()">
+                @if (guardando()) {
                   <span class="spinner-border spinner-border-sm me-1"></span> Procesando...
                 } @else {
-                  <i class="bi" [class.bi-check-circle-fill]="esEdicion" [class.bi-save]="!esEdicion"></i> 
-                  {{ esEdicion ? 'Actualizar Libro' : 'Registrar Libro' }}
+                  <i class="bi" [class.bi-check-circle-fill]="esEdicion()" [class.bi-save]="!esEdicion()"></i> 
+                  {{ esEdicion() ? 'Actualizar Libro' : 'Registrar Libro' }}
                 }
               </button>
               
-              @if (esEdicion) {
+              @if (esEdicion()) {
                 <button type="button" (click)="limpiarFormulario()" class="btn btn-outline-secondary btn-sm fw-semibold">
                   Cancelar
                 </button>
@@ -136,7 +136,7 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-journal-bookmark me-1"></i> Inventario General de Libros</h6>
-          <span class="badge bg-dark">Total: {{ totalRegistros }}</span>
+          <span class="badge bg-dark">Total: {{ totalRegistros() }}</span>
         </div>
 
         <div class="card-body p-0">
@@ -153,14 +153,14 @@
                 </tr>
               </thead>
               <tbody>
-                @if (cargando) {
+                @if (cargando()) {
                   <tr>
                     <td colspan="6" class="text-center py-5 text-muted">
                       <div class="spinner-border spinner-border-sm text-primary me-2"></div>
                       Cargando inventario de la biblioteca...
                     </td>
                   </tr>
-                } @else if (libros.length === 0) {
+                } @else if (libros().length === 0) {
                   <tr>
                     <td colspan="6" class="text-center py-5 text-muted">
                       <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
@@ -168,9 +168,9 @@
                     </td>
                   </tr>
                 } @else {
-                  @for (libro of libros; track libro.idLibro; let i = $index) {
-                    <tr [class.table-primary]="esEdicion && idLibroEditar === libro.idLibro">
-                      <td class="text-center fw-bold text-secondary">{{ (paginaActual - 1) * limite + i + 1 }}</td>
+                  @for (libro of libros(); track libro.idLibro; let i = $index) {
+                    <tr [class.table-primary]="esEdicion() && idLibroEditar() === libro.idLibro">
+                      <td class="text-center fw-bold text-secondary">{{ (paginaActual() - 1) * limite() + i + 1 }}</td>
                       <td>
                         <div class="fw-bold text-dark">{{ libro.titulo }}</div>
                         <small class="text-muted"><i class="bi bi-person me-1"></i>{{ libro.autor }}</small>
@@ -214,20 +214,20 @@
         </div>
 
         <!-- Controles de Paginación -->
-        @if (totalPaginas > 1 && !cargando) {
+        @if (totalPaginas() > 1 && !cargando()) {
           <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
             <span class="small text-muted fw-semibold">
-              Página {{ paginaActual }} de {{ totalPaginas }}
+              Página {{ paginaActual() }} de {{ totalPaginas() }}
             </span>
             <div class="btn-group">
               <button class="btn btn-sm btn-outline-secondary fw-bold" 
-                      (click)="cambiarPagina(paginaActual - 1)" 
-                      [disabled]="paginaActual === 1">
+                      (click)="cambiarPagina(paginaActual() - 1)" 
+                      [disabled]="paginaActual() === 1">
                 <i class="bi bi-chevron-left"></i> Anterior
               </button>
               <button class="btn btn-sm btn-outline-secondary fw-bold" 
-                      (click)="cambiarPagina(paginaActual + 1)" 
-                      [disabled]="paginaActual === totalPaginas">
+                      (click)="cambiarPagina(paginaActual() + 1)" 
+                      [disabled]="paginaActual() === totalPaginas()">
                 Siguiente <i class="bi bi-chevron-right"></i>
               </button>
             </div>

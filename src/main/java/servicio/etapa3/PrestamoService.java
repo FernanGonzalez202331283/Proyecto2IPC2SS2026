@@ -51,7 +51,7 @@ public class PrestamoService {
         }
 
         if (!prestamoDAO.personaActiva(prestamo.getIdPersona())) {
-            return "La persona no existe o no es un estudiante o empleado activo.";
+            return "La persona no existe, se encuentra inactiva, o no tiene el rol de ESTUDIANTE o MAESTRO.";
         }
 
         LocalDate fechaPrestamo;

@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -11,20 +11,35 @@ import { LibroService, Libro } from '../../../services/libro.service';
   templateUrl: './catalogo.component.html'
 })
 export class CatalogoComponent implements OnInit {
-  librosCatalogo: Libro[] = [];
-  librosFiltrados: Libro[] = [];
+  librosCatalogo = signal<Libro[]>([]);
+  filtroBusqueda = signal<string>('');
+  soloDisponibles = signal<boolean>(false);
+  
+  cargando = signal<boolean>(false);
+  errorMessage = signal<string>('');
 
-  filtroBusqueda: string = '';
-  soloDisponibles: boolean = false;
-  cargando: boolean = false;
-  errorMessage: string = '';
+  librosFiltrados = computed(() => {
+    const termino = this.filtroBusqueda().toLowerCase().trim();
+    const soloDisp = this.soloDisponibles();
+    const catalogo = this.librosCatalogo();
+
+    return catalogo.filter((libro) => {
+      const coincideBusqueda =
+        !termino ||
+        libro.titulo.toLowerCase().includes(termino) ||
+        libro.autor.toLowerCase().includes(termino) ||
+        (libro.editorial && libro.editorial.toLowerCase().includes(termino));
+
+      const coincideStock = !soloDisp || libro.cantidadDisponible > 0;
+
+      return coincideBusqueda && coincideStock;
+    });
+  });
 
   constructor(
     private libroService: LibroService,
     private location: Location,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -32,41 +47,18 @@ export class CatalogoComponent implements OnInit {
   }
 
   cargarCatalogo(): void {
-    this.cargando = true;
-    this.errorMessage = '';
+    this.cargando.set(true);
+    this.errorMessage.set('');
 
     this.libroService.obtenerCatalogo().subscribe({
       next: (data) => {
-        this.ngZone.run(() => {
-          this.librosCatalogo = data || [];
-          this.aplicarFiltros();
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+        this.librosCatalogo.set(data || []);
+        this.cargando.set(false);
       },
       error: (err) => {
-        this.ngZone.run(() => {
-          this.errorMessage = err?.error?.mensaje || 'Error al consultar el catálogo de libros.';
-          this.cargando = false;
-          this.cdr.detectChanges();
-        });
+        this.errorMessage.set(err?.error?.mensaje || 'Error al consultar el catálogo de libros.');
+        this.cargando.set(false);
       }
-    });
-  }
-
-  aplicarFiltros(): void {
-    const termino = this.filtroBusqueda.toLowerCase().trim();
-
-    this.librosFiltrados = this.librosCatalogo.filter((libro) => {
-      const coincideBusqueda =
-        !termino ||
-        libro.titulo.toLowerCase().includes(termino) ||
-        libro.autor.toLowerCase().includes(termino) ||
-        (libro.editorial && libro.editorial.toLowerCase().includes(termino));
-
-      const coincideStock = !this.soloDisponibles || libro.cantidadDisponible > 0;
-
-      return coincideBusqueda && coincideStock;
     });
   }
 
